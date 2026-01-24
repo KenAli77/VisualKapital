@@ -60,6 +60,7 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Tab
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -90,6 +91,7 @@ data class HoldingRowUi(
     val price: Double,
     val dayLow: Double,
     val dayHigh: Double,
+    val logoUrl: String? = null
 )
 
 enum class HomeTab(val label: String) {
@@ -117,8 +119,10 @@ fun HomeScreen(
     profitUsd: Double = 295.83,
     mlPct: Double = 300.00,
     tabs: List<HomeTab> = HomeTab.entries,
-    holdings: List<HoldingRowUi> = sampleHoldings(),
 ) {
+    val viewModel = org.koin.compose.viewmodel.koinViewModel<HomeViewModel>()
+    val state by viewModel.state.collectAsState()
+    val holdings = state.holdings
     var selectedTab by remember { mutableStateOf(HomeTab.Favourites) }
 
     Scaffold(
@@ -615,12 +619,19 @@ fun HoldingRow(
                     .background(theme.colors.onPrimary),
                 contentAlignment = Alignment.Center
             ) {
-                Icon(
-                    Icons.Rounded.Business,
-                    contentDescription = null,
-                    modifier = Modifier.padding(theme.dimension.mediumSpacing)
-                        .size(theme.dimension.smallIconSize)
-                )
+                if (item.logoUrl != null) {
+                    coil3.compose.AsyncImage(
+                        model = item.logoUrl,
+                        contentDescription = item.name,
+                        modifier = Modifier.size(theme.dimension.iconSize)
+                    )
+                } else {
+                    Icon(
+                        Icons.Outlined.Business,
+                        contentDescription = null,
+                        modifier = Modifier.size(theme.dimension.iconSize)
+                    )
+                }
             }
             Column(
                 modifier = Modifier.weight(1f),
