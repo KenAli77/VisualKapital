@@ -1,5 +1,6 @@
 package com.example.visualmoney.home
 
+import androidx.compose.animation.animateColorAsState
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -9,10 +10,10 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -21,8 +22,8 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.rounded.ReceiptLong
 import androidx.compose.material.icons.automirrored.rounded.ShowChart
-import androidx.compose.material.icons.outlined.Business
 import androidx.compose.material.icons.outlined.Equalizer
 import androidx.compose.material.icons.outlined.Home
 import androidx.compose.material.icons.outlined.KeyboardArrowDown
@@ -31,20 +32,29 @@ import androidx.compose.material.icons.outlined.ReceiptLong
 import androidx.compose.material.icons.outlined.SwapHoriz
 import androidx.compose.material.icons.rounded.AccountBalanceWallet
 import androidx.compose.material.icons.rounded.AddCircleOutline
+import androidx.compose.material.icons.rounded.AreaChart
 import androidx.compose.material.icons.rounded.AutoAwesome
+import androidx.compose.material.icons.rounded.Business
+import androidx.compose.material.icons.rounded.CalendarToday
+import androidx.compose.material.icons.rounded.Equalizer
+import androidx.compose.material.icons.rounded.Home
+import androidx.compose.material.icons.rounded.Monitor
+import androidx.compose.material.icons.rounded.Newspaper
 import androidx.compose.material.icons.rounded.NorthEast
 import androidx.compose.material.icons.rounded.Notifications
+import androidx.compose.material.icons.rounded.PersonOutline
 import androidx.compose.material.icons.rounded.Search
+import androidx.compose.material.icons.rounded.SwapHoriz
 import androidx.compose.material.icons.rounded.SyncAlt
-import androidx.compose.material3.AssistChip
+import androidx.compose.material.icons.rounded.WorkspacePremium
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ElevatedCard
 import androidx.compose.material3.Icon
 import androidx.compose.material3.NavigationBar
 import androidx.compose.material3.NavigationBarItem
+import androidx.compose.material3.NavigationBarItemDefaults
 import androidx.compose.material3.Scaffold
-import androidx.compose.material3.ScrollableTabRow
 import androidx.compose.material3.SecondaryScrollableTabRow
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Tab
@@ -83,12 +93,19 @@ data class HoldingRowUi(
 )
 
 enum class HomeTab(val label: String) {
-    Favourites("Favourites"),
-    HotDeals("Hot Deals"),
-    News("News"),
+    Favourites("Top movers"),
+    HotDeals("Upcoming events"),
+    News("Losers"),
     Gainers("Gainers"),
     Losers("Losers"),
     H24("24h"),
+}
+
+enum class BottomNavItem {
+    HOME,
+    STATS,
+    SWAP,
+    ACCOUNT
 }
 
 // ---------- Screen ----------
@@ -107,7 +124,6 @@ fun HomeScreen(
     Scaffold(
         modifier = modifier.fillMaxSize(),
         containerColor = theme.colors.surface,
-        bottomBar = { HomeBottomBar() },
     ) { padding ->
         LazyColumn(
             modifier = Modifier
@@ -142,8 +158,8 @@ fun HomeScreen(
 
             item {
                 AiInsightsCard(
-                    title = "AI Insights",
-                    subtitle = "Analyse Your Spending Activity",
+                    title = "Unlock Insights",
+                    subtitle = "Analyse Your Portfolio",
                     onOpen = {}
                 )
             }
@@ -308,7 +324,7 @@ fun BalanceCard(
                     contentDescription = "Balance",
                 )
                 Text(
-                    text = "Available Balance",
+                    text = "Portfolio value",
                     style = theme.typography.bodySmall,
                     color = theme.colors.greyTextColor
                 )
@@ -336,7 +352,7 @@ fun BalanceCard(
                     Text(
                         text = "." + text.format(balanceUsd).substringAfterLast("."),
                         style = theme.typography.titleLarge.copy(fontWeight = FontWeight.Medium),
-                        color = theme.colors.greyTextColor
+                        color = theme.colors.greyScale.c50
                     )
                 }
                 Row(
@@ -412,20 +428,20 @@ fun QuickActionsRow(
         horizontalArrangement = Arrangement.spacedBy(12.dp)
     ) {
         QuickActionButton(
-            title = "Add Money",
+            title = "Add asset",
             icon = Icons.Rounded.AddCircleOutline,
             onClick = onAddMoney,
             modifier = Modifier.weight(1f)
         )
         QuickActionButton(
-            title = "Tread Move",
-            icon = Icons.Rounded.SyncAlt,
+            title = "Calendar",
+            icon = Icons.Rounded.CalendarToday,
             onClick = onTrade,
             modifier = Modifier.weight(1f)
         )
         QuickActionButton(
-            title = "Withdraw",
-            icon = Icons.Rounded.AccountBalanceWallet,
+            title = "News",
+            icon = Icons.Rounded.Newspaper,
             onClick = onWithdraw,
             modifier = Modifier.weight(1f)
         )
@@ -510,7 +526,7 @@ fun AiInsightsCard(
                 contentAlignment = Alignment.Center
             ) {
                 Icon(
-                    Icons.Rounded.AutoAwesome,
+                    Icons.Rounded.AreaChart,
                     contentDescription = null,
                     modifier = Modifier.padding(theme.dimension.largeSpacing)
                         .size(theme.dimension.iconSize)
@@ -583,43 +599,43 @@ fun HoldingRow(
         modifier = modifier.fillMaxWidth(),
         shape = RoundedCornerShape(theme.dimension.defaultRadius),
         onClick = onClick,
+        border = BorderStroke(1.dp, theme.colors.greyScale.c30),
         elevation = CardDefaults.cardElevation(0.dp),
         colors = CardDefaults.elevatedCardColors(containerColor = theme.colors.surface)
     ) {
         Row(
             modifier = Modifier.padding(theme.dimension.mediumSpacing),
-            verticalAlignment = Alignment.CenterVertically
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(theme.dimension.mediumSpacing)
         ) {
             // Icon placeholder
             Box(
                 modifier = Modifier
-                    .size(40.dp)
-                    .clip(RoundedCornerShape(theme.dimension.defaultRadius))
-                    .background(theme.colors.surface),
+                    .clip(CircleShape)
+                    .background(theme.colors.onPrimary),
                 contentAlignment = Alignment.Center
             ) {
                 Icon(
-                    Icons.Outlined.Business,
+                    Icons.Rounded.Business,
                     contentDescription = null,
-                    modifier = Modifier.size(theme.dimension.iconSize)
+                    modifier = Modifier.padding(theme.dimension.mediumSpacing)
+                        .size(theme.dimension.smallIconSize)
                 )
             }
-
-            Spacer(Modifier.width(12.dp))
-
-            Column(modifier = Modifier.weight(1f)) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
+            Column(
+                modifier = Modifier.weight(1f),
+                verticalArrangement = Arrangement.spacedBy(theme.dimension.closeSpacing)
+            ) {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(theme.dimension.closeSpacing)
+                ) {
                     Text(
                         text = item.name,
-                        style = theme.typography.titleSmall,
+                        style = theme.typography.titleSmallMedium,
                     )
-                    Spacer(Modifier.width(8.dp))
-
                     AssetCategoryChip(assetClass = item.assetClass)
                 }
-
-                Spacer(Modifier.height(6.dp))
-
                 // Low/High line (simple)
                 Text(
                     text = "Min ${"%.2f".format(item.dayLow)}   Max ${"%.2f".format(item.dayHigh)}",
@@ -628,18 +644,17 @@ fun HoldingRow(
                 )
             }
 
-            Spacer(Modifier.width(8.dp))
 
             Column(horizontalAlignment = Alignment.End) {
                 Text(
                     text = "%.2f".format(item.price),
-                    style = theme.typography.titleSmall,
+                    style = theme.typography.titleSmallMedium,
                 )
                 val changeText =
                     (if (item.changePct >= 0) "+" else "") + "%.2f".format(item.changePct) + "%"
                 Text(
                     text = changeText,
-                    style = theme.typography.bodySmall,
+                    style = theme.typography.bodySmallMedium,
                     color = if (item.changePct >= 0) theme.colors.greenScale.c50 else theme.colors.error
                 )
             }
@@ -647,37 +662,87 @@ fun HoldingRow(
     }
 }
 
+@Composable
+fun RowScope.BottomNavigationItem(icon: ImageVector, selected: Boolean, onClick: () -> Unit = {}) {
+
+    var color =
+        animateColorAsState(if (selected) theme.colors.onSurface else theme.colors.greyScale.c50)
+
+    var containerColor =
+        animateColorAsState(if (selected) theme.colors.primary.c50 else Color.Transparent)
+
+    Surface(
+        modifier = Modifier.weight(1f),
+        onClick = onClick,
+        shape = CircleShape,
+        color = containerColor.value,
+    ) {
+        Box(
+            contentAlignment = Alignment.Center,
+            modifier = Modifier.padding(theme.dimension.largeSpacing)
+                .padding(vertical = theme.dimension.mediumSpacing)
+        ) {
+            Icon(
+                icon,
+                contentDescription = "Bottom nav icon",
+                tint = color.value,
+                modifier = Modifier.size(theme.dimension.iconSize)
+            )
+        }
+    }
+
+}
+
 // ---------- Bottom bar ----------
 @Composable
 fun HomeBottomBar(
     modifier: Modifier = Modifier,
 ) {
-    NavigationBar(modifier = modifier) {
-        NavigationBarItem(
-            selected = true,
-            onClick = {},
-            icon = { Icon(Icons.Outlined.Home, contentDescription = "Home") }
-        )
-        NavigationBarItem(
-            selected = false,
-            onClick = {},
-            icon = { Icon(Icons.Outlined.Equalizer, contentDescription = "Stats") }
-        )
-        NavigationBarItem(
-            selected = false,
-            onClick = {},
-            icon = { Icon(Icons.Outlined.SwapHoriz, contentDescription = "Trade") }
-        )
-        NavigationBarItem(
-            selected = false,
-            onClick = {},
-            icon = { Icon(Icons.Outlined.ReceiptLong, contentDescription = "Activity") }
-        )
-        NavigationBarItem(
-            selected = false,
-            onClick = {},
-            icon = { Icon(Icons.Outlined.PersonOutline, contentDescription = "Profile") }
-        )
+    var selectedTab by remember { mutableStateOf(BottomNavItem.HOME) }
+    Surface(
+        modifier = modifier.padding(
+            horizontal = theme.dimension.veryLargeSpacing * 2,
+            vertical = theme.dimension.veryLargeSpacing
+        ).padding(bottom = theme.dimension.veryLargeSpacing),
+        color = theme.colors.onPrimary,
+        shape = CircleShape
+    ) {
+        Row(
+            modifier = Modifier,
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            BottomNavigationItem(
+                selected = selectedTab == BottomNavItem.HOME,
+                onClick = {
+                    selectedTab = BottomNavItem.HOME
+                },
+                icon = Icons.Rounded.Home
+            )
+            BottomNavigationItem(
+                selected = selectedTab == BottomNavItem.STATS,
+                onClick = {
+                    selectedTab = BottomNavItem.STATS
+                },
+                icon = Icons.Rounded.Equalizer
+            )
+            BottomNavigationItem(
+                selected = selectedTab == BottomNavItem.SWAP,
+                onClick = {
+                    selectedTab = BottomNavItem.SWAP
+                },
+                icon = Icons.Rounded.SwapHoriz
+            )
+            BottomNavigationItem(
+                selected = selectedTab == BottomNavItem.ACCOUNT,
+                onClick = {
+                    selectedTab = BottomNavItem.ACCOUNT
+                },
+                icon = Icons.Rounded.PersonOutline
+            )
+
+        }
+
     }
 }
 
@@ -687,13 +752,37 @@ private fun sampleHoldings() = listOf(
     HoldingRowUi("Tesla", AssetClass.STOCK, +1.05, 449.53, 449.23, 551.12),
     HoldingRowUi("Amazon", AssetClass.STOCK, -0.79, 244.77, 243.17, 246.03),
     HoldingRowUi("Google", AssetClass.STOCK, +0.38, 286.82, 285.21, 287.35),
+    HoldingRowUi("Apple", AssetClass.REAL_ESTATE, +0.24, 269.07, 267.12, 271.31),
+    HoldingRowUi("Tesla", AssetClass.REAL_ESTATE, +1.05, 449.53, 449.23, 551.12),
+    HoldingRowUi("Amazon", AssetClass.STOCK, -0.79, 244.77, 243.17, 246.03),
+    HoldingRowUi("Google", AssetClass.REAL_ESTATE, +0.38, 286.82, 285.21, 287.35),
+    HoldingRowUi("Apple", AssetClass.STOCK, +0.24, 269.07, 267.12, 271.31),
+    HoldingRowUi("Tesla", AssetClass.STOCK, +1.05, 449.53, 449.23, 551.12),
+    HoldingRowUi("Amazon", AssetClass.REAL_ESTATE, -0.79, 244.77, 243.17, 246.03),
+    HoldingRowUi("Google", AssetClass.STOCK, +0.38, 286.82, 285.21, 287.35),
+    HoldingRowUi("Apple", AssetClass.STOCK, +0.24, 269.07, 267.12, 271.31),
+    HoldingRowUi("Tesla", AssetClass.CRYPTO, +1.05, 449.53, 449.23, 551.12),
+    HoldingRowUi("Amazon", AssetClass.STOCK, -0.79, 244.77, 243.17, 246.03),
+    HoldingRowUi("Google", AssetClass.CRYPTO, +0.38, 286.82, 285.21, 287.35),
 )
 
 @Composable
 fun AssetCategoryChip(modifier: Modifier = Modifier, assetClass: AssetClass) {
-    Surface(modifier = modifier,shape = RoundedCornerShape(theme.dimension.verySmallRadius), color = theme.colors.greyScale.c10) {
-        Box(contentAlignment = Alignment.Center){
-            Text(assetClass.label, style = theme.typography.bodySmallMedium, color = theme.colors.greyScale.c50,modifier = Modifier.padding(horizontal = theme.dimension.closeSpacing, vertical = theme.dimension.veryCloseSpacing))
+    Surface(
+        modifier = modifier,
+        shape = RoundedCornerShape(theme.dimension.verySmallRadius),
+        color = theme.colors.greyScale.c10
+    ) {
+        Box(contentAlignment = Alignment.Center) {
+            Text(
+                assetClass.label,
+                style = theme.typography.bodySmallMedium,
+                color = theme.colors.greyScale.c50,
+                modifier = Modifier.padding(
+                    horizontal = theme.dimension.closeSpacing,
+                    vertical = theme.dimension.veryCloseSpacing
+                )
+            )
         }
     }
 }
