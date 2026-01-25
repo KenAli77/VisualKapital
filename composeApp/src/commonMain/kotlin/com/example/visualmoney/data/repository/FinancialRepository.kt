@@ -1,10 +1,9 @@
 package com.example.visualmoney.data.repository
 
 import com.example.visualmoney.data.remote.FmpDataSource
-import com.example.visualmoney.domain.model.Asset
 import com.example.visualmoney.domain.model.AssetProfile
 import com.example.visualmoney.domain.model.AssetQuote
-import com.example.visualmoney.domain.model.Stock
+import com.example.visualmoney.domain.model.ChartPoint
 
 interface FinancialRepository {
     suspend fun getQuote(symbol: String): AssetQuote
@@ -13,6 +12,7 @@ interface FinancialRepository {
     suspend fun getTopGainers(): List<AssetQuote>
     suspend fun getTopLosers(): List<AssetQuote>
     suspend fun getCommodities(): List<AssetQuote>
+    suspend fun getChart(symbol: String): List<ChartPoint>
 }
 
 class FinancialRepositoryImpl(
@@ -29,4 +29,5 @@ class FinancialRepositoryImpl(
     override suspend fun getTopLosers(): List<AssetQuote> = remoteSource.getTopLosers()
     
     override suspend fun getCommodities(): List<AssetQuote> = remoteSource.getCommodities()
+    override suspend fun getChart(symbol: String): List<ChartPoint> = remoteSource.getChart(symbol)
 }

@@ -1,5 +1,6 @@
 package com.example.visualmoney.domain.model
 
+import kotlinx.datetime.LocalDate
 import kotlinx.serialization.Serializable
 
 @Serializable
@@ -21,8 +22,8 @@ data class Forex(override val symbol: String, override val name: String?) : Asse
 
 @Serializable
 data class AssetProfile(
-    val symbol: String,
-    val price: Double,
+    val symbol: String ="",
+    val price: Double = 0.0,
     val beta: Double? = null,
     val volAvg: Long? = null,
     val mktCap: Double? = null,
@@ -58,14 +59,20 @@ data class AssetProfile(
     val isAdr: Boolean? = null,
     val isFund: Boolean? = null
 )
-
+fun AssetProfile.toAsset(): Asset {
+    return Stock(
+        symbol = symbol,
+        name = companyName,
+        exchange = exchange
+    )
+}
 @Serializable
 data class AssetQuote(
-    val symbol: String,
+    val symbol: String = "",
     val name: String? = null,
-    val price: Double,
-    val changesPercentage: Double,
-    val change: Double,
+    val price: Double = 0.0,
+    val changesPercentage: Double = 0.0,
+    val change: Double = 0.0,
     val dayLow: Double? = null,
     val dayHigh: Double? = null,
     val yearHigh: Double? = null,
@@ -86,11 +93,24 @@ data class AssetQuote(
 )
 
 @Serializable
-data class ChartPoint(
+data class ChartPointDTO(
     val date: String,
-    val open: Double,
-    val low: Double,
-    val high: Double,
-    val close: Double,
+    val symbol: String,
+    val price: Double,
     val volume: Long
+)
+fun ChartPointDTO.toChartPoint(): ChartPoint{
+    return ChartPoint(
+        date = LocalDate.parse(date),
+        symbol = symbol,
+        price = price,
+        volume = volume
+    )
+}
+data class ChartPoint(
+    val date: LocalDate,
+    val symbol: String,
+    val price: Double,
+    val volume: Long
+
 )

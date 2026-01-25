@@ -14,9 +14,12 @@ import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.wrapContentHeight
+import androidx.compose.foundation.layout.wrapContentWidth
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
@@ -59,9 +62,11 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import coil3.compose.AsyncImage
 import com.example.visualmoney.LocalAppTheme
 import com.example.visualmoney.greyTextColor
 import kotlin.math.round
@@ -71,12 +76,14 @@ val theme @Composable get() = LocalAppTheme.current
 
 // ---------- Models ----------
 data class HoldingRowUi(
+    val symbol: String,
     val name: String,
     val assetClass: AssetClass,
     val changePct: Double,
     val price: Double,
     val dayLow: Double,
     val dayHigh: Double,
+    val logoUrl: String,
 )
 
 enum class HomeTab(val label: String) {
@@ -99,79 +106,83 @@ enum class BottomNavItem {
 @Composable
 fun HomeScreen(
     modifier: Modifier = Modifier,
+    viewModel: HomeViewModel,
     userName: String = "James",
     balanceUsd: Double = 5738.25,
     profitUsd: Double = 295.83,
     mlPct: Double = 300.00,
     tabs: List<HomeTab> = HomeTab.entries,
-    holdings: List<HoldingRowUi> = sampleHoldings(),
-    onGoToCalendar:()->Unit = {},
-    onGoToBalance:()->Unit = {},
-    onGoToNews:()->Unit = {},
-    onGoToAssetDetails:()->Unit = {}
-) {
+    onGoToCalendar: () -> Unit = {},
+    onGoToBalance: () -> Unit = {},
+    onGoToNews: () -> Unit = {},
+    onGoToAssetDetails: (String) -> Unit = {}
+) = with(viewModel) {
     var selectedTab by remember { mutableStateOf(HomeTab.Favourites) }
 
     Scaffold(
         modifier = modifier.fillMaxSize(),
         containerColor = theme.colors.surface,
     ) { padding ->
-        LazyColumn(
+        Column(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(padding)
-                .padding(horizontal = theme.dimension.pagePadding),
+                .padding(horizontal = theme.dimension.pagePadding)
+                .padding(top = theme.dimension.pagePadding)
+            ,
             verticalArrangement = Arrangement.spacedBy(theme.dimension.largeSpacing),
-            contentPadding = PaddingValues(
-                top = theme.dimension.pagePadding,
-                bottom = theme.dimension.pagePadding
-            )
+//            contentPadding = PaddingValues(
+//                top = theme.dimension.pagePadding,
+//                bottom = theme.dimension.pagePadding
+//            )
         ) {
-            item { HomeTopHeader(userName = userName) }
+            HomeTopHeader(userName = userName)
+            BalanceCard(
+                balanceUsd = balanceUsd,
+                profitUsd = profitUsd,
+                mlPct = mlPct,
+                onOpen = {},
+                onCurrencyClick = {},
+            )
+            QuickActionsRow(
+                onAddAsset = {
 
-            item {
-                BalanceCard(
-                    balanceUsd = balanceUsd,
-                    profitUsd = profitUsd,
-                    mlPct = mlPct,
-                    onOpen = {},
-                    onCurrencyClick = {},
+                },
+                onGoToCalendar = {
+                    onGoToCalendar()
+                },
+                onGoToNews = {
+                    onGoToNews()
+                },
+            )
+            AiInsightsCard(
+                title = "Unlock Insights",
+                subtitle = "Analyse Your Portfolio",
+                onOpen = {}
+            )
+            HomeTabs(
+                tabs = tabs,
+                selected = selectedTab,
+                onSelect = { selectedTab = it }
+            )
+            LazyColumn(
+                modifier = Modifier.border(
+                    width = 1.dp,
+                    color = theme.colors.greyScale.c30,
+                    shape = RoundedCornerShape(theme.dimension.defaultRadius)
                 )
-            }
+            ) {
+                items(state.holdings) { item ->
+                    HoldingRow(
+                        modifier = Modifier.padding(horizontal = theme.dimension.mediumSpacing),
+                        item = item,
+                        onClick = {
+                            onGoToAssetDetails(item.symbol)
+                        })
+                    HorizontalDivider(thickness = 1.dp, color = theme.colors.greyScale.c30)
 
-            item {
-                QuickActionsRow(
-                    onAddAsset = {
+                }
 
-                    },
-                    onGoToCalendar = {
-                        onGoToCalendar()
-                    },
-                    onGoToNews = {
-                        onGoToNews()
-                    },
-                )
-            }
-
-            item {
-                AiInsightsCard(
-                    title = "Unlock Insights",
-                    subtitle = "Analyse Your Portfolio",
-                    onOpen = {}
-                )
-            }
-
-            item {
-                HomeTabs(
-                    tabs = tabs,
-                    selected = selectedTab,
-                    onSelect = { selectedTab = it }
-                )
-                HorizontalDivider(thickness = 1.dp, color = theme.colors.greyScale.c40)
-            }
-
-            items(holdings) { item ->
-                HoldingRow(modifier = Modifier.padding(horizontal = theme.dimension.mediumSpacing),item = item, onClick = {})
             }
         }
     }
@@ -423,7 +434,7 @@ fun QuickActionsRow(
 ) {
     Row(
         modifier = modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.spacedBy(12.dp)
+        horizontalArrangement = Arrangement.spacedBy(theme.dimension.mediumSpacing)
     ) {
         QuickActionButton(
             title = "Add asset",
@@ -454,32 +465,36 @@ fun QuickActionButton(
     modifier: Modifier = Modifier
 ) {
     Card(
-        modifier = modifier,
+        modifier = modifier.wrapContentHeight(),
         shape = RoundedCornerShape(theme.dimension.defaultRadius),
         onClick = onClick,
         elevation = CardDefaults.cardElevation(0.dp),
         border = BorderStroke(1.dp, color = theme.colors.greyScale.c30),
         colors = CardDefaults.elevatedCardColors(containerColor = theme.colors.surface)
     ) {
-        Column(
-            modifier = Modifier.fillMaxSize().padding(theme.dimension.veryLargeSpacing),
-            verticalArrangement = Arrangement.spacedBy(
-                theme.dimension.mediumSpacing,
-                alignment = Alignment.CenterVertically
-            ),
-            horizontalAlignment = Alignment.CenterHorizontally
+        Box(
+            modifier = Modifier.fillMaxWidth().padding(theme.dimension.veryLargeSpacing),
+            contentAlignment = Alignment.Center
         ) {
-            Icon(
-                icon,
-                contentDescription = title,
-                modifier = Modifier.size(theme.dimension.iconSize)
-            )
-            Text(
-                text = title,
-                style = theme.typography.bodySmallMedium,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis
-            )
+            Column(
+                verticalArrangement = Arrangement.spacedBy(
+                    theme.dimension.mediumSpacing,
+                    alignment = Alignment.CenterVertically
+                ),
+                horizontalAlignment = Alignment.CenterHorizontally
+            ) {
+                Icon(
+                    icon,
+                    contentDescription = title,
+                    modifier = Modifier.size(theme.dimension.iconSize)
+                )
+                Text(
+                    text = title,
+                    style = theme.typography.bodySmallMedium,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
+            }
         }
     }
 }
@@ -609,29 +624,35 @@ fun HoldingRow(
             Box(
                 modifier = Modifier
                     .clip(CircleShape)
-                    .background(theme.colors.onPrimary),
+                    .background(theme.colors.onPrimary)
+                    .size(40.dp),
                 contentAlignment = Alignment.Center
             ) {
-                Icon(
-                    Icons.Rounded.Business,
+                AsyncImage(
+                    model = item.logoUrl,
                     contentDescription = null,
-                    modifier = Modifier.padding(theme.dimension.largeSpacing)
-                        .size(theme.dimension.smallIconSize)
+                    contentScale = ContentScale.FillBounds,
                 )
             }
             Column(
                 modifier = Modifier.weight(1f),
-                verticalArrangement = Arrangement.spacedBy(theme.dimension.closeSpacing)
+                verticalArrangement = Arrangement.spacedBy(theme.dimension.mediumSpacing)
             ) {
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.spacedBy(theme.dimension.mediumSpacing)
                 ) {
                     Text(
+                        modifier = Modifier.weight(1f, fill = true),
                         text = item.name,
-                        style = theme.typography.bodyLargeMedium,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                        style = theme.typography.bodyMediumMedium,
                     )
-                    AssetCategoryChip(assetClass = item.assetClass)
+                    AssetCategoryChip(
+                        modifier = Modifier.wrapContentWidth(),
+                        assetClass = item.assetClass
+                    )
                 }
                 // Low/High line (simple)
                 Text(
@@ -642,10 +663,13 @@ fun HoldingRow(
             }
 
 
-            Column(horizontalAlignment = Alignment.End) {
+            Column(
+                horizontalAlignment = Alignment.End,
+                verticalArrangement = Arrangement.spacedBy(theme.dimension.mediumSpacing)
+            ) {
                 Text(
                     text = "%.2f".format(item.price),
-                    style = theme.typography.bodyLargeMedium,
+                    style = theme.typography.bodyMediumStrong,
                 )
                 val changeText =
                     (if (item.changePct >= 0) "+" else "") + "%.2f".format(item.changePct) + "%"
@@ -744,24 +768,24 @@ fun HomeBottomBar(
 }
 
 // ---------- Sample data ----------
-private fun sampleHoldings() = listOf(
-    HoldingRowUi("Apple", AssetClass.STOCK, +0.24, 269.07, 267.12, 271.31),
-    HoldingRowUi("Tesla", AssetClass.STOCK, +1.05, 449.53, 449.23, 551.12),
-    HoldingRowUi("Amazon", AssetClass.STOCK, -0.79, 244.77, 243.17, 246.03),
-    HoldingRowUi("Google", AssetClass.STOCK, +0.38, 286.82, 285.21, 287.35),
-    HoldingRowUi("Apple", AssetClass.REAL_ESTATE, +0.24, 269.07, 267.12, 271.31),
-    HoldingRowUi("Tesla", AssetClass.REAL_ESTATE, +1.05, 449.53, 449.23, 551.12),
-    HoldingRowUi("Amazon", AssetClass.STOCK, -0.79, 244.77, 243.17, 246.03),
-    HoldingRowUi("Google", AssetClass.REAL_ESTATE, +0.38, 286.82, 285.21, 287.35),
-    HoldingRowUi("Apple", AssetClass.STOCK, +0.24, 269.07, 267.12, 271.31),
-    HoldingRowUi("Tesla", AssetClass.STOCK, +1.05, 449.53, 449.23, 551.12),
-    HoldingRowUi("Amazon", AssetClass.REAL_ESTATE, -0.79, 244.77, 243.17, 246.03),
-    HoldingRowUi("Google", AssetClass.STOCK, +0.38, 286.82, 285.21, 287.35),
-    HoldingRowUi("Apple", AssetClass.STOCK, +0.24, 269.07, 267.12, 271.31),
-    HoldingRowUi("Tesla", AssetClass.CRYPTO, +1.05, 449.53, 449.23, 551.12),
-    HoldingRowUi("Amazon", AssetClass.STOCK, -0.79, 244.77, 243.17, 246.03),
-    HoldingRowUi("Google", AssetClass.CRYPTO, +0.38, 286.82, 285.21, 287.35),
-)
+//private fun sampleHoldings() = listOf(
+//    HoldingRowUi("Apple", AssetClass.STOCK, +0.24, 269.07, 267.12, 271.31),
+//    HoldingRowUi("Tesla", AssetClass.STOCK, +1.05, 449.53, 449.23, 551.12),
+//    HoldingRowUi("Amazon", AssetClass.STOCK, -0.79, 244.77, 243.17, 246.03),
+//    HoldingRowUi("Google", AssetClass.STOCK, +0.38, 286.82, 285.21, 287.35),
+//    HoldingRowUi("Apple", AssetClass.REAL_ESTATE, +0.24, 269.07, 267.12, 271.31),
+//    HoldingRowUi("Tesla", AssetClass.REAL_ESTATE, +1.05, 449.53, 449.23, 551.12),
+//    HoldingRowUi("Amazon", AssetClass.STOCK, -0.79, 244.77, 243.17, 246.03),
+//    HoldingRowUi("Google", AssetClass.REAL_ESTATE, +0.38, 286.82, 285.21, 287.35),
+//    HoldingRowUi("Apple", AssetClass.STOCK, +0.24, 269.07, 267.12, 271.31),
+//    HoldingRowUi("Tesla", AssetClass.STOCK, +1.05, 449.53, 449.23, 551.12),
+//    HoldingRowUi("Amazon", AssetClass.REAL_ESTATE, -0.79, 244.77, 243.17, 246.03),
+//    HoldingRowUi("Google", AssetClass.STOCK, +0.38, 286.82, 285.21, 287.35),
+//    HoldingRowUi("Apple", AssetClass.STOCK, +0.24, 269.07, 267.12, 271.31),
+//    HoldingRowUi("Tesla", AssetClass.CRYPTO, +1.05, 449.53, 449.23, 551.12),
+//    HoldingRowUi("Amazon", AssetClass.STOCK, -0.79, 244.77, 243.17, 246.03),
+//    HoldingRowUi("Google", AssetClass.CRYPTO, +0.38, 286.82, 285.21, 287.35),
+//)
 
 @Composable
 fun AssetCategoryChip(modifier: Modifier = Modifier, assetClass: AssetClass) {

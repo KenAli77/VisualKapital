@@ -13,3 +13,14 @@ enum class VisualKapitalScreens(val title: StringResource) {
     News(title = Res.string.news),
     Details(title = Res.string.details)
 }
+
+object Routes {
+    const val HOME = "home"
+    const val CALENDAR = "calendar"
+    const val NEWS = "news"
+    const val DETAILS = "details"
+    const val DETAILS_SYMBOL = "symbol"
+    const val DETAILS_ROUTE = "$DETAILS/{$DETAILS_SYMBOL}"
+
+    fun details(symbol: String) = "$DETAILS/$symbol"
+}

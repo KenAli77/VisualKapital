@@ -4,6 +4,9 @@ package com.example.visualmoney.data.remote
 import com.example.visualmoney.BuildKonfig
 import com.example.visualmoney.domain.model.AssetProfile
 import com.example.visualmoney.domain.model.AssetQuote
+import com.example.visualmoney.domain.model.ChartPoint
+import com.example.visualmoney.domain.model.ChartPointDTO
+import com.example.visualmoney.domain.model.toChartPoint
 import io.ktor.client.HttpClient
 import io.ktor.client.call.body
 import io.ktor.client.request.get
@@ -17,42 +20,87 @@ class FmpDataSource(private val client: HttpClient) {
     private val apiKey = BuildKonfig.FMP_API_KEY
 
     suspend fun getQuote(symbol: String): AssetQuote {
-        val response: List<AssetQuote> = client.get("$baseUrl/stable/quote/$symbol") {
-            parameter("apikey", apiKey)
-        }.body()
-        return response.first()
+        return try {
+            val response: List<AssetQuote> = client.get("$baseUrl/stable/quote?symbol=$symbol") {
+                parameter("apikey", apiKey)
+            }.body()
+            response.firstOrNull() ?: AssetQuote()
+
+        } catch (e: Exception) {
+            AssetQuote()
+        }
     }
 
     suspend fun getQuotes(symbols: List<String>): List<AssetQuote> {
-        if (symbols.isEmpty()) return emptyList()
-        val symbolsParam = symbols.joinToString(",")
-        return client.get("$baseUrl/stable/quote/$symbolsParam") {
-            parameter("apikey", apiKey)
-        }.body()
+        return try {
+            if (symbols.isEmpty()) return emptyList()
+            val symbolsParam = symbols.joinToString(",")
+             client.get("$baseUrl/stable/quote?symbol=$symbolsParam") {
+                parameter("apikey", apiKey)
+            }.body()
+
+        } catch (e: Exception) {
+            emptyList()
+        }
     }
 
     suspend fun getProfile(symbol: String): AssetProfile {
-        val response: List<AssetProfile> = client.get("$baseUrl/stable/profile/$symbol") {
-            parameter("apikey", apiKey)
-        }.body()
-        return response.first()
+        return try {
+            val response: List<AssetProfile> = client.get("$baseUrl/stable/profile?symbol=$symbol") {
+                parameter("apikey", apiKey)
+            }.body()
+             response.firstOrNull() ?: AssetProfile()
+
+        } catch (e: Exception) {
+            println("Error getting profile: $e")
+            AssetProfile()
+        }
     }
 
+    suspend fun getChart(symbol: String): List<ChartPoint> {
+        return try {
+            val response: List<ChartPointDTO> =
+                client.get("$baseUrl/stable/historical-price-eod/light?symbol=$symbol") {
+                    parameter("apikey", apiKey)
+                }.body()
+            response.map { it.toChartPoint() }.takeLast(100)
+
+        } catch (e: Exception) {
+            println("Exception getting char: $e")
+            emptyList()
+        }
+    }
+    data class SearchResult (
+        val symbol: String,
+        val name:String,
+        val currency:String,
+        val exchange:String,
+    )
+    suspend fun searchCompanyByName(query:String) : List<SearchResult> {
+        return try {
+            val response = client.get("$baseUrl/search-name?query=$query") {
+                parameter("apikey", apiKey)
+            }.body<List<SearchResult>>()
+            response
+        } catch (e: Exception) {
+            emptyList()
+        }
+    }
     suspend fun getTopGainers(): List<AssetQuote> {
         println("FMPDataSource: Getting top gainers")
         println("FMPDataSource: API Key = $apiKey")
-        
+
         // Using current stable endpoint instead of legacy /api/v3/stock_market/gainers
-        val url = "$baseUrl/stable/biggest-gainers"
+        val url = "$baseUrl/stable/most-actives"
         println("FMPDataSource: Request URL = $url?apikey=$apiKey")
-        
+
         val response: HttpResponse = client.get(url) {
             parameter("apikey", apiKey)
         }
-        
+
         val responseText = response.bodyAsText()
         println("FMPDataSource: Response = ${responseText.take(200)}...") // Log first 200 chars
-        
+
         if (responseText.trim().startsWith("{")) {
             try {
                 val json = Json { ignoreUnknownKeys = true }
@@ -64,7 +112,7 @@ class FmpDataSource(private val client: HttpClient) {
                 throw Exception("FMP API returned an error: $responseText")
             }
         }
-        
+
         return try {
             val json = Json { ignoreUnknownKeys = true }
             json.decodeFromString<List<AssetQuote>>(responseText)
@@ -73,10 +121,10 @@ class FmpDataSource(private val client: HttpClient) {
             emptyList()
         }
     }
-    
+
     private fun handleFmpError(exception: Exception) {
         val errorMessage = exception.message ?: "Unknown error"
-        
+
         if (errorMessage.contains("Error Message")) {
             val regex = """"Error Message":\s*"([^"]+)"""".toRegex()
             val match = regex.find(errorMessage)
@@ -86,7 +134,7 @@ class FmpDataSource(private val client: HttpClient) {
                 throw Exception("FMP API Error: $fmpError")
             }
         }
-        
+
         println("FMP API Error (unparsed): $errorMessage")
     }
 
@@ -96,16 +144,16 @@ class FmpDataSource(private val client: HttpClient) {
             parameter("apikey", apiKey)
         }.body()
     }
-    
+
     suspend fun getCommodities(): List<AssetQuote> {
-         return client.get("$baseUrl/stable/batch-commodity-quotes") { 
-             parameter("apikey", apiKey)
-         }.body()
+        return client.get("$baseUrl/stable/batch-commodity-quotes") {
+            parameter("apikey", apiKey)
+        }.body()
     }
 
     suspend fun getCrypto(): List<AssetQuote> {
-         return client.get("$baseUrl/stable/symbol/available-cryptocurrencies") { 
-             parameter("apikey", apiKey)
-         }.body()
+        return client.get("$baseUrl/stable/symbol/available-cryptocurrencies") {
+            parameter("apikey", apiKey)
+        }.body()
     }
 }

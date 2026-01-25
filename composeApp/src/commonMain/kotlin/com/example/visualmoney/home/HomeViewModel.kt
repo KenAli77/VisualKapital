@@ -1,5 +1,8 @@
 package com.example.visualmoney.home
 
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.visualmoney.data.repository.FinancialRepository
@@ -13,8 +16,8 @@ class HomeViewModel(
     private val repository: FinancialRepository
 ) : ViewModel() {
 
-    private val _state = MutableStateFlow(HomeUiState())
-    val state: StateFlow<HomeUiState> = _state.asStateFlow()
+    var state by mutableStateOf(HomeUiState())
+    private set
 
     init {
         loadData()
@@ -31,6 +34,7 @@ class HomeViewModel(
                     val assetClass = AssetClass.STOCK
                     
                     HoldingRowUi(
+                        symbol = quote.symbol,
                         name = quote.name ?: quote.symbol,
                         assetClass = assetClass,
                         changePct = quote.changesPercentage,
@@ -41,13 +45,13 @@ class HomeViewModel(
                     )
                 }
 
-                _state.value = _state.value.copy(
+                state = state.copy(
                     holdings = holdings,
                     isLoading = false
                 )
             } catch (e: Exception) {
                 // Handle error
-                _state.value = _state.value.copy(isLoading = false)
+                state = state.copy(isLoading = false)
                 println("Error loading home data: ${e.message}")
             }
         }
