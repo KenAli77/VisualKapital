@@ -22,38 +22,25 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.rounded.ReceiptLong
 import androidx.compose.material.icons.automirrored.rounded.ShowChart
-import androidx.compose.material.icons.outlined.Equalizer
-import androidx.compose.material.icons.outlined.Home
 import androidx.compose.material.icons.outlined.KeyboardArrowDown
-import androidx.compose.material.icons.outlined.PersonOutline
-import androidx.compose.material.icons.outlined.ReceiptLong
-import androidx.compose.material.icons.outlined.SwapHoriz
-import androidx.compose.material.icons.rounded.AccountBalanceWallet
 import androidx.compose.material.icons.rounded.AddCircleOutline
 import androidx.compose.material.icons.rounded.AreaChart
-import androidx.compose.material.icons.rounded.AutoAwesome
 import androidx.compose.material.icons.rounded.Business
 import androidx.compose.material.icons.rounded.CalendarToday
 import androidx.compose.material.icons.rounded.Equalizer
 import androidx.compose.material.icons.rounded.Home
-import androidx.compose.material.icons.rounded.Monitor
 import androidx.compose.material.icons.rounded.Newspaper
 import androidx.compose.material.icons.rounded.NorthEast
 import androidx.compose.material.icons.rounded.Notifications
 import androidx.compose.material.icons.rounded.PersonOutline
 import androidx.compose.material.icons.rounded.Search
 import androidx.compose.material.icons.rounded.SwapHoriz
-import androidx.compose.material.icons.rounded.SyncAlt
-import androidx.compose.material.icons.rounded.WorkspacePremium
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ElevatedCard
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
-import androidx.compose.material3.NavigationBar
-import androidx.compose.material3.NavigationBarItem
-import androidx.compose.material3.NavigationBarItemDefaults
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SecondaryScrollableTabRow
 import androidx.compose.material3.Surface
@@ -118,6 +105,10 @@ fun HomeScreen(
     mlPct: Double = 300.00,
     tabs: List<HomeTab> = HomeTab.entries,
     holdings: List<HoldingRowUi> = sampleHoldings(),
+    onGoToCalendar:()->Unit = {},
+    onGoToBalance:()->Unit = {},
+    onGoToNews:()->Unit = {},
+    onGoToAssetDetails:()->Unit = {}
 ) {
     var selectedTab by remember { mutableStateOf(HomeTab.Favourites) }
 
@@ -150,9 +141,15 @@ fun HomeScreen(
 
             item {
                 QuickActionsRow(
-                    onAddMoney = {},
-                    onTrade = {},
-                    onWithdraw = {},
+                    onAddAsset = {
+
+                    },
+                    onGoToCalendar = {
+                        onGoToCalendar()
+                    },
+                    onGoToNews = {
+                        onGoToNews()
+                    },
                 )
             }
 
@@ -170,10 +167,11 @@ fun HomeScreen(
                     selected = selectedTab,
                     onSelect = { selectedTab = it }
                 )
+                HorizontalDivider(thickness = 1.dp, color = theme.colors.greyScale.c40)
             }
 
             items(holdings) { item ->
-                HoldingRow(item = item, onClick = {})
+                HoldingRow(modifier = Modifier.padding(horizontal = theme.dimension.mediumSpacing),item = item, onClick = {})
             }
         }
     }
@@ -346,12 +344,12 @@ fun BalanceCard(
                     val text = "$" + "%.2f".format(balanceUsd)
                     Text(
                         text = text.substringBeforeLast("."),
-                        style = theme.typography.titleLarge.copy(fontWeight = FontWeight.Medium),
+                        style = theme.typography.titleLarge,
                         color = theme.colors.onSurface
                     )
                     Text(
                         text = "." + text.format(balanceUsd).substringAfterLast("."),
-                        style = theme.typography.titleLarge.copy(fontWeight = FontWeight.Medium),
+                        style = theme.typography.titleLarge,
                         color = theme.colors.greyScale.c50
                     )
                 }
@@ -418,9 +416,9 @@ fun BalanceCard(
 // ---------- Quick actions ----------
 @Composable
 fun QuickActionsRow(
-    onAddMoney: () -> Unit,
-    onTrade: () -> Unit,
-    onWithdraw: () -> Unit,
+    onAddAsset: () -> Unit,
+    onGoToCalendar: () -> Unit,
+    onGoToNews: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     Row(
@@ -430,19 +428,19 @@ fun QuickActionsRow(
         QuickActionButton(
             title = "Add asset",
             icon = Icons.Rounded.AddCircleOutline,
-            onClick = onAddMoney,
+            onClick = onAddAsset,
             modifier = Modifier.weight(1f)
         )
         QuickActionButton(
             title = "Calendar",
             icon = Icons.Rounded.CalendarToday,
-            onClick = onTrade,
+            onClick = onGoToCalendar,
             modifier = Modifier.weight(1f)
         )
         QuickActionButton(
             title = "News",
             icon = Icons.Rounded.Newspaper,
-            onClick = onWithdraw,
+            onClick = onGoToNews,
             modifier = Modifier.weight(1f)
         )
     }
@@ -537,7 +535,7 @@ fun AiInsightsCard(
             Spacer(Modifier.width(12.dp))
 
             Column(modifier = Modifier.weight(1f)) {
-                Text(title, style = theme.typography.titleSmallMedium)
+                Text(title, style = theme.typography.titleSmall)
                 Text(
                     subtitle,
                     style = theme.typography.bodySmall,
@@ -599,7 +597,6 @@ fun HoldingRow(
         modifier = modifier.fillMaxWidth(),
         shape = RoundedCornerShape(theme.dimension.defaultRadius),
         onClick = onClick,
-        border = BorderStroke(1.dp, theme.colors.greyScale.c30),
         elevation = CardDefaults.cardElevation(0.dp),
         colors = CardDefaults.elevatedCardColors(containerColor = theme.colors.surface)
     ) {
@@ -618,7 +615,7 @@ fun HoldingRow(
                 Icon(
                     Icons.Rounded.Business,
                     contentDescription = null,
-                    modifier = Modifier.padding(theme.dimension.mediumSpacing)
+                    modifier = Modifier.padding(theme.dimension.largeSpacing)
                         .size(theme.dimension.smallIconSize)
                 )
             }
@@ -628,11 +625,11 @@ fun HoldingRow(
             ) {
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(theme.dimension.closeSpacing)
+                    horizontalArrangement = Arrangement.spacedBy(theme.dimension.mediumSpacing)
                 ) {
                     Text(
                         text = item.name,
-                        style = theme.typography.titleSmallMedium,
+                        style = theme.typography.bodyLargeMedium,
                     )
                     AssetCategoryChip(assetClass = item.assetClass)
                 }
@@ -648,13 +645,13 @@ fun HoldingRow(
             Column(horizontalAlignment = Alignment.End) {
                 Text(
                     text = "%.2f".format(item.price),
-                    style = theme.typography.titleSmallMedium,
+                    style = theme.typography.bodyLargeMedium,
                 )
                 val changeText =
                     (if (item.changePct >= 0) "+" else "") + "%.2f".format(item.changePct) + "%"
                 Text(
                     text = changeText,
-                    style = theme.typography.bodySmallMedium,
+                    style = theme.typography.bodyMediumMedium,
                     color = if (item.changePct >= 0) theme.colors.greenScale.c50 else theme.colors.error
                 )
             }
@@ -770,14 +767,14 @@ private fun sampleHoldings() = listOf(
 fun AssetCategoryChip(modifier: Modifier = Modifier, assetClass: AssetClass) {
     Surface(
         modifier = modifier,
-        shape = RoundedCornerShape(theme.dimension.verySmallRadius),
+        shape = RoundedCornerShape(theme.dimension.defaultRadius),
         color = theme.colors.greyScale.c10
     ) {
         Box(contentAlignment = Alignment.Center) {
             Text(
                 assetClass.label,
                 style = theme.typography.bodySmallMedium,
-                color = theme.colors.greyScale.c50,
+                color = theme.colors.greyScale.c60,
                 modifier = Modifier.padding(
                     horizontal = theme.dimension.closeSpacing,
                     vertical = theme.dimension.veryCloseSpacing

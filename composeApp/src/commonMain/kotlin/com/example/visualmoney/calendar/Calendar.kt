@@ -46,7 +46,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.example.visualmoney.LocalAppTheme
@@ -54,9 +53,22 @@ import com.example.visualmoney.greyTextColor
 import com.example.visualmoney.home.IconWithContainer
 import com.example.visualmoney.home.IconWithContainerSmall
 import com.example.visualmoney.home.primaryGradient
+import kotlinx.datetime.DateTimePeriod
+import kotlinx.datetime.DateTimeUnit
 import kotlinx.datetime.DayOfWeek
 import kotlinx.datetime.LocalDate
+import kotlinx.datetime.LocalDateTime
+import kotlinx.datetime.Month
+import kotlinx.datetime.TimeZone
 import kotlinx.datetime.YearMonth
+import kotlinx.datetime.format.char
+import kotlinx.datetime.isoDayNumber
+import kotlinx.datetime.minus
+import kotlinx.datetime.number
+import kotlinx.datetime.plus
+import kotlinx.datetime.toLocalDateTime
+import kotlin.math.min
+import kotlin.time.Clock
 
 private val theme @Composable get() = LocalAppTheme.current
 
@@ -72,6 +84,25 @@ data class ReminderUi(
 )
 
 enum class ReminderStatus { UPCOMING, PAID, MISSED }
+
+fun LocalDate.Companion.now(): LocalDate = Clock.System.now().toLocalDateTime(TimeZone.currentSystemDefault()).date
+fun YearMonth.Companion.now(): YearMonth  = YearMonth(LocalDate.now().year, LocalDate.now().month)
+
+/**
+ * Returns a new [YearMonth] with the given number of months added or subtracted.
+ * It has to be adjusted, to account for month 1 and 12
+ */
+fun YearMonth.minusMonths(months:Int) : YearMonth = this.minus( months, DateTimeUnit.MONTH,)
+fun YearMonth.plusMonths(months:Int) : YearMonth = this.plus( months, DateTimeUnit.MONTH,)
+fun YearMonth.atDay(day:Int) : LocalDate = LocalDate(
+    month = month.number,
+    day = day,
+    year = year
+)
+
+fun YearMonth.lengthOfMonth() : Int = this.numberOfDays
+fun LocalDate.plusDays(days:Int) : LocalDate = this.plus( days, DateTimeUnit.DAY,)
+fun LocalDate.minusDays(days: Int) : LocalDate = this.minus( days, DateTimeUnit.DAY,)
 
 // ---------- Screen ----------
 @Composable
@@ -129,13 +160,13 @@ fun CalendarScreen(
                 )
             }
 
-            item {
-                AddReminderCta(
-                    title = "Add reminder",
-                    subtitle = "Bills, dividends, earnings, alerts…",
-                    onClick = { onAddReminder(selectedDate) }
-                )
-            }
+//            item {
+//                AddReminderCta(
+//                    title = "Add reminder",
+//                    subtitle = "Bills, dividends, earnings, alerts…",
+//                    onClick = { onAddReminder(selectedDate) }
+//                )
+//            }
 
             item {
                 SelectedDateHeader(
@@ -212,6 +243,18 @@ private fun CalendarTopHeader(
         }
     }
 }
+fun LocalDate.format(): String {
+    val format = LocalDate.Format {
+        year()
+        char('-')
+        monthNumber()
+        char('-')
+        dayOfMonth()
+        char(' ')
+    }
+
+    return format.format(this)
+}
 
 // ---------- Calendar card ----------
 @Composable
@@ -227,7 +270,7 @@ private fun CalendarCard(
     modifier: Modifier = Modifier
 ) {
     val monthLabel = remember(month) {
-        month.atDay(1).format(DateTimeFormatter.ofPattern("MMMM yyyy"))
+        month.atDay(1).format()
     }
 
     ElevatedCard(
@@ -332,7 +375,7 @@ private fun WeekdayRow(
                 contentAlignment = Alignment.Center
             ) {
                 Text(
-                    text = dow.getDisplayName(TextStyle.SHORT, Locale.getDefault()),
+                    text = dow.getDisplayName(),
                     style = theme.typography.bodySmallMedium,
                     color = theme.colors.greyScale.c60
                 )
@@ -340,7 +383,17 @@ private fun WeekdayRow(
         }
     }
 }
-
+fun DayOfWeek.getDisplayName(): String{
+    return when(this){
+        DayOfWeek.MONDAY -> "Mon"
+        DayOfWeek.TUESDAY -> "Tue"
+        DayOfWeek.WEDNESDAY -> "Wed"
+        DayOfWeek.THURSDAY -> "Thu"
+        DayOfWeek.FRIDAY -> "Fri"
+        DayOfWeek.SATURDAY -> "Sat"
+        DayOfWeek.SUNDAY -> "Sun"
+    }
+}
 @Composable
 private fun DayCell(
     date: LocalDate?,
@@ -478,7 +531,7 @@ private fun SelectedDateHeader(
     modifier: Modifier = Modifier
 ) {
     val label = remember(selectedDate) {
-        selectedDate.format(DateTimeFormatter.ofPattern("EEE, d MMM"))
+        selectedDate.format()
     }
 
     Row(
@@ -629,7 +682,7 @@ private fun buildMonthGrid(
     val daysInMonth = month.lengthOfMonth()
 
     // 0..6 offset for the first day cell
-    val firstDowIndex = ((first.dayOfWeek.value - startOfWeek.value) + 7) % 7
+    val firstDowIndex = ((first.dayOfWeek.isoDayNumber - startOfWeek.isoDayNumber) + 7) % 7
     val totalCells = 42 // 6 rows * 7 columns
 
     val result = ArrayList<LocalDate?>(totalCells)

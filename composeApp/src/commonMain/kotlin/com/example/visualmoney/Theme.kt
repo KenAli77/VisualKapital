@@ -18,6 +18,7 @@ data class AppTypography(
     val titleSmall: TextStyle,
     val titleSmallMedium: TextStyle,
     val bodyLarge: TextStyle,
+    val bodyLargeMedium: TextStyle,
     val bodyLargeThin: TextStyle,
     val bodyMedium: TextStyle,
     val bodyMediumThin: TextStyle,
@@ -46,19 +47,19 @@ fun appTypography(): AppTypography {
         titleLarge = TextStyle(
             fontFamily = primaryFont,
             fontSize = 41.sp,
-            fontWeight = FontWeight.Bold,
+            fontWeight = FontWeight.SemiBold,
             lineHeight = 41.sp
         ),
         titleMedium = TextStyle(
             fontFamily = primaryFont,
             fontSize = 31.sp,
-            fontWeight = FontWeight.Bold,
+            fontWeight = FontWeight.SemiBold,
             lineHeight = 31.sp
         ),
         titleSmall = TextStyle(
             fontFamily = primaryFont,
             fontSize = 24.sp,
-            fontWeight = FontWeight.Bold,
+            fontWeight = FontWeight.SemiBold,
             lineHeight = 24.sp
         ),
         titleLargeMedium = TextStyle(
@@ -86,8 +87,13 @@ fun appTypography(): AppTypography {
         ),
         bodyLargeThin = TextStyle(
             fontFamily = primaryFont,
-            fontSize = 17.sp,
+            fontSize = 21.sp,
             fontWeight = FontWeight.Normal
+        ),
+        bodyLargeMedium = TextStyle(
+            fontFamily = primaryFont,
+            fontSize = 21.sp,
+            fontWeight = FontWeight.Medium
         ),
         bodyMedium = TextStyle(
             fontFamily = primaryFont,
@@ -107,7 +113,7 @@ fun appTypography(): AppTypography {
         bodySmallStrong = TextStyle(
             fontFamily = primaryFont,
             fontSize = 13.sp,
-            fontWeight = FontWeight.Bold
+            fontWeight = FontWeight.SemiBold
         ),
         bodySmallMedium = TextStyle(
             fontFamily = primaryFont,
@@ -117,7 +123,7 @@ fun appTypography(): AppTypography {
         bodyMediumStrong = TextStyle(
             fontFamily = primaryFont,
             fontSize = 17.sp,
-            fontWeight = FontWeight.Bold
+            fontWeight = FontWeight.SemiBold
         ),
         bodyMediumMedium = TextStyle(
             fontFamily = primaryFont,

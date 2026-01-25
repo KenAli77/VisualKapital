@@ -68,7 +68,8 @@ val PrimaryVariants = ColorVariants(
     c20 = Color(0xFFFFEDCC), // ~70% white + 30% base
     c30 = Color(0xFFFFE0AA), // ~50% white + 50% base
     c40 = Color(0xFFFFD388), // ~30% white + 70% base
-    c50 = Color(0xFFFFC653), // base primary color  (#FFC653)
+    c50 = Color(0xFFFFC653),
+    // base primary color  (#FFC653)
     c60 = Color(0xFFCCA046), // ~80% base + 20% black
     c70 = Color(0xFF997832), // ~60% base + 40% black
     c80 = Color(0xFF66501F), // ~40% base + 60% black

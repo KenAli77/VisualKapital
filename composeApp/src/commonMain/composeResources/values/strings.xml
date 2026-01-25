@@ -1,0 +1,7 @@
+<resources>
+    <string name="app_name">Visual Kapital</string>
+    <string name="home">Home</string>
+    <string name="calendar">Calendar</string>
+    <string name="details">Details</string>
+    <string name="news">News</string>
+</resources>
