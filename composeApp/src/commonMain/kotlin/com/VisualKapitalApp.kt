@@ -30,7 +30,7 @@ fun VisualKapitalApp(navController: NavHostController = rememberNavController())
         modifier = Modifier.fillMaxSize(),
         containerColor = theme.colors.surface,
     ) {
-        NavHost(navController, startDestination = VisualKapitalScreens.Home) {
+        NavHost(navController, startDestination = VisualKapitalScreens.Home.name) {
             composable(route = VisualKapitalScreens.Home.name) {
                 HomeScreen(
                     onGoToCalendar = { navController.navigate(VisualKapitalScreens.Calendar.name) }
