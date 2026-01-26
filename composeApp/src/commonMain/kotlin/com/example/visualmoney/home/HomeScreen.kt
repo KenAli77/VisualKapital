@@ -114,9 +114,6 @@ fun HomeScreen(
     modifier: Modifier = Modifier,
     viewModel: HomeViewModel,
     userName: String = "James",
-    balanceUsd: Double = 5738.25,
-    profitUsd: Double = 295.83,
-    mlPct: Double = 300.00,
     tabs: List<HomeTab> = HomeTab.entries,
     onGoToCalendar: () -> Unit = {},
     onGoToBalance: () -> Unit = {},
@@ -157,9 +154,9 @@ fun HomeScreen(
                 showSearch = true
             })
             BalanceCard(
-                balanceUsd = balanceUsd,
-                profitUsd = profitUsd,
-                mlPct = mlPct,
+                balanceUsd = viewModel.state.totalValue,
+                profitUsd = viewModel.state.profitLoss,
+                mlPct = viewModel.state.profitLossPct,
                 onOpen = {},
                 onCurrencyClick = {},
             )
@@ -191,7 +188,15 @@ fun HomeScreen(
                     shape = RoundedCornerShape(theme.dimension.defaultRadius)
                 )
             ) {
-                items(state.holdings) { item ->
+                val displayedHoldings = when (selectedTab) {
+                    HomeTab.Favourites -> state.topMovers
+                    HomeTab.Gainers -> state.gainers
+                    HomeTab.News -> state.losers
+                    HomeTab.Losers -> state.losers
+                    HomeTab.H24 -> state.h24Data
+                    HomeTab.HotDeals -> state.topMovers // Default to top movers for upcoming events
+                }
+                items(displayedHoldings) { item ->
                     HoldingRow(
                         modifier = Modifier.padding(horizontal = theme.dimension.mediumSpacing),
                         item = item,
