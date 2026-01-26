@@ -87,10 +87,6 @@ class FmpDataSource(private val client: HttpClient) {
         }
     }
     suspend fun getTopGainers(): List<AssetQuote> {
-        println("FMPDataSource: Getting top gainers")
-        println("FMPDataSource: API Key = $apiKey")
-
-        // Using current stable endpoint instead of legacy /api/v3/stock_market/gainers
         val url = "$baseUrl/stable/most-actives"
         println("FMPDataSource: Request URL = $url?apikey=$apiKey")
 

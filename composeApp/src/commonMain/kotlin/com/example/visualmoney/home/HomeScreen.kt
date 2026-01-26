@@ -42,6 +42,7 @@ import androidx.compose.material.icons.rounded.SwapHoriz
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ElevatedCard
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Scaffold
@@ -49,10 +50,12 @@ import androidx.compose.material3.SecondaryScrollableTabRow
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Tab
 import androidx.compose.material3.Text
+import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -67,8 +70,10 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import coil3.compose.AsyncImage
+import com.example.visualmoney.ExploreSearchScreen
 import com.example.visualmoney.LocalAppTheme
 import com.example.visualmoney.greyTextColor
+import kotlinx.coroutines.launch
 import kotlin.math.round
 
 
@@ -103,6 +108,7 @@ enum class BottomNavItem {
 }
 
 // ---------- Screen ----------
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun HomeScreen(
     modifier: Modifier = Modifier,
@@ -118,25 +124,38 @@ fun HomeScreen(
     onGoToAssetDetails: (String) -> Unit = {}
 ) = with(viewModel) {
     var selectedTab by remember { mutableStateOf(HomeTab.Favourites) }
+    var showSearch by remember { mutableStateOf(false) }
+    val sheetState = rememberModalBottomSheetState()
+    val scope = rememberCoroutineScope()
 
     Scaffold(
         modifier = modifier.fillMaxSize(),
         containerColor = theme.colors.surface,
     ) { padding ->
+        if (showSearch) {
+            ExploreSearchScreen(sheetState = sheetState, onBack = {
+                scope.launch {
+                    sheetState.hide()
+                }.invokeOnCompletion {
+                    showSearch = false
+                }
+            })
+        }
         Column(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(padding)
                 .padding(horizontal = theme.dimension.pagePadding)
-                .padding(top = theme.dimension.pagePadding)
-            ,
+                .padding(top = theme.dimension.pagePadding),
             verticalArrangement = Arrangement.spacedBy(theme.dimension.largeSpacing),
 //            contentPadding = PaddingValues(
 //                top = theme.dimension.pagePadding,
 //                bottom = theme.dimension.pagePadding
 //            )
         ) {
-            HomeTopHeader(userName = userName)
+            HomeTopHeader(userName = userName,onSearch = {
+                showSearch = true
+            })
             BalanceCard(
                 balanceUsd = balanceUsd,
                 profitUsd = profitUsd,
@@ -193,6 +212,7 @@ fun HomeScreen(
 fun HomeTopHeader(
     userName: String,
     modifier: Modifier = Modifier,
+    onSearch:()->Unit = {}
 ) {
     Row(
         modifier = modifier.fillMaxWidth(),
@@ -233,7 +253,9 @@ fun HomeTopHeader(
                 contentDescription = "Scan",
             )
             IconWithContainer(
-                onClick = {},
+                onClick = {
+                    onSearch()
+                },
                 Icons.Rounded.Search,
                 contentDescription = "Search",
             )
