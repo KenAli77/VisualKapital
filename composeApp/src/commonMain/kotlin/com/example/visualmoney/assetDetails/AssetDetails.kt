@@ -305,7 +305,7 @@ private fun PriceAndChartCard(
                         )
                     }
 
-                    val pct = quote.changesPercentage
+                    val pct = quote.changePercentage
                     val pctText = (if (pct >= 0) "+" else "") + "%.2f".format(pct) + "%"
                     Text(
                         text = pctText,

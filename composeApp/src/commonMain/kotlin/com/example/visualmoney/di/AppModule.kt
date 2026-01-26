@@ -33,7 +33,11 @@ val appModule = module {
     }
     single { com.example.visualmoney.data.remote.FmpDataSource(get()) }
     single<com.example.visualmoney.data.repository.FinancialRepository> {
-        com.example.visualmoney.data.repository.FinancialRepositoryImpl(get())
+        com.example.visualmoney.data.repository.FinancialRepositoryImpl(
+            remoteSource = get(),
+            cachedQuoteDao = get(),
+            portfolioBuyDao = get()
+        )
     }
     viewModel {
         AssetDetailsViewModel(get())

@@ -5,60 +5,99 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.example.visualmoney.data.local.AssetType
 import com.example.visualmoney.data.repository.FinancialRepository
+import com.example.visualmoney.data.repository.PortfolioHoldingWithQuote
 import com.example.visualmoney.util.LogoUtil
-import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.launch
+import kotlin.math.abs
 
 class HomeViewModel(
     private val repository: FinancialRepository
 ) : ViewModel() {
 
     var state by mutableStateOf(HomeUiState())
-    private set
+        private set
 
     init {
-        loadData()
+        loadPortfolioData()
     }
 
-    private fun loadData() {
+    private fun loadPortfolioData() {
+        println("HomeViewModel: Starting to load portfolio data")
         viewModelScope.launch {
-            try {
-                // Fetching Top Gainers as the default list for now
-                val topGainers = repository.getTopGainers()
-                
-                val holdings = topGainers.map { quote ->
-                    // Determine asset class (defaulting to STOCK for FMP gainers endpoint)
-                    val assetClass = AssetClass.STOCK
-                    
-                    HoldingRowUi(
-                        symbol = quote.symbol,
-                        name = quote.name ?: quote.symbol,
-                        assetClass = assetClass,
-                        changePct = quote.changesPercentage,
-                        price = quote.price,
-                        dayLow = quote.dayLow ?: quote.price,
-                        dayHigh = quote.dayHigh ?: quote.price,
-                        logoUrl = LogoUtil.getLogoUrl(quote.symbol)
-                    )
+            repository.observePortfolioWithQuotes()
+                .catch { e ->
+                    println("HomeViewModel: Error loading portfolio: ${e.message}")
+                    e.printStackTrace()
+                    state = state.copy(isLoading = false, error = e.message)
                 }
+                .collect { holdings ->
+                    println("HomeViewModel: Received ${holdings.size} holdings from repository")
+                    
+                    val uiHoldings = holdings.map { it.toHoldingRowUi() }
+                    
+                    // Calculate portfolio summary
+                    val totalValue = holdings.sumOf { it.currentPrice * it.totalQuantity }
+                    val totalCostBasis = holdings.sumOf { it.costBasis }
+                    val profitLoss = totalValue - totalCostBasis
+                    val profitLossPct = if (totalCostBasis > 0) (profitLoss / totalCostBasis) * 100 else 0.0
+                    
+                    println("HomeViewModel: Portfolio - Value=${"%.2f".format(totalValue)}, CostBasis=${"%.2f".format(totalCostBasis)}, P/L=${"%.2f".format(profitLoss)} (${"+".takeIf { profitLossPct >= 0 } ?: ""}${"%.2f".format(profitLossPct)}%)")
+                    
+                    val topMovers = uiHoldings.sortedByDescending { abs(it.changePct) }
+                    val gainers = uiHoldings.filter { it.changePct > 0 }.sortedByDescending { it.changePct }
+                    val losers = uiHoldings.filter { it.changePct < 0 }.sortedBy { it.changePct }
+                    
+                    state = state.copy(
+                        totalValue = totalValue,
+                        totalCostBasis = totalCostBasis,
+                        profitLoss = profitLoss,
+                        profitLossPct = profitLossPct,
+                        topMovers = topMovers,
+                        gainers = gainers,
+                        losers = losers,
+                        h24Data = uiHoldings,
+                        isLoading = false,
+                        error = null
+                    )
+                    println("HomeViewModel: State updated with portfolio summary")
+                }
+        }
+    }
 
-                state = state.copy(
-                    holdings = holdings,
-                    isLoading = false
-                )
-            } catch (e: Exception) {
-                // Handle error
-                state = state.copy(isLoading = false)
-                println("Error loading home data: ${e.message}")
-            }
+    private fun PortfolioHoldingWithQuote.toHoldingRowUi(): HoldingRowUi {
+        return HoldingRowUi(
+            symbol = symbol,
+            name = name ?: symbol,
+            assetClass = type.toAssetClass(),
+            changePct = changePct,
+            price = currentPrice,
+            dayLow = dayLow ?: currentPrice,
+            dayHigh = dayHigh ?: currentPrice,
+            logoUrl = LogoUtil.getLogoUrl(symbol)
+        )
+    }
+
+    private fun AssetType.toAssetClass(): AssetClass {
+        return when (this) {
+            AssetType.EQUITY -> AssetClass.STOCK
+            AssetType.CRYPTO -> AssetClass.CRYPTO
+            AssetType.COMMODITY -> AssetClass.STOCK // Map commodity to stock for now
         }
     }
 }
 
 data class HomeUiState(
-    val holdings: List<HoldingRowUi> = emptyList(),
-    val isLoading: Boolean = true
+    val totalValue: Double = 0.0,
+    val totalCostBasis: Double = 0.0,
+    val profitLoss: Double = 0.0,
+    val profitLossPct: Double = 0.0,
+    val topMovers: List<HoldingRowUi> = emptyList(),
+    val gainers: List<HoldingRowUi> = emptyList(),
+    val losers: List<HoldingRowUi> = emptyList(),
+    val h24Data: List<HoldingRowUi> = emptyList(),
+    val isLoading: Boolean = true,
+    val error: String? = null
 )

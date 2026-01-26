@@ -7,6 +7,7 @@ import androidx.room.TypeConverters
 
 @Database(
     entities = [
+        CachedQuoteEntity::class,
         TrackedAssetEntity::class,
         PortfolioBuyEntity::class,
         ManualInvestmentEntity::class,
