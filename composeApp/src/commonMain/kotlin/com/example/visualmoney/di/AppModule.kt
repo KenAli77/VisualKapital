@@ -1,7 +1,15 @@
 package com.example.visualmoney.di
 
 import androidx.lifecycle.SavedStateHandle
+import androidx.sqlite.driver.bundled.BundledSQLiteDriver
 import com.example.visualmoney.assetDetails.AssetDetailsViewModel
+import com.example.visualmoney.data.local.AppDatabase
+import com.example.visualmoney.data.local.CachedQuoteDao
+import com.example.visualmoney.data.local.InvestmentReminderDao
+import com.example.visualmoney.data.local.getDatabaseBuilder
+import com.example.visualmoney.data.remote.FmpDataSource
+import com.example.visualmoney.data.repository.FinancialRepository
+import com.example.visualmoney.data.repository.FinancialRepositoryImpl
 import com.example.visualmoney.home.HomeViewModel
 import com.example.visualmoney.network.provideHttpClientEngine
 import io.ktor.client.HttpClient
@@ -10,6 +18,8 @@ import io.ktor.client.plugins.contentnegotiation.ContentNegotiation
 import io.ktor.client.plugins.logging.LogLevel
 import io.ktor.client.plugins.logging.Logging
 import io.ktor.serialization.kotlinx.json.json
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.IO
 import kotlinx.serialization.json.Json
 import org.koin.compose.viewmodel.dsl.viewModel
 import org.koin.dsl.module
@@ -31,9 +41,15 @@ val appModule = module {
             }
         }
     }
-    single { com.example.visualmoney.data.remote.FmpDataSource(get()) }
-    single<com.example.visualmoney.data.repository.FinancialRepository> {
-        com.example.visualmoney.data.repository.FinancialRepositoryImpl(get())
+    single { FmpDataSource(get()) }
+    single<AppDatabase>{
+        getDatabaseBuilder().apply {
+            setDriver(BundledSQLiteDriver())
+            setQueryCoroutineContext(Dispatchers.IO)
+        }.build()
+    }
+    single<FinancialRepository> {
+        FinancialRepositoryImpl(get(), get<AppDatabase>().cachedQuoteDao())
     }
     viewModel {
         AssetDetailsViewModel(get())
@@ -42,3 +58,5 @@ val appModule = module {
         HomeViewModel(get())
     }
 }
+
+

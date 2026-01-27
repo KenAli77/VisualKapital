@@ -16,6 +16,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -46,6 +47,7 @@ import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import com.example.visualmoney.core.TopNavigationBar
 import com.example.visualmoney.home.format
 import kotlin.math.abs
 
@@ -105,87 +107,65 @@ fun ExploreSearchScreen(
         modifier = modifier,
         sheetState = sheetState,
         onDismissRequest = { onBack() },
+        dragHandle = {},
         containerColor = theme.colors.surface,
     ) {
-        LazyColumn(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(horizontal = theme.dimension.pagePadding),
+        Column(
+            modifier = Modifier.fillMaxSize().padding(theme.dimension.pagePadding),
             verticalArrangement = Arrangement.spacedBy(theme.dimension.largeSpacing),
-            contentPadding = PaddingValues(
-                top = theme.dimension.pagePadding,
-                bottom = theme.dimension.pagePadding
-            )
         ) {
-            item {
-                TopBar(
-                    title = title,
-                    onBack = onBack
-                )
-            }
-
-            item {
-                SearchBar(
-                    query = query,
-                    onQueryChange = { query = it },
-                    onSortClick = {
-                        sortMode = when (sortMode) {
-                            SortMode.TRENDING -> SortMode.PRICE
-                            SortMode.PRICE -> SortMode.CHANGE
-                            SortMode.CHANGE -> SortMode.TRENDING
-                        }
+            TopNavigationBar(
+                title = title,
+                onBack = onBack
+            )
+            SearchBar(
+                query = query,
+                onQueryChange = { query = it },
+                onSortClick = {
+                    sortMode = when (sortMode) {
+                        SortMode.TRENDING -> SortMode.PRICE
+                        SortMode.PRICE -> SortMode.CHANGE
+                        SortMode.CHANGE -> SortMode.TRENDING
                     }
-                )
-            }
-
-            item {
-                ExploreTabsRow(
-                    selected = selectedTab,
-                    onSelect = { selectedTab = it }
-                )
-            }
-
-            item {
-                FiltersRow(
-                    regionSelected = regionSelected,
-                    industrySelected = industrySelected,
-                    onToggleRegion = { regionSelected = !regionSelected; onOpenFilters() },
-                    onToggleIndustry = { industrySelected = !industrySelected; onOpenFilters() }
-                )
-            }
-
-            item {
-                Text(
-                    text = "Showing ${resultsCount ?: sorted.size} results",
-                    style = theme.typography.bodySmall,
-                    color = theme.colors.greyScale.c60
-                )
-            }
-
-            item {
-                Column(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .border(
-                            1.dp,
-                            theme.colors.greyScale.c30,
-                            RoundedCornerShape(theme.dimension.defaultRadius)
+                }
+            )
+            ExploreTabsRow(
+                selected = selectedTab,
+                onSelect = { selectedTab = it }
+            )
+            FiltersRow(
+                regionSelected = regionSelected,
+                industrySelected = industrySelected,
+                onToggleRegion = { regionSelected = !regionSelected; onOpenFilters() },
+                onToggleIndustry = { industrySelected = !industrySelected; onOpenFilters() }
+            )
+            Text(
+                text = "Showing ${resultsCount ?: sorted.size} results",
+                style = theme.typography.bodySmall,
+                color = theme.colors.onSurface
+            )
+            LazyColumn(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .border(
+                        1.dp,
+                        theme.colors.greyScale.c30,
+                        RoundedCornerShape(theme.dimension.defaultRadius)
+                    )
+                    .clip(RoundedCornerShape(theme.dimension.defaultRadius))
+                    .background(theme.colors.surface)
+            ) {
+                itemsIndexed(sorted) { idx, row ->
+                    SearchResultRow(
+                        item = row,
+                        onClick = { onResultClick(row.symbol) }
+                    )
+                    if (idx != sorted.lastIndex) {
+                        HorizontalDivider(
+                            thickness = 1.dp,
+                            color = theme.colors.greyScale.c30,
+                            modifier = Modifier.padding(horizontal = theme.dimension.largeSpacing)
                         )
-                        .clip(RoundedCornerShape(theme.dimension.defaultRadius))
-                        .background(theme.colors.surface)
-                ) {
-                    sorted.forEachIndexed { idx, row ->
-                        SearchResultRow(
-                            item = row,
-                            onClick = { onResultClick(row.symbol) }
-                        )
-                        if (idx != sorted.lastIndex) {
-                            HorizontalDivider(
-                                thickness = 1.dp,
-                                color = theme.colors.greyScale.c30,
-                                modifier = Modifier.padding(horizontal = theme.dimension.largeSpacing)
-                            )
-                        }
                     }
                 }
             }
@@ -193,30 +173,6 @@ fun ExploreSearchScreen(
     }
 }
 
-// ---------- Top bar ----------
-@Composable
-private fun TopBar(
-    title: String,
-    onBack: () -> Unit
-) {
-    Row(
-        modifier = Modifier.fillMaxWidth(),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(theme.dimension.mediumSpacing)
-    ) {
-        IconWithContainer(
-            onClick = onBack,
-            icon = Icons.Rounded.ArrowBack,
-            contentDescription = "Back",
-            containerColor = theme.colors.container
-        )
-        Text(
-            text = title,
-            style = theme.typography.bodyMediumMedium,
-            color = theme.colors.onSurface
-        )
-    }
-}
 
 // ---------- Search bar ----------
 @Composable
@@ -225,6 +181,8 @@ private fun SearchBar(
     onQueryChange: (String) -> Unit,
     onSortClick: () -> Unit,
 ) {
+    Surface(color= theme.colors.onPrimary, shape = RoundedCornerShape(theme.dimension.largeRadius)) {
+
     Row(
         modifier = Modifier.fillMaxWidth(),
         verticalAlignment = Alignment.CenterVertically,
@@ -235,11 +193,11 @@ private fun SearchBar(
             onValueChange = onQueryChange,
             modifier = Modifier
                 .weight(1f)
-                .clip(RoundedCornerShape(theme.dimension.defaultRadius))
+                .clip(RoundedCornerShape(theme.dimension.largeRadius))
                 .border(
                     1.dp,
                     theme.colors.greyScale.c30,
-                    RoundedCornerShape(theme.dimension.defaultRadius)
+                    RoundedCornerShape(theme.dimension.largeRadius)
                 ),
             singleLine = true,
             placeholder = {
@@ -253,9 +211,9 @@ private fun SearchBar(
                 Icon(Icons.Rounded.Search, contentDescription = null)
             },
             colors = TextFieldDefaults.colors(
-                focusedContainerColor = theme.colors.surface,
-                unfocusedContainerColor = theme.colors.surface,
-                disabledContainerColor = theme.colors.surface,
+                focusedContainerColor = theme.colors.onPrimary,
+                unfocusedContainerColor = theme.colors.onPrimary,
+                disabledContainerColor = theme.colors.onPrimary,
                 focusedIndicatorColor = Color.Transparent,
                 unfocusedIndicatorColor = Color.Transparent,
                 disabledIndicatorColor = Color.Transparent
@@ -263,13 +221,14 @@ private fun SearchBar(
             textStyle = theme.typography.bodySmallMedium
         )
 
-        IconWithContainer(
-            onClick = onSortClick,
-            icon = Icons.Rounded.SwapVert,
-            contentDescription = "Sort",
-            containerColor = theme.colors.container
-        )
+//        IconWithContainer(
+//            onClick = onSortClick,
+//            icon = Icons.Rounded.SwapVert,
+//            contentDescription = "Sort",
+//            containerColor = theme.colors.container
+//        )
     }
+}
 }
 
 // ---------- Tabs ----------
@@ -285,7 +244,7 @@ private fun ExploreTabsRow(
         ExploreTab.entries.forEach { tab ->
             val isSelected = tab == selected
             val bg by animateColorAsState(
-                if (isSelected) theme.colors.container else Color.Transparent,
+                if (isSelected) theme.colors.primary.c50 else Color.Transparent,
                 label = "tabBg"
             )
             val border = if (isSelected) Color.Transparent else theme.colors.greyScale.c30

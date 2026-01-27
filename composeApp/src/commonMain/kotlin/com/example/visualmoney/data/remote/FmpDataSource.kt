@@ -104,7 +104,7 @@ class FmpDataSource(private val client: HttpClient) {
                 println("FMP API Error: ${errorResponse.errorMessage}")
                 throw Exception("FMP API Error: ${errorResponse.errorMessage}")
             } catch (e: Exception) {
-                println("FMPDataSource: Failed to parse error response: ${e.message}")
+                println("FMPDataSource: Failed to parse error response: ${e}")
                 throw Exception("FMP API returned an error: $responseText")
             }
         }

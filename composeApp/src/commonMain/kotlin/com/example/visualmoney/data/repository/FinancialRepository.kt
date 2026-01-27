@@ -7,6 +7,7 @@ import com.example.visualmoney.data.remote.FmpDataSource
 import com.example.visualmoney.domain.model.AssetProfile
 import com.example.visualmoney.domain.model.AssetQuote
 import com.example.visualmoney.domain.model.ChartPoint
+import kotlinx.coroutines.flow.firstOrNull
 import kotlin.time.Clock
 
 private const val QUOTE_TTL_MS = 5 * 60 * 60 * 1000L // 5 hours
@@ -84,7 +85,17 @@ class FinancialRepositoryImpl(
 
     override suspend fun getProfile(symbol: String): AssetProfile = remoteSource.getProfile(symbol)
 
-    override suspend fun getTopGainers(): List<AssetQuote> = remoteSource.getTopGainers()
+    override suspend fun getTopGainers(): List<AssetQuote> {
+        val cache = cachedQuoteDao.observeAll().firstOrNull()
+        if (!cache.isNullOrEmpty()) {
+            return cache.map { it.toAsset() }
+        } else {
+            val now = Clock.System.now().toEpochMilliseconds()
+            val remote = remoteSource.getTopGainers()
+            cachedQuoteDao.upsertAll(remote.map { it.toCachedQuoteEntity(updatedAt = now) })
+            return remote
+        }
+    }
 
     override suspend fun getTopLosers(): List<AssetQuote> = remoteSource.getTopLosers()
 

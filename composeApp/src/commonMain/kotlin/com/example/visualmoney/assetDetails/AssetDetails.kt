@@ -38,6 +38,7 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextField
 import androidx.compose.material3.TextFieldDefaults
+import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -55,6 +56,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.example.visualmoney.DefaultAppColors
 import com.example.visualmoney.LocalAppTheme
+import com.example.visualmoney.core.TopNavigationBar
 import com.example.visualmoney.domain.model.Asset
 import com.example.visualmoney.domain.model.AssetProfile
 import com.example.visualmoney.domain.model.AssetQuote
@@ -112,15 +114,7 @@ fun AssetDetailsScreen(
             )
         ) {
             item {
-                AssetTopBar(
-                    title = asset.name ?: asset.symbol,
-                    subtitle = asset.symbol,
-                    inPortfolio = inPortfolio,
-                    onBack = onBack,
-                    onPrimaryAction = {
-                        if (inPortfolio) onRemoveFromPortfolio() else onAddToPortfolio()
-                    }
-                )
+                TopNavigationBar(title = "Asset details", onBack = onBack)
             }
 
             item {

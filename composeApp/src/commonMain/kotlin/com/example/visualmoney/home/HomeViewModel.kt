@@ -52,7 +52,7 @@ class HomeViewModel(
             } catch (e: Exception) {
                 // Handle error
                 state = state.copy(isLoading = false)
-                println("Error loading home data: ${e.message}")
+                println("Error loading home data: ${e}")
             }
         }
     }

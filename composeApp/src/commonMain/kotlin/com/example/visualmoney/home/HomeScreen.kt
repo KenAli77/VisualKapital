@@ -125,7 +125,7 @@ fun HomeScreen(
 ) = with(viewModel) {
     var selectedTab by remember { mutableStateOf(HomeTab.Favourites) }
     var showSearch by remember { mutableStateOf(false) }
-    val sheetState = rememberModalBottomSheetState()
+    val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
     val scope = rememberCoroutineScope()
 
     Scaffold(
