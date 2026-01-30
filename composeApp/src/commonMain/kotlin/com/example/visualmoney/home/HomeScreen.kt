@@ -27,6 +27,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.ShowChart
 import androidx.compose.material.icons.outlined.KeyboardArrowDown
+import androidx.compose.material.icons.rounded.Add
 import androidx.compose.material.icons.rounded.AddCircleOutline
 import androidx.compose.material.icons.rounded.AreaChart
 import androidx.compose.material.icons.rounded.Business
@@ -40,6 +41,7 @@ import androidx.compose.material.icons.rounded.PersonOutline
 import androidx.compose.material.icons.rounded.Search
 import androidx.compose.material.icons.rounded.SwapHoriz
 import androidx.compose.material3.Card
+import androidx.compose.material3.CardColors
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ElevatedCard
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -72,8 +74,15 @@ import androidx.compose.ui.unit.dp
 import coil3.compose.AsyncImage
 import com.example.visualmoney.ExploreSearchScreen
 import com.example.visualmoney.LocalAppTheme
+import com.example.visualmoney.core.SmallButton
 import com.example.visualmoney.greyTextColor
+import com.example.visualmoney.newAsset.NewAssetScreen
 import kotlinx.coroutines.launch
+import org.jetbrains.compose.resources.painterResource
+import visualmoney.composeapp.generated.resources.Res
+import visualmoney.composeapp.generated.resources.ic_analyse_finance
+import visualmoney.composeapp.generated.resources.ic_financial_literacy
+import visualmoney.composeapp.generated.resources.ic_insights
 import kotlin.math.round
 
 
@@ -125,7 +134,9 @@ fun HomeScreen(
 ) = with(viewModel) {
     var selectedTab by remember { mutableStateOf(HomeTab.Favourites) }
     var showSearch by remember { mutableStateOf(false) }
+    var showNewAssetScreen by remember { mutableStateOf(false) }
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
+    val newAssetSheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
     val scope = rememberCoroutineScope()
 
     Scaffold(
@@ -141,6 +152,19 @@ fun HomeScreen(
                 }
             })
         }
+        if (showNewAssetScreen) {
+            NewAssetScreen(
+                newAssetSheetState,
+                onBack = {
+                    scope.launch {
+                        newAssetSheetState.hide()
+                    }.invokeOnCompletion {
+                        showNewAssetScreen = false
+                    }
+                },
+            )
+        }
+
         Column(
             modifier = Modifier
                 .fillMaxSize()
@@ -153,7 +177,7 @@ fun HomeScreen(
 //                bottom = theme.dimension.pagePadding
 //            )
         ) {
-            HomeTopHeader(userName = userName,onSearch = {
+            HomeTopHeader(userName = userName, onSearch = {
                 showSearch = true
             })
             BalanceCard(
@@ -165,7 +189,7 @@ fun HomeScreen(
             )
             QuickActionsRow(
                 onAddAsset = {
-
+                    showNewAssetScreen = true
                 },
                 onGoToCalendar = {
                     onGoToCalendar()
@@ -176,33 +200,27 @@ fun HomeScreen(
             )
             AiInsightsCard(
                 title = "Unlock Insights",
-                subtitle = "Analyse Your Portfolio",
+                subtitle = "Analyse Your Portfolio and grow with confidence",
                 onOpen = {}
             )
-            HomeTabs(
-                tabs = tabs,
-                selected = selectedTab,
-                onSelect = { selectedTab = it }
-            )
+            Text("My assets", style = theme.typography.titleSmall)
+
             LazyColumn(
-                modifier = Modifier.border(
-                    width = 1.dp,
-                    color = theme.colors.greyScale.c30,
-                    shape = RoundedCornerShape(theme.dimension.defaultRadius)
-                )
+                modifier = Modifier,
+                verticalArrangement = Arrangement.spacedBy(theme.dimension.mediumSpacing)
             ) {
                 items(state.holdings) { item ->
                     HoldingRow(
-                        modifier = Modifier.padding(horizontal = theme.dimension.mediumSpacing),
+                        modifier = Modifier,
                         item = item,
                         onClick = {
                             onGoToAssetDetails(item.symbol)
-                        })
-                    HorizontalDivider(thickness = 1.dp, color = theme.colors.greyScale.c30)
-
+                        }
+                    )
                 }
 
             }
+
         }
     }
 }
@@ -212,7 +230,7 @@ fun HomeScreen(
 fun HomeTopHeader(
     userName: String,
     modifier: Modifier = Modifier,
-    onSearch:()->Unit = {}
+    onSearch: () -> Unit = {}
 ) {
     Row(
         modifier = modifier.fillMaxWidth(),
@@ -363,7 +381,8 @@ fun BalanceCard(
                 IconWithContainerSmall(
                     {},
                     icon = Icons.Rounded.NorthEast,
-                    containerColor = theme.colors.primary.c50,
+                    containerColor = theme.colors.primary.c10,
+                    contentColor = theme.colors.primary.c50,
                     shape = CircleShape
                 )
             }
@@ -460,7 +479,7 @@ fun QuickActionsRow(
     ) {
         QuickActionButton(
             title = "Add asset",
-            icon = Icons.Rounded.AddCircleOutline,
+            icon = Icons.Rounded.Add,
             onClick = onAddAsset,
             modifier = Modifier.weight(1f)
         )
@@ -486,39 +505,39 @@ fun QuickActionButton(
     onClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
-    Card(
-        modifier = modifier.wrapContentHeight(),
-        shape = RoundedCornerShape(theme.dimension.defaultRadius),
-        onClick = onClick,
-        elevation = CardDefaults.cardElevation(0.dp),
-        border = BorderStroke(1.dp, color = theme.colors.greyScale.c30),
-        colors = CardDefaults.elevatedCardColors(containerColor = theme.colors.surface)
+    Column(
+        modifier = modifier,
+        verticalArrangement = Arrangement.spacedBy(theme.dimension.mediumSpacing),
+        horizontalAlignment = Alignment.CenterHorizontally
     ) {
-        Box(
-            modifier = Modifier.fillMaxWidth().padding(theme.dimension.veryLargeSpacing),
-            contentAlignment = Alignment.Center
+        Card(
+            shape = CircleShape,
+            onClick = onClick,
+            elevation = CardDefaults.cardElevation(0.dp),
+            border = BorderStroke(2.dp, color = theme.colors.primary.c10),
+            colors = CardDefaults.elevatedCardColors(containerColor = theme.colors.primary.c50)
         ) {
-            Column(
-                verticalArrangement = Arrangement.spacedBy(
-                    theme.dimension.mediumSpacing,
-                    alignment = Alignment.CenterVertically
-                ),
-                horizontalAlignment = Alignment.CenterHorizontally
+            Box(
+                modifier = Modifier.padding(theme.dimension.veryLargeSpacing),
+                contentAlignment = Alignment.Center
             ) {
                 Icon(
                     icon,
                     contentDescription = title,
-                    modifier = Modifier.size(theme.dimension.iconSize)
+                    modifier = Modifier.size(theme.dimension.iconSize),
+                    tint = theme.colors.greyTextColor
                 )
-                Text(
-                    text = title,
-                    style = theme.typography.bodySmallMedium,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis
-                )
+
             }
         }
+        Text(
+            text = title,
+            style = theme.typography.bodySmallStrong,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis
+        )
     }
+
 }
 
 val primaryGradient = Brush.linearGradient(
@@ -539,52 +558,48 @@ fun AiInsightsCard(
     onOpen: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    // Base component: use Card + gradient-like feel via surface background.
-    // Swap to Brush.horizontalGradient(...) if you want a real gradient.
     Surface(
-        modifier = modifier.fillMaxWidth().clip(RoundedCornerShape(theme.dimension.defaultRadius))
-            .background(brush = primaryGradient),
-        shape = RoundedCornerShape(theme.dimension.defaultRadius),
+        modifier = modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(
+            theme.dimension.defaultRadius
+        ),
+        border = BorderStroke(1.dp, color = theme.colors.primary.c10),
         onClick = onOpen,
-        color = Color.Transparent
-//        colors = CardDefaults.cardColors(containerColor = Color.Transparent),
+        color = theme.colors.primary.c20,
 
-    ) {
+        ) {
+
         Row(
             modifier = Modifier.padding(theme.dimension.largeSpacing),
-            verticalAlignment = Alignment.CenterVertically
+            verticalAlignment = Alignment.Top,
+            horizontalArrangement = Arrangement.SpaceBetween
         ) {
-            Box(
-                modifier = Modifier
-                    .clip(RoundedCornerShape(theme.dimension.defaultRadius))
-                    .background(theme.colors.container),
-                contentAlignment = Alignment.Center
+            Column(
+                modifier = Modifier.weight(1f),
+                verticalArrangement = Arrangement.spacedBy(theme.dimension.mediumSpacing)
             ) {
-                Icon(
-                    Icons.Rounded.AreaChart,
-                    contentDescription = null,
-                    modifier = Modifier.padding(theme.dimension.largeSpacing)
-                        .size(theme.dimension.iconSize)
-
-                )
-            }
-
-            Spacer(Modifier.width(12.dp))
-
-            Column(modifier = Modifier.weight(1f)) {
                 Text(title, style = theme.typography.titleSmall)
                 Text(
                     subtitle,
                     style = theme.typography.bodySmall,
                     color = theme.colors.onSurface
                 )
+                SmallButton(
+                    text = "Show me",
+                    contentColor = theme.colors.onSurface,
+                    border = true,
+                    borderColor = theme.colors.primary.c10
+                )
             }
-
             Icon(
-                Icons.Rounded.NorthEast,
-                contentDescription = "Open",
-                modifier = Modifier.size(theme.dimension.iconSize)
+                painter = painterResource(Res.drawable.ic_analyse_finance),
+                contentDescription = null,
+                tint = theme.colors.onSurface,
+                modifier = Modifier
+                    .size(theme.dimension.largeIconSize * 2).wrapContentWidth()
             )
+
+            Spacer(Modifier.width(12.dp))
         }
     }
 }
@@ -614,7 +629,7 @@ fun HomeTabs(
                     Text(
                         tab.label,
                         style = theme.typography.bodySmall,
-                        fontWeight = if (isSelected) FontWeight.Medium else FontWeight.Normal,
+                        fontWeight = if (isSelected) FontWeight.SemiBold else FontWeight.Normal,
                         color = if (isSelected) theme.colors.onSurface else theme.colors.greyTextColor
                     )
                 }
@@ -632,13 +647,13 @@ fun HoldingRow(
 ) {
     Card(
         modifier = modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(theme.dimension.defaultRadius),
         onClick = onClick,
         elevation = CardDefaults.cardElevation(0.dp),
-        colors = CardDefaults.elevatedCardColors(containerColor = theme.colors.surface)
+        colors = CardDefaults.elevatedCardColors(containerColor = theme.colors.onPrimary),
+        shape = RoundedCornerShape(theme.dimension.defaultRadius)
     ) {
         Row(
-            modifier = Modifier.padding(theme.dimension.mediumSpacing),
+            modifier = Modifier.fillMaxWidth().padding(theme.dimension.largeSpacing),
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(theme.dimension.mediumSpacing)
         ) {
@@ -646,42 +661,41 @@ fun HoldingRow(
             Box(
                 modifier = Modifier
                     .clip(CircleShape)
-                    .background(theme.colors.onPrimary)
-                    .size(40.dp),
+                    .background(theme.colors.surface)
+                    .border(1.dp,theme.colors.surface, shape = CircleShape)
+                    .size(48.dp)
+                ,
                 contentAlignment = Alignment.Center
             ) {
                 AsyncImage(
+                    modifier = Modifier.fillMaxSize(),
                     model = item.logoUrl,
                     contentDescription = null,
-                    contentScale = ContentScale.FillBounds,
+                    contentScale = ContentScale.Crop,
+
                 )
             }
             Column(
                 modifier = Modifier.weight(1f),
                 verticalArrangement = Arrangement.spacedBy(theme.dimension.mediumSpacing)
             ) {
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(theme.dimension.mediumSpacing)
-                ) {
-                    Text(
-                        modifier = Modifier.weight(1f, fill = true),
-                        text = item.name,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis,
-                        style = theme.typography.bodyMediumMedium,
-                    )
-                    AssetCategoryChip(
-                        modifier = Modifier.wrapContentWidth(),
-                        assetClass = item.assetClass
-                    )
-                }
-                // Low/High line (simple)
                 Text(
-                    text = "Min ${"%.2f".format(item.dayLow)}   Max ${"%.2f".format(item.dayHigh)}",
-                    style = theme.typography.bodySmall,
-                    color = theme.colors.onSurface
+                    modifier = Modifier.wrapContentWidth(),
+                    text = item.name,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                    style = theme.typography.bodyMediumMedium,
                 )
+                AssetCategoryChip(
+                    modifier = Modifier.wrapContentWidth(),
+                    assetClass = item.assetClass
+                )
+
+//                Text(
+//                    text = "Min ${"%.2f".format(item.dayLow)}   Max ${"%.2f".format(item.dayHigh)}",
+//                    style = theme.typography.bodySmall,
+//                    color = theme.colors.onSurface
+//                )
             }
 
 
@@ -814,7 +828,7 @@ fun AssetCategoryChip(modifier: Modifier = Modifier, assetClass: AssetClass) {
     Surface(
         modifier = modifier,
         shape = RoundedCornerShape(theme.dimension.defaultRadius),
-        color = theme.colors.greyScale.c10
+        color = theme.colors.primary.c10
     ) {
         Box(contentAlignment = Alignment.Center) {
             Text(

@@ -149,7 +149,7 @@ fun ExploreSearchScreen(
                     .fillMaxWidth()
                     .border(
                         1.dp,
-                        theme.colors.greyScale.c30,
+                        theme.colors.border,
                         RoundedCornerShape(theme.dimension.defaultRadius)
                     )
                     .clip(RoundedCornerShape(theme.dimension.defaultRadius))
@@ -163,7 +163,7 @@ fun ExploreSearchScreen(
                     if (idx != sorted.lastIndex) {
                         HorizontalDivider(
                             thickness = 1.dp,
-                            color = theme.colors.greyScale.c30,
+                            color = theme.colors.border,
                             modifier = Modifier.padding(horizontal = theme.dimension.largeSpacing)
                         )
                     }
@@ -196,7 +196,7 @@ private fun SearchBar(
                 .clip(RoundedCornerShape(theme.dimension.largeRadius))
                 .border(
                     1.dp,
-                    theme.colors.greyScale.c30,
+                    theme.colors.border,
                     RoundedCornerShape(theme.dimension.largeRadius)
                 ),
             singleLine = true,
@@ -233,7 +233,7 @@ private fun SearchBar(
 
 // ---------- Tabs ----------
 @Composable
-private fun ExploreTabsRow(
+fun ExploreTabsRow(
     selected: ExploreTab,
     onSelect: (ExploreTab) -> Unit
 ) {
@@ -247,7 +247,7 @@ private fun ExploreTabsRow(
                 if (isSelected) theme.colors.primary.c50 else Color.Transparent,
                 label = "tabBg"
             )
-            val border = if (isSelected) Color.Transparent else theme.colors.greyScale.c30
+            val border = if (isSelected) Color.Transparent else theme.colors.border
             val textColor = if (isSelected) theme.colors.onSurface else theme.colors.greyTextColor
 
             Surface(
@@ -315,7 +315,7 @@ private fun FilterChip(
     Surface(
         shape = RoundedCornerShape(theme.dimension.defaultRadius),
         color = bg,
-        border = BorderStroke(1.dp, theme.colors.greyScale.c30),
+        border = BorderStroke(1.dp, theme.colors.border),
         onClick = onClick
     ) {
         Row(

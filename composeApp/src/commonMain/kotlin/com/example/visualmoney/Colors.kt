@@ -9,12 +9,14 @@ data class AppColors(
     var error:Color = Color(0xFFc1121f),
     val warning:Color = Color(0xFFf9a340),
     val primaryShadow: Color,
-    val surface:Color = Color(0xFFe9eeea),
+    val surface:Color = Color(0xFFF8F8F8),
     val container:Color = Color.White,
     val blueScale:ColorVariants,
     val greenScale:ColorVariants = GreenScaleVariants,
     val onPrimary:Color = Color.White,
-    val onSurface:Color = Color.Black
+    val onSurface:Color = Color.Black,
+    val border: Color = GreyScaleVariants.c20
+
 )
 
 val AppColors.greyTextColor: Color get() = greyScale.c70

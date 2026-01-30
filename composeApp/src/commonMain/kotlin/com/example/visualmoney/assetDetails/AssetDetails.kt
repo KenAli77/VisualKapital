@@ -345,7 +345,7 @@ private fun ChartRangeTabs(
                 if (isSelected) theme.colors.onPrimary else theme.colors.surface,
                 label = "tabBg"
             )
-            val border = if (isSelected) Color.Transparent else theme.colors.greyScale.c30
+            val border = if (isSelected) Color.Transparent else theme.colors.border
             val text = if (isSelected) theme.colors.onSurface else theme.colors.greyTextColor
 
             Surface(
@@ -380,7 +380,7 @@ private fun Sparkline(
         modifier = modifier
             .clip(RoundedCornerShape(theme.dimension.defaultRadius))
             .background(theme.colors.surface)
-            .border(1.dp, theme.colors.greyScale.c30, RoundedCornerShape(theme.dimension.defaultRadius))
+            .border(1.dp, theme.colors.border, RoundedCornerShape(theme.dimension.defaultRadius))
             .padding(12.dp)
     ) {
         if (safe.size < 2) return@Canvas
@@ -403,7 +403,7 @@ private fun Sparkline(
 
         // faint baseline
         drawLine(
-            color = DefaultAppColors.greyScale.c30,
+            color = DefaultAppColors.border,
             start = Offset(0f, h),
             end = Offset(w, h),
             strokeWidth = 1.dp.toPx()
@@ -444,7 +444,7 @@ private fun PortfolioCard(
     Card(
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(theme.dimension.defaultRadius),
-        border = BorderStroke(1.dp, theme.colors.greyScale.c30),
+        border = BorderStroke(1.dp, theme.colors.border),
         elevation = CardDefaults.cardElevation(0.dp),
         colors = CardDefaults.elevatedCardColors(containerColor = theme.colors.surface)
     ) {
@@ -517,7 +517,7 @@ private fun PortfolioCard(
                         modifier = Modifier.weight(1f),
                         shape = RoundedCornerShape(theme.dimension.defaultRadius),
                         color = theme.colors.surface,
-                        border = BorderStroke(1.dp, theme.colors.greyScale.c30),
+                        border = BorderStroke(1.dp, theme.colors.border),
                         onClick = onRemove
                     ) {
                         Row(
@@ -548,7 +548,7 @@ private fun CompactTextField(
         onValueChange = onValueChange,
         modifier = modifier
             .clip(RoundedCornerShape(theme.dimension.defaultRadius))
-            .border(1.dp, theme.colors.greyScale.c30, RoundedCornerShape(theme.dimension.defaultRadius)),
+            .border(1.dp, theme.colors.border, RoundedCornerShape(theme.dimension.defaultRadius)),
         singleLine = true,
         placeholder = { Text(label, style = theme.typography.bodySmall, color = theme.colors.greyTextColor) },
         textStyle = theme.typography.bodySmallMedium,
@@ -599,7 +599,7 @@ private fun KeyStatsCard(
     Card(
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(theme.dimension.defaultRadius),
-        border = BorderStroke(1.dp, theme.colors.greyScale.c30),
+        border = BorderStroke(1.dp, theme.colors.border),
         elevation = CardDefaults.cardElevation(0.dp),
         colors = CardDefaults.elevatedCardColors(containerColor = theme.colors.surface)
     ) {
@@ -687,7 +687,7 @@ private fun AboutCard(
     Card(
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(theme.dimension.defaultRadius),
-        border = BorderStroke(1.dp, theme.colors.greyScale.c30),
+        border = BorderStroke(1.dp, theme.colors.border),
         elevation = CardDefaults.cardElevation(0.dp),
         colors = CardDefaults.elevatedCardColors(containerColor = theme.colors.surface)
     ) {

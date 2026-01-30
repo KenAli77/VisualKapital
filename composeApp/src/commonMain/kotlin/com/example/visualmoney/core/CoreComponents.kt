@@ -5,7 +5,6 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
-import androidx.compose.foundation.interaction.collectIsFocusedAsState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -21,9 +20,9 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.ArrowBack
 import androidx.compose.material.icons.filled.Visibility
 import androidx.compose.material.icons.filled.VisibilityOff
-import androidx.compose.material.icons.rounded.ArrowBack
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -35,16 +34,23 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.autofill.ContentType
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.platform.LocalFocusManager
+import androidx.compose.ui.graphics.Shape
+import androidx.compose.ui.graphics.SolidColor
+import androidx.compose.ui.graphics.painter.Painter
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.semantics.contentType
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import com.example.visualmoney.LocalAppTheme
+import com.example.visualmoney.greyTextColor
 import com.example.visualmoney.home.IconWithContainer
+import com.example.visualmoney.home.primaryGradient
 import com.example.visualmoney.home.theme
 
 
@@ -53,6 +59,7 @@ import com.example.visualmoney.home.theme
 fun TopNavigationBar(
     modifier: Modifier = Modifier,
     title: String,
+    subtitle:String = "",
     onBack: () -> Unit
 ) {
     Row(
@@ -66,12 +73,23 @@ fun TopNavigationBar(
             contentDescription = "Back",
             containerColor = theme.colors.container
         )
-        Text(
-            textAlign = TextAlign.Start,
-            text = title,
-            style = theme.typography.bodyLargeMedium,
-            color = theme.colors.onSurface
-        )
+        Column {
+            Text(
+                textAlign = TextAlign.Start,
+                text = title,
+                style = theme.typography.bodyLargeMedium,
+                color = theme.colors.onSurface
+            )
+            if (subtitle.isNotBlank()) {
+                Text(
+                    textAlign = TextAlign.Start,
+                    text = subtitle,
+                    style = theme.typography.bodyMedium,
+                    color = theme.colors.greyTextColor
+                )
+
+            }
+        }
     }
 }
 
@@ -102,16 +120,16 @@ fun InputTextField(
 
     val boxModifier = Modifier
         .fillMaxWidth()
-        .clip(RoundedCornerShape(8.dp))
+        .clip(RoundedCornerShape(theme.dimension.defaultRadius))
         .background(theme.colors.onPrimary)
         .then(
             if (!readOnly || borderAlwaysVisible) {
                 Modifier.border(
                     border = BorderStroke(
                         width = 1.dp,
-                        color = if (error) theme.colors.error else theme.colors.greyScale.c30
+                        color = if (error) theme.colors.error else theme.colors.border
                     ),
-                    shape = RoundedCornerShape(8.dp)
+                    shape = RoundedCornerShape(theme.dimension.defaultRadius)
                 )
             } else {
                 Modifier // No border at all
@@ -167,6 +185,7 @@ fun InputTextField(
                             onValueChange(it)
                         }
                     },
+
                     interactionSource = interactionSource,
                     textStyle = theme.typography.bodyMedium.copy(color = Color.Black),
                     keyboardOptions = keyboardOptions,
@@ -251,5 +270,201 @@ fun InputTextField(
                 color = theme.colors.error,
             )
         }
+    }
+}
+
+@Composable
+fun SmallButton(
+    modifier: Modifier = Modifier,
+    text: String,
+    onClick: () -> Unit = {},
+    backgroundColor: Color = LocalAppTheme.current.colors.primary.c50,
+    contentColor: Color = LocalAppTheme.current.colors.onPrimary,
+    iconPainter: Painter? = null,
+    iconVector: ImageVector? = null,
+    iconPosition: IconPosition = IconPosition.LEADING,
+    border: Boolean = false,
+    radius: Dp = LocalAppTheme.current.dimension.smallRadius,
+    borderColor: Color? = null,
+    enabled: Boolean = true,
+) {
+    val theme = LocalAppTheme.current
+
+    val borderTint = borderColor ?: theme.colors.greyScale.c20
+
+    val icon: @Composable () -> Unit = {
+        if (iconPainter != null) {
+            Icon(
+                painter = iconPainter,
+                contentDescription = null,
+                tint = if (enabled )contentColor else theme.colors.greyScale.c40,
+                modifier = Modifier.size(theme.dimension.smallIconSize)
+            )
+        } else if (iconVector != null) {
+            Icon(
+                imageVector = iconVector,
+                contentDescription = null,
+                tint = if (enabled )contentColor else theme.colors.greyScale.c40,
+                modifier = Modifier.size(theme.dimension.smallIconSize)
+            )
+        }
+    }
+
+
+    Surface(
+        modifier = modifier.clickable {
+            if (enabled) onClick()
+        },
+        shape = RoundedCornerShape(radius),
+        border = if (border) BorderStroke(1.dp, borderTint) else null,
+        color = if (enabled) backgroundColor else theme.colors.greyScale.c20
+    ) {
+        Box(
+            contentAlignment = Alignment.Center,
+            modifier = Modifier.padding(theme.dimension.mediumSpacing)
+        ) {
+            Row(
+                modifier = Modifier,
+                horizontalArrangement = Arrangement.spacedBy(theme.dimension.closeSpacing),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                if (iconPosition == IconPosition.LEADING) {
+                    icon()
+                }
+                Text(text, style = theme.typography.bodySmall, color = if (enabled )contentColor else theme.colors.greyScale.c40)
+                if (iconPosition == IconPosition.TRAILING) {
+                    icon()
+                }
+            }
+
+        }
+    }
+
+}
+@Composable
+fun LargeButton(
+    modifier: Modifier = Modifier,
+    text: String,
+    onClick: () -> Unit = {},
+    backgroundColor: Color = LocalAppTheme.current.colors.primary.c50,
+    brush: Brush? = null,
+    contentColor: Color = LocalAppTheme.current.colors.onSurface,
+    iconPainter: Painter? = null,
+    iconVector: ImageVector? = null,
+    iconPosition: IconPosition = IconPosition.LEADING,
+    border: Boolean = true, // Border flag
+    enabled: Boolean = true,
+    shape: Shape = RoundedCornerShape(LocalAppTheme.current.dimension.defaultRadius)
+) {
+    BaseButton(
+        modifier.fillMaxWidth(),
+        text,
+        onClick,
+        backgroundColor,
+        contentColor,
+        iconPainter,
+        iconVector,
+        iconPosition,
+        border,
+        enabled,
+        brush,
+        shape
+    )
+}
+enum class IconPosition {
+    LEADING,
+    TRAILING
+}
+
+
+@Composable
+fun BaseButton(
+    modifier: Modifier = Modifier,
+    text: String,
+    onClick: () -> Unit = {},
+    backgroundColor: Color = LocalAppTheme.current.colors.primary.c50,
+    contentColor: Color = LocalAppTheme.current.colors.onPrimary,
+    iconPainter: Painter? = null,
+    iconVector: ImageVector? = null,
+    iconPosition: IconPosition = IconPosition.LEADING,
+    border: Boolean = false,
+    enabled: Boolean = true,
+    brush: Brush? = null,
+    shape: Shape = RoundedCornerShape(LocalAppTheme.current.dimension.defaultRadius)
+
+) {
+    val theme = LocalAppTheme.current
+
+    val backgroundBrush = when {
+        !enabled -> SolidColor(
+            theme.colors.greyScale.c20,
+        )
+
+        brush != null -> brush
+        else -> SolidColor(backgroundColor)
+    }
+
+    val contentAlpha = if (enabled) 1f else 0.1f
+
+    Surface(
+        modifier = modifier
+            .then(
+                Modifier.clickable(enabled = enabled, onClick = onClick)
+            )
+            .background(backgroundBrush, shape),
+        shape = shape,
+        border = if (border) BorderStroke(2.dp, brush = primaryGradient) else null,
+        color = Color.Transparent,
+        contentColor = contentColor.copy(alpha = contentAlpha),
+    ) {
+        Box(
+            modifier = Modifier.padding(
+                vertical = theme.dimension.mediumSpacing + theme.dimension.veryCloseSpacing,
+                horizontal = theme.dimension.mediumSpacing
+            ),
+            contentAlignment = Alignment.Center
+        ) {
+            Row(
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                if (iconPosition == IconPosition.LEADING) {
+                    IconComposable(iconPainter, iconVector, contentColor, contentAlpha)
+                }
+                Text(
+                    text = text,
+                    style = theme.typography.bodyMediumMedium,
+                    color = if (!enabled) theme.colors.greyScale.c40 else contentColor.copy(alpha = contentAlpha)
+                )
+                if (iconPosition == IconPosition.TRAILING) {
+                    IconComposable(iconPainter, iconVector, contentColor, contentAlpha)
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun IconComposable(
+    painter: Painter?,
+    vector: ImageVector?,
+    contentColor: Color,
+    contentAlpha: Float
+) {
+    val theme = LocalAppTheme.current
+    if (painter != null) {
+        Icon(
+            painter = painter,
+            contentDescription = null,
+            tint = contentColor.copy(alpha = contentAlpha),
+            modifier = Modifier.size(theme.dimension.iconSize)
+        )
+    } else if (vector != null) {
+        Icon(
+            imageVector = vector,
+            contentDescription = null,
+            tint = contentColor.copy(alpha = contentAlpha),
+            modifier = Modifier.size(theme.dimension.iconSize)
+        )
     }
 }

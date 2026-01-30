@@ -424,7 +424,7 @@ private fun DayCell(
         date == null -> Color.Transparent
         isSelected -> Color.Transparent
         isToday -> theme.colors.primary.c50
-        else -> theme.colors.greyScale.c30
+        else -> theme.colors.border
     }
 
     val textColor = when {
@@ -570,7 +570,7 @@ private fun EmptyStateCard(
     Card(
         modifier = modifier.fillMaxWidth(),
         shape = RoundedCornerShape(theme.dimension.defaultRadius),
-        border = BorderStroke(1.dp, theme.colors.greyScale.c30),
+        border = BorderStroke(1.dp, theme.colors.border),
         elevation = CardDefaults.cardElevation(0.dp),
         colors = CardDefaults.elevatedCardColors(containerColor = theme.colors.surface)
     ) {
@@ -601,7 +601,7 @@ private fun ReminderRow(
     Card(
         modifier = modifier.fillMaxWidth(),
         shape = RoundedCornerShape(theme.dimension.defaultRadius),
-        border = BorderStroke(1.dp, theme.colors.greyScale.c30),
+        border = BorderStroke(1.dp, theme.colors.border),
         elevation = CardDefaults.cardElevation(0.dp),
         colors = CardDefaults.elevatedCardColors(containerColor = theme.colors.surface),
         onClick = onClick
