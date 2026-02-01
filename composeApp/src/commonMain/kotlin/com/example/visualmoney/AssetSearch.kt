@@ -19,6 +19,8 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.KeyboardActions
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.FilterAlt
 import androidx.compose.material.icons.rounded.ArrowBack
@@ -45,16 +47,22 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.example.visualmoney.core.TopNavigationBar
+import com.example.visualmoney.home.GlassCard
+import com.example.visualmoney.home.borderStroke
 import com.example.visualmoney.home.format
+import org.jetbrains.compose.resources.painterResource
+import visualmoney.composeapp.generated.resources.Res
+import visualmoney.composeapp.generated.resources.search
 import kotlin.math.abs
 
 private val theme @Composable get() = LocalAppTheme.current
 
 // ---------- Models ----------
-enum class ExploreTab(val label: String) { STOCKS("Stocks"), ETFS("ETFs"), CRYPTO("Crypto"), FUNDS("Funds") }
+enum class ExploreTab(val label: String) { STOCKS("Stocks"), CRYPTO("Crypto"), FIXED("Fixed income") }
 enum class SortMode(val label: String) { TRENDING("Trending"), PRICE("Price"), CHANGE("Change") }
 
 
@@ -176,50 +184,52 @@ fun ExploreSearchScreen(
 
 // ---------- Search bar ----------
 @Composable
-private fun SearchBar(
+fun SearchBar(
     query: String,
     onQueryChange: (String) -> Unit,
     onSortClick: () -> Unit,
 ) {
-    Surface(color= theme.colors.onPrimary, shape = RoundedCornerShape(theme.dimension.largeRadius)) {
+    GlassCard() {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(theme.dimension.mediumSpacing)
+        ) {
 
-    Row(
-        modifier = Modifier.fillMaxWidth(),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(theme.dimension.mediumSpacing)
-    ) {
-        TextField(
-            value = query,
-            onValueChange = onQueryChange,
-            modifier = Modifier
-                .weight(1f)
-                .clip(RoundedCornerShape(theme.dimension.largeRadius))
-                .border(
-                    1.dp,
-                    theme.colors.border,
-                    RoundedCornerShape(theme.dimension.largeRadius)
+            TextField(
+                value = query,
+                onValueChange = onQueryChange,
+                modifier = Modifier
+                    .weight(1f)
+                    .clip(RoundedCornerShape(theme.dimension.defaultRadius))
+                    .border(borderStroke),
+                singleLine = true,
+                placeholder = {
+                    Text(
+                        "Search by name, ticker, or ISIN…",
+                        style = theme.typography.bodySmall,
+                        color = theme.colors.greyTextColor
+                    )
+                },
+                leadingIcon = {
+                    Icon(
+                        painterResource(Res.drawable.search),
+                        modifier = Modifier.size(theme.dimension.smallIconSize),
+                        contentDescription = null
+                    )
+                },
+                colors = TextFieldDefaults.colors(
+                    focusedContainerColor = theme.colors.onPrimary,
+                    unfocusedContainerColor = theme.colors.onPrimary,
+                    disabledContainerColor = theme.colors.onPrimary,
+                    focusedIndicatorColor = Color.Transparent,
+                    unfocusedIndicatorColor = Color.Transparent,
+                    disabledIndicatorColor = Color.Transparent
                 ),
-            singleLine = true,
-            placeholder = {
-                Text(
-                    "Search by name, ticker, or ISIN…",
-                    style = theme.typography.bodySmall,
-                    color = theme.colors.greyTextColor
-                )
-            },
-            leadingIcon = {
-                Icon(Icons.Rounded.Search, contentDescription = null)
-            },
-            colors = TextFieldDefaults.colors(
-                focusedContainerColor = theme.colors.onPrimary,
-                unfocusedContainerColor = theme.colors.onPrimary,
-                disabledContainerColor = theme.colors.onPrimary,
-                focusedIndicatorColor = Color.Transparent,
-                unfocusedIndicatorColor = Color.Transparent,
-                disabledIndicatorColor = Color.Transparent
-            ),
-            textStyle = theme.typography.bodySmallMedium
-        )
+                textStyle = theme.typography.bodySmallMedium,
+                keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search)
+
+            )
 
 //        IconWithContainer(
 //            onClick = onSortClick,
@@ -227,8 +237,8 @@ private fun SearchBar(
 //            contentDescription = "Sort",
 //            containerColor = theme.colors.container
 //        )
+        }
     }
-}
 }
 
 // ---------- Tabs ----------
@@ -274,7 +284,7 @@ fun ExploreTabsRow(
 
 // ---------- Filters ----------
 @Composable
-private fun FiltersRow(
+fun FiltersRow(
     regionSelected: Boolean,
     industrySelected: Boolean,
     onToggleRegion: () -> Unit,
@@ -301,7 +311,7 @@ private fun FiltersRow(
 }
 
 @Composable
-private fun FilterChip(
+fun FilterChip(
     text: String,
     selected: Boolean,
     icon: androidx.compose.ui.graphics.vector.ImageVector,
@@ -335,7 +345,7 @@ private fun FilterChip(
 
 // ---------- Row item ----------
 @Composable
-private fun SearchResultRow(
+fun SearchResultRow(
     item: SearchResultRowUi,
     onClick: () -> Unit,
 ) {
@@ -424,7 +434,7 @@ private fun IconWithContainer(
 }
 
 // ---------- Sample data ----------
-private fun sampleSearchResults() = listOf(
+fun sampleSearchResults() = listOf(
     SearchResultRowUi("RHM", "Rheinmetall", "1,828.50 €", -0.08, ExploreTab.STOCKS),
     SearchResultRowUi("NVDA", "NVIDIA", "158.62 €", -0.09, ExploreTab.STOCKS),
     SearchResultRowUi("PLTR", "Palantir Technologies", "143.16 €", -0.25, ExploreTab.STOCKS),
@@ -432,7 +442,7 @@ private fun sampleSearchResults() = listOf(
     SearchResultRowUi("VLA", "Valneva", "4.12 €", -0.48, ExploreTab.STOCKS),
     SearchResultRowUi("AAPL", "Apple", "209.50 €", -0.14, ExploreTab.STOCKS),
 
-    SearchResultRowUi("SPY", "SPDR S&P 500 ETF", "506.11 $", +0.12, ExploreTab.ETFS),
+    SearchResultRowUi("SPY", "SPDR S&P 500 ETF", "506.11 $", +0.12, ExploreTab.FIXED),
     SearchResultRowUi("BTC", "Bitcoin", "43,210 $", +1.35, ExploreTab.CRYPTO),
-    SearchResultRowUi("VTI", "Vanguard Total Stock Market", "255.44 $", -0.05, ExploreTab.FUNDS),
+    SearchResultRowUi("VTI", "Vanguard Total Stock Market", "255.44 $", -0.05, ExploreTab.FIXED),
 )

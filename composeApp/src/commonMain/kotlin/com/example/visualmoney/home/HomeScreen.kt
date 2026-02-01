@@ -8,42 +8,26 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.RowScope
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.layout.wrapContentHeight
 import androidx.compose.foundation.layout.wrapContentWidth
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.rounded.ShowChart
 import androidx.compose.material.icons.outlined.KeyboardArrowDown
-import androidx.compose.material.icons.rounded.Add
-import androidx.compose.material.icons.rounded.AddCircleOutline
-import androidx.compose.material.icons.rounded.AreaChart
-import androidx.compose.material.icons.rounded.Business
-import androidx.compose.material.icons.rounded.CalendarToday
 import androidx.compose.material.icons.rounded.Equalizer
 import androidx.compose.material.icons.rounded.Home
-import androidx.compose.material.icons.rounded.Newspaper
-import androidx.compose.material.icons.rounded.NorthEast
-import androidx.compose.material.icons.rounded.Notifications
 import androidx.compose.material.icons.rounded.PersonOutline
-import androidx.compose.material.icons.rounded.Search
 import androidx.compose.material.icons.rounded.SwapHoriz
 import androidx.compose.material3.Card
-import androidx.compose.material3.CardColors
 import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.ElevatedCard
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
@@ -61,11 +45,12 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.blur
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.Shape
+import androidx.compose.ui.graphics.painter.Painter
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
@@ -74,15 +59,19 @@ import androidx.compose.ui.unit.dp
 import coil3.compose.AsyncImage
 import com.example.visualmoney.ExploreSearchScreen
 import com.example.visualmoney.LocalAppTheme
+import com.example.visualmoney.core.IconPosition
 import com.example.visualmoney.core.SmallButton
 import com.example.visualmoney.greyTextColor
 import com.example.visualmoney.newAsset.NewAssetScreen
 import kotlinx.coroutines.launch
 import org.jetbrains.compose.resources.painterResource
 import visualmoney.composeapp.generated.resources.Res
-import visualmoney.composeapp.generated.resources.ic_analyse_finance
-import visualmoney.composeapp.generated.resources.ic_financial_literacy
-import visualmoney.composeapp.generated.resources.ic_insights
+import visualmoney.composeapp.generated.resources.arrow_up_right
+import visualmoney.composeapp.generated.resources.calendar
+import visualmoney.composeapp.generated.resources.plus
+import visualmoney.composeapp.generated.resources.search
+import visualmoney.composeapp.generated.resources.trending_up
+import visualmoney.composeapp.generated.resources.zigzag
 import kotlin.math.round
 
 
@@ -101,19 +90,14 @@ data class HoldingRowUi(
 )
 
 enum class HomeTab(val label: String) {
-    Favourites("Top movers"),
-    HotDeals("Upcoming events"),
-    News("Losers"),
-    Gainers("Gainers"),
-    Losers("Losers"),
+    Favourites("Top movers"), HotDeals("Upcoming events"), News("Losers"), Gainers("Gainers"), Losers(
+        "Losers"
+    ),
     H24("24h"),
 }
 
 enum class BottomNavItem {
-    HOME,
-    STATS,
-    SWAP,
-    ACCOUNT
+    HOME, STATS, SWAP, ACCOUNT
 }
 
 // ---------- Screen ----------
@@ -141,8 +125,8 @@ fun HomeScreen(
 
     Scaffold(
         modifier = modifier.fillMaxSize(),
-        containerColor = theme.colors.surface,
-    ) { padding ->
+        containerColor = theme.colors.surface
+    ) {
         if (showSearch) {
             ExploreSearchScreen(sheetState = sheetState, onBack = {
                 scope.launch {
@@ -166,10 +150,7 @@ fun HomeScreen(
         }
 
         Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(padding)
-                .padding(horizontal = theme.dimension.pagePadding)
+            modifier = Modifier.fillMaxSize().padding(theme.dimension.pagePadding)
                 .padding(top = theme.dimension.pagePadding),
             verticalArrangement = Arrangement.spacedBy(theme.dimension.largeSpacing),
 //            contentPadding = PaddingValues(
@@ -187,36 +168,39 @@ fun HomeScreen(
                 onOpen = {},
                 onCurrencyClick = {},
             )
-            QuickActionsRow(
-                onAddAsset = {
-                    showNewAssetScreen = true
-                },
-                onGoToCalendar = {
-                    onGoToCalendar()
-                },
-                onGoToNews = {
-                    onGoToNews()
-                },
-            )
-            AiInsightsCard(
-                title = "Unlock Insights",
-                subtitle = "Analyse Your Portfolio and grow with confidence",
-                onOpen = {}
-            )
-            Text("My assets", style = theme.typography.titleSmall)
 
-            LazyColumn(
-                modifier = Modifier,
-                verticalArrangement = Arrangement.spacedBy(theme.dimension.mediumSpacing)
+            UnlockPremiumSection(
+                title = "Smarter investing starts here",
+                subtitle = "See risk exposure, portfolio health, and actionable insights. All in one place.",
+                onOpen = {})
+            Row(
+                modifier = Modifier.fillMaxWidth().padding(start = theme.dimension.largeSpacing),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.SpaceBetween
             ) {
-                items(state.holdings) { item ->
-                    HoldingRow(
-                        modifier = Modifier,
-                        item = item,
-                        onClick = {
-                            onGoToAssetDetails(item.symbol)
-                        }
-                    )
+                Text("My assets", style = theme.typography.titleSmall)
+                IconWithContainer(
+                    icon = painterResource(Res.drawable.plus),
+                    onClick = { showNewAssetScreen = true })
+            }
+
+            GlassCard(
+            ) {
+
+                LazyColumn {
+                    items(state.holdings) { item ->
+                        HoldingRow(
+                            modifier = Modifier, item = item, onClick = {
+                                onGoToAssetDetails(item.symbol)
+                            })
+
+                        HorizontalDivider(
+                            modifier = Modifier.padding(horizontal = theme.dimension.veryLargeSpacing),
+                            thickness = 1.dp,
+                            color = theme.colors.border.copy(alpha = 0.5f)
+                        )
+                    }
+
                 }
 
             }
@@ -228,9 +212,7 @@ fun HomeScreen(
 // ---------- Header ----------
 @Composable
 fun HomeTopHeader(
-    userName: String,
-    modifier: Modifier = Modifier,
-    onSearch: () -> Unit = {}
+    userName: String, modifier: Modifier = Modifier, onSearch: () -> Unit = {}
 ) {
     Row(
         modifier = modifier.fillMaxWidth(),
@@ -243,11 +225,8 @@ fun HomeTopHeader(
             horizontalArrangement = Arrangement.spacedBy(theme.dimension.mediumSpacing)
         ) {
             Box(
-                modifier = Modifier
-                    .size(36.dp)
-                    .clip(CircleShape)
-                    .background(theme.colors.surface)
-                    .border(1.dp, theme.colors.greyScale.c40, CircleShape)
+                modifier = Modifier.size(36.dp).clip(CircleShape).background(theme.colors.surface)
+                    .border(1.dp, brush = borderGradient, CircleShape)
             )
 
             Column() {
@@ -267,15 +246,13 @@ fun HomeTopHeader(
         Row(horizontalArrangement = Arrangement.spacedBy(theme.dimension.mediumSpacing)) {
             IconWithContainer(
                 onClick = { /* scan */ },
-                Icons.Rounded.Notifications,
-                contentDescription = "Scan",
+                painterResource(Res.drawable.calendar),
             )
             IconWithContainer(
                 onClick = {
                     onSearch()
                 },
-                Icons.Rounded.Search,
-                contentDescription = "Search",
+                painterResource(Res.drawable.search),
             )
         }
 
@@ -286,57 +263,85 @@ fun HomeTopHeader(
 @Composable
 fun IconWithContainer(
     onClick: () -> Unit = {},
-    icon: ImageVector,
-    contentDescription: String = "",
+    icon: Painter,
     containerColor: Color = theme.colors.container,
     modifier: Modifier = Modifier
 ) {
-    Box(
-        modifier = modifier.clip(CircleShape)
-            .background(containerColor)
-            .clickable {
-                onClick()
-            }
+    Card(
+        modifier = modifier,
+        shape = CircleShape,
+        onClick = onClick,
+        elevation = CardDefaults.cardElevation(0.dp),
+        border = borderStroke,
+        colors = CardDefaults.elevatedCardColors(containerColor = containerColor)
     ) {
-        Icon(
-            icon,
-            contentDescription = contentDescription,
-            modifier = Modifier.padding(theme.dimension.mediumSpacing)
-                .size(theme.dimension.iconSize)
-        )
+        Box(
+            modifier = Modifier.padding(theme.dimension.mediumSpacing),
+            contentAlignment = Alignment.Center
+        ) {
+            Icon(
+                icon,
+                contentDescription = "",
+                modifier = Modifier.size(theme.dimension.iconSize),
+                tint = theme.colors.onSurface
+            )
+
+        }
 
     }
+
 
 }
 
 @Composable
 fun IconWithContainerSmall(
     onClick: () -> Unit = {},
-    icon: ImageVector,
+    icon: Painter,
     contentDescription: String = "",
     containerColor: Color = theme.colors.surface,
     contentColor: Color = theme.colors.onSurface,
-    shape: Shape = RoundedCornerShape(theme.dimension.smallRadius),
     modifier: Modifier = Modifier
 ) {
-    Box(
-        modifier = modifier.clip(shape)
-            .background(containerColor)
-            .clickable {
-                onClick()
-            }
+    Surface(
+        modifier = modifier.clickable { onClick() },
+        shape = RoundedCornerShape(theme.dimension.smallRadius),
+        border = borderStroke,
+        color = containerColor,
     ) {
-        Icon(
-            icon,
-            contentDescription = contentDescription,
-            modifier = Modifier
-                .padding(6.dp)
-                .size(theme.dimension.smallIconSize),
-            tint = contentColor
-        )
+        Box(
+            modifier = Modifier.padding(theme.dimension.mediumSpacing),
+            contentAlignment = Alignment.Center
+        ) {
+            Icon(
+                icon,
+                contentDescription = contentDescription,
+                modifier = Modifier.size(theme.dimension.smallIconSize),
+                tint = contentColor
+            )
+
+        }
     }
 
 
+}
+
+@Composable
+fun GlassCard(
+    modifier: Modifier = Modifier,
+    containerColor: Color = theme.colors.container,
+    content: @Composable ColumnScope.() -> Unit
+) {
+    Box(modifier = modifier.clip(RoundedCornerShape(theme.dimension.defaultRadius))) {
+        Box(
+            modifier = modifier.matchParentSize().blur(radius = 1.dp)
+                .border(borderStroke, shape = RoundedCornerShape(theme.dimension.defaultRadius))
+                .background(containerColor),
+        )
+        Column {
+            content()
+        }
+
+    }
 }
 
 // ---------- Balance Card ----------
@@ -349,42 +354,43 @@ fun BalanceCard(
     onCurrencyClick: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    ElevatedCard(
+    GlassCard(
         modifier = modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(16.dp),
-        onClick = onOpen,
-        elevation = CardDefaults.cardElevation(0.dp),
-        colors = CardDefaults.elevatedCardColors(
-            containerColor = theme.colors.container
-        )
     ) {
         Column(
-            modifier = Modifier.padding(theme.dimension.largeSpacing),
+            modifier = Modifier.padding(theme.dimension.largeSpacing).background(Color.Transparent),
             verticalArrangement = Arrangement.spacedBy(theme.dimension.veryLargeSpacing)
         ) {
             Row(
                 verticalAlignment = Alignment.CenterVertically,
                 modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(theme.dimension.closeSpacing)
+                horizontalArrangement = Arrangement.SpaceBetween
             ) {
-                IconWithContainerSmall(
-                    onClick = {},
-                    icon = Icons.AutoMirrored.Rounded.ShowChart,
-                    contentDescription = "Balance",
-                )
-                Text(
-                    text = "Portfolio value",
-                    style = theme.typography.bodySmall,
-                    color = theme.colors.greyTextColor
-                )
-                Spacer(Modifier.weight(1f))
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(theme.dimension.mediumSpacing),
+                    modifier = Modifier
+                ) {
+                    IconWithContainerSmall(
+                        onClick = {},
+                        icon = painterResource(Res.drawable.trending_up),
+                        contentDescription = "Balance",
+                    )
+                    Text(
+                        text = "Portfolio value",
+                        style = theme.typography.bodySmall,
+                        color = theme.colors.greyTextColor
+                    )
+
+
+                }
                 IconWithContainerSmall(
                     {},
-                    icon = Icons.Rounded.NorthEast,
-                    containerColor = theme.colors.primary.c10,
-                    contentColor = theme.colors.primary.c50,
-                    shape = CircleShape
+                    icon = painterResource(Res.drawable.arrow_up_right),
+                    containerColor = theme.colors.primary.c50,
+                    contentColor = theme.colors.onPrimary,
                 )
+
             }
 
             Row(
@@ -426,8 +432,7 @@ fun BalanceCard(
             }
 
             Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween
+                modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween
             ) {
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
@@ -465,142 +470,111 @@ fun BalanceCard(
     }
 }
 
-// ---------- Quick actions ----------
-@Composable
-fun QuickActionsRow(
-    onAddAsset: () -> Unit,
-    onGoToCalendar: () -> Unit,
-    onGoToNews: () -> Unit,
-    modifier: Modifier = Modifier,
-) {
-    Row(
-        modifier = modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.spacedBy(theme.dimension.mediumSpacing)
-    ) {
-        QuickActionButton(
-            title = "Add asset",
-            icon = Icons.Rounded.Add,
-            onClick = onAddAsset,
-            modifier = Modifier.weight(1f)
-        )
-        QuickActionButton(
-            title = "Calendar",
-            icon = Icons.Rounded.CalendarToday,
-            onClick = onGoToCalendar,
-            modifier = Modifier.weight(1f)
-        )
-        QuickActionButton(
-            title = "News",
-            icon = Icons.Rounded.Newspaper,
-            onClick = onGoToNews,
-            modifier = Modifier.weight(1f)
-        )
-    }
-}
 
 @Composable
 fun QuickActionButton(
-    title: String,
-    icon: ImageVector,
-    onClick: () -> Unit,
-    modifier: Modifier = Modifier
+    icon: Painter, onClick: () -> Unit, modifier: Modifier = Modifier
 ) {
-    Column(
+    Card(
         modifier = modifier,
-        verticalArrangement = Arrangement.spacedBy(theme.dimension.mediumSpacing),
-        horizontalAlignment = Alignment.CenterHorizontally
+        shape = CircleShape,
+        onClick = onClick,
+        elevation = CardDefaults.cardElevation(0.dp),
+        border = BorderStroke(1.dp, brush = borderGradient),
+        colors = CardDefaults.elevatedCardColors(containerColor = theme.colors.onSurface)
     ) {
-        Card(
-            shape = CircleShape,
-            onClick = onClick,
-            elevation = CardDefaults.cardElevation(0.dp),
-            border = BorderStroke(2.dp, color = theme.colors.primary.c10),
-            colors = CardDefaults.elevatedCardColors(containerColor = theme.colors.primary.c50)
+        Box(
+            modifier = Modifier.padding(theme.dimension.largeSpacing),
+            contentAlignment = Alignment.Center
         ) {
-            Box(
-                modifier = Modifier.padding(theme.dimension.veryLargeSpacing),
-                contentAlignment = Alignment.Center
-            ) {
-                Icon(
-                    icon,
-                    contentDescription = title,
-                    modifier = Modifier.size(theme.dimension.iconSize),
-                    tint = theme.colors.greyTextColor
-                )
-
-            }
+            Icon(
+                icon,
+                contentDescription = "",
+                modifier = Modifier.size(theme.dimension.iconSize),
+                tint = theme.colors.onPrimary
+            )
         }
-        Text(
-            text = title,
-            style = theme.typography.bodySmallStrong,
-            maxLines = 1,
-            overflow = TextOverflow.Ellipsis
-        )
+
     }
 
 }
 
 val primaryGradient = Brush.linearGradient(
     colorStops = arrayOf(
-        0.0f to Color(0xFFFFBC42),
-        0.5f to Color(0xFFFFC653),
-        1.0f to Color(0xFFFFA904)
-    ),
-    start = Offset(0f, 0f),
-    end = Offset.Infinite
+        0.0f to Color(0xFFFFBC42), 0.5f to Color(0xFFFFC653), 1.0f to Color(0xFFFFA904)
+    ), start = Offset(0f, 0f), end = Offset.Infinite
 )
+
+val DarkBackgroundGradient = Brush.linearGradient(
+    colors = listOf(
+        Color(0xFF0F1F1A), // deep green-black
+        Color(0xFF132824), // muted emerald
+        Color(0xFF1B2F2B), // desaturated teal
+        Color(0xFF0B1412)  // near-black
+    ), start = Offset(0f, 0f), end = Offset.Infinite
+)
+
+val borderGradient = Brush.linearGradient(
+    colorStops = arrayOf(
+        0.0f to Color(0xFFFFFFFF).copy(alpha = 0.9f),
+        0.5f to Color(0xFFFFFFFF).copy(alpha = 0f),
+        1.0f to Color(0xFFFFFFFF).copy(alpha = 0.9f)
+    ), start = Offset(-500f, 1000f), end = Offset(1500f, -100f)
+)
+
+val borderStroke = BorderStroke(1.dp, brush = borderGradient)
 
 // ---------- AI Insights ----------
 @Composable
-fun AiInsightsCard(
+fun UnlockPremiumSection(
     title: String,
     subtitle: String,
     onOpen: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    Surface(
-        modifier = modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(
-            theme.dimension.defaultRadius
-        ),
-        border = BorderStroke(1.dp, color = theme.colors.primary.c10),
-        onClick = onOpen,
-        color = theme.colors.primary.c20,
-
-        ) {
-
-        Row(
-            modifier = Modifier.padding(theme.dimension.largeSpacing),
-            verticalAlignment = Alignment.Top,
-            horizontalArrangement = Arrangement.SpaceBetween
-        ) {
-            Column(
-                modifier = Modifier.weight(1f),
-                verticalArrangement = Arrangement.spacedBy(theme.dimension.mediumSpacing)
-            ) {
-                Text(title, style = theme.typography.titleSmall)
-                Text(
-                    subtitle,
-                    style = theme.typography.bodySmall,
-                    color = theme.colors.onSurface
-                )
-                SmallButton(
-                    text = "Show me",
-                    contentColor = theme.colors.onSurface,
-                    border = true,
-                    borderColor = theme.colors.primary.c10
-                )
-            }
+    GlassCard(
+        containerColor = theme.colors.primary.c20
+    ) {
+        Box(contentAlignment = Alignment.BottomEnd) {
             Icon(
-                painter = painterResource(Res.drawable.ic_analyse_finance),
-                contentDescription = null,
-                tint = theme.colors.onSurface,
-                modifier = Modifier
-                    .size(theme.dimension.largeIconSize * 2).wrapContentWidth()
+                painterResource(Res.drawable.zigzag),
+                modifier = Modifier.size(theme.dimension.largeIconSize * 4).padding(theme.dimension.veryLargeSpacing),
+                contentDescription = "",
+                tint = theme.colors.onSurface
             )
+            Row(
+                modifier = Modifier.padding(theme.dimension.largeSpacing),
+                verticalAlignment = Alignment.Top,
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
+                Column(
+                    modifier = Modifier.weight(1f),
+                    verticalArrangement = Arrangement.spacedBy(theme.dimension.largeSpacing)
+                ) {
+                    Text(
+                        title,
+                        style = theme.typography.titleSmall
+                    )
 
-            Spacer(Modifier.width(12.dp))
+                    Text(
+
+                        subtitle,
+                        style = theme.typography.bodySmallMedium,
+                        color = theme.colors.onSurface,
+                        modifier = Modifier.fillMaxWidth(0.7f)
+                    )
+                    SmallButton(
+                        text = "Show me",
+                        contentColor = theme.colors.onSurface,
+                        border = true,
+                        iconPosition = IconPosition.TRAILING,
+                        iconPainter = painterResource(Res.drawable.arrow_up_right),
+                        backgroundColor = theme.colors.primary.c50,
+                    )
+                }
+            }
         }
+
     }
 }
 
@@ -618,22 +592,17 @@ fun HomeTabs(
         containerColor = Color.Transparent,
         edgePadding = 0.dp,
         divider = {},
-        indicator = {}
-    ) {
+        indicator = {}) {
         tabs.forEach { tab ->
             val isSelected = tab == selected
-            Tab(
-                selected = isSelected,
-                onClick = { onSelect(tab) },
-                text = {
-                    Text(
-                        tab.label,
-                        style = theme.typography.bodySmall,
-                        fontWeight = if (isSelected) FontWeight.SemiBold else FontWeight.Normal,
-                        color = if (isSelected) theme.colors.onSurface else theme.colors.greyTextColor
-                    )
-                }
-            )
+            Tab(selected = isSelected, onClick = { onSelect(tab) }, text = {
+                Text(
+                    tab.label,
+                    style = theme.typography.bodySmall,
+                    fontWeight = if (isSelected) FontWeight.SemiBold else FontWeight.Normal,
+                    color = if (isSelected) theme.colors.onSurface else theme.colors.greyTextColor
+                )
+            })
         }
     }
 }
@@ -645,87 +614,79 @@ fun HoldingRow(
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    Card(
-        modifier = modifier.fillMaxWidth(),
-        onClick = onClick,
-        elevation = CardDefaults.cardElevation(0.dp),
-        colors = CardDefaults.elevatedCardColors(containerColor = theme.colors.onPrimary),
-        shape = RoundedCornerShape(theme.dimension.defaultRadius)
-    ) {
-        Row(
-            modifier = Modifier.fillMaxWidth().padding(theme.dimension.largeSpacing),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(theme.dimension.mediumSpacing)
+    Row(modifier = modifier.fillMaxWidth().clickable { onClick() }
+        .padding(theme.dimension.largeSpacing),
+        verticalAlignment = Alignment.Top,
+        horizontalArrangement = Arrangement.spacedBy(theme.dimension.mediumSpacing)) {
+        // Icon placeholder
+        Box(
+            modifier = Modifier.border(
+                1.dp,
+                brush = borderGradient,
+                shape = RoundedCornerShape(theme.dimension.defaultRadius)
+            ).clip(RoundedCornerShape(theme.dimension.defaultRadius))
+                .background(theme.colors.surface), contentAlignment = Alignment.Center
         ) {
-            // Icon placeholder
-            Box(
-                modifier = Modifier
-                    .clip(CircleShape)
-                    .background(theme.colors.surface)
-                    .border(1.dp,theme.colors.surface, shape = CircleShape)
-                    .size(48.dp)
-                ,
-                contentAlignment = Alignment.Center
-            ) {
-                AsyncImage(
-                    modifier = Modifier.fillMaxSize(),
-                    model = item.logoUrl,
-                    contentDescription = null,
-                    contentScale = ContentScale.Crop,
-
-                )
-            }
-            Column(
-                modifier = Modifier.weight(1f),
-                verticalArrangement = Arrangement.spacedBy(theme.dimension.mediumSpacing)
-            ) {
-                Text(
-                    modifier = Modifier.wrapContentWidth(),
-                    text = item.name,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                    style = theme.typography.bodyMediumMedium,
-                )
-                AssetCategoryChip(
-                    modifier = Modifier.wrapContentWidth(),
-                    assetClass = item.assetClass
-                )
+            AsyncImage(
+                modifier = Modifier.size(52.dp),
+                model = item.logoUrl,
+                contentDescription = null,
+                contentScale = ContentScale.Crop,
+            )
+        }
+        Column(
+            modifier = Modifier.weight(1f),
+            verticalArrangement = Arrangement.spacedBy(theme.dimension.mediumSpacing),
+        ) {
+            Text(
+                modifier = Modifier.wrapContentWidth(),
+                text = item.name,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+                style = theme.typography.bodyMediumStrong,
+            )
+            Text(
+                text = item.symbol
+            )
+//            AssetCategoryChip(
+//                modifier = Modifier.wrapContentWidth(), assetClass = item.assetClass
+//            )
 
 //                Text(
 //                    text = "Min ${"%.2f".format(item.dayLow)}   Max ${"%.2f".format(item.dayHigh)}",
 //                    style = theme.typography.bodySmall,
 //                    color = theme.colors.onSurface
 //                )
-            }
-
-
-            Column(
-                horizontalAlignment = Alignment.End,
-                verticalArrangement = Arrangement.spacedBy(theme.dimension.mediumSpacing)
-            ) {
-                Text(
-                    text = "%.2f".format(item.price),
-                    style = theme.typography.bodyMediumStrong,
-                )
-                val changeText =
-                    (if (item.changePct >= 0) "+" else "") + "%.2f".format(item.changePct) + "%"
-                Text(
-                    text = changeText,
-                    style = theme.typography.bodyMediumMedium,
-                    color = if (item.changePct >= 0) theme.colors.greenScale.c50 else theme.colors.error
-                )
-            }
         }
+
+
+        Column(
+            horizontalAlignment = Alignment.End,
+            verticalArrangement = Arrangement.spacedBy(theme.dimension.mediumSpacing)
+        ) {
+            Text(
+                text = "%.2f".format(item.price),
+                style = theme.typography.bodyMediumStrong,
+            )
+            val changeText =
+                (if (item.changePct >= 0) "+" else "") + "%.2f".format(item.changePct) + "%"
+            Text(
+                text = changeText,
+                style = theme.typography.bodyMediumMedium,
+                color = if (item.changePct >= 0) theme.colors.greenScale.c50 else theme.colors.error
+            )
+        }
+
     }
 }
 
 @Composable
 fun RowScope.BottomNavigationItem(icon: ImageVector, selected: Boolean, onClick: () -> Unit = {}) {
 
-    var color =
+    val color =
         animateColorAsState(if (selected) theme.colors.onSurface else theme.colors.greyScale.c50)
 
-    var containerColor =
+    val containerColor =
         animateColorAsState(if (selected) theme.colors.primary.c50 else Color.Transparent)
 
     Surface(
@@ -770,32 +731,24 @@ fun HomeBottomBar(
             verticalAlignment = Alignment.CenterVertically
         ) {
             BottomNavigationItem(
-                selected = selectedTab == BottomNavItem.HOME,
-                onClick = {
+                selected = selectedTab == BottomNavItem.HOME, onClick = {
                     selectedTab = BottomNavItem.HOME
-                },
-                icon = Icons.Rounded.Home
+                }, icon = Icons.Rounded.Home
             )
             BottomNavigationItem(
-                selected = selectedTab == BottomNavItem.STATS,
-                onClick = {
+                selected = selectedTab == BottomNavItem.STATS, onClick = {
                     selectedTab = BottomNavItem.STATS
-                },
-                icon = Icons.Rounded.Equalizer
+                }, icon = Icons.Rounded.Equalizer
             )
             BottomNavigationItem(
-                selected = selectedTab == BottomNavItem.SWAP,
-                onClick = {
+                selected = selectedTab == BottomNavItem.SWAP, onClick = {
                     selectedTab = BottomNavItem.SWAP
-                },
-                icon = Icons.Rounded.SwapHoriz
+                }, icon = Icons.Rounded.SwapHoriz
             )
             BottomNavigationItem(
-                selected = selectedTab == BottomNavItem.ACCOUNT,
-                onClick = {
+                selected = selectedTab == BottomNavItem.ACCOUNT, onClick = {
                     selectedTab = BottomNavItem.ACCOUNT
-                },
-                icon = Icons.Rounded.PersonOutline
+                }, icon = Icons.Rounded.PersonOutline
             )
 
         }
@@ -845,9 +798,7 @@ fun AssetCategoryChip(modifier: Modifier = Modifier, assetClass: AssetClass) {
 }
 
 enum class AssetClass {
-    STOCK,
-    REAL_ESTATE,
-    CRYPTO,
+    STOCK, REAL_ESTATE, CRYPTO,
 
 }
 

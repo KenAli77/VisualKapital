@@ -17,13 +17,22 @@ import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.rounded.ArrowBack
+import androidx.compose.material.icons.filled.CalendarToday
 import androidx.compose.material.icons.filled.Visibility
 import androidx.compose.material.icons.filled.VisibilityOff
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.DatePicker
+import androidx.compose.material3.DatePickerDefaults
+import androidx.compose.material3.DatePickerDialog
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
+import androidx.compose.material3.SelectableDates
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
+import androidx.compose.material3.rememberDatePickerState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -42,16 +51,31 @@ import androidx.compose.ui.graphics.painter.Painter
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.semantics.contentType
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.text.TextGranularity.Companion.Character
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.VisualTransformation
+import androidx.compose.ui.text.intl.Locale
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import com.example.visualmoney.LocalAppTheme
 import com.example.visualmoney.greyTextColor
+import com.example.visualmoney.home.GlassCard
 import com.example.visualmoney.home.IconWithContainer
-import com.example.visualmoney.home.primaryGradient
+import com.example.visualmoney.home.borderGradient
+import com.example.visualmoney.home.borderStroke
 import com.example.visualmoney.home.theme
+import kotlinx.datetime.LocalDate
+import kotlinx.datetime.LocalDateTime
+import kotlinx.datetime.TimeZone
+import kotlinx.datetime.format
+import kotlinx.datetime.format.char
+import kotlinx.datetime.toLocalDateTime
+import org.jetbrains.compose.resources.painterResource
+import visualmoney.composeapp.generated.resources.Res
+import visualmoney.composeapp.generated.resources.arrow_back
+import kotlin.time.Clock
+import kotlin.time.Instant
 
 
 // ---------- Top bar ----------
@@ -69,8 +93,7 @@ fun TopNavigationBar(
     ) {
         IconWithContainer(
             onClick = onBack,
-            icon = Icons.AutoMirrored.Rounded.ArrowBack,
-            contentDescription = "Back",
+            icon = painterResource(Res.drawable.arrow_back),
             containerColor = theme.colors.container
         )
         Column {
@@ -125,10 +148,7 @@ fun InputTextField(
         .then(
             if (!readOnly || borderAlwaysVisible) {
                 Modifier.border(
-                    border = BorderStroke(
-                        width = 1.dp,
-                        color = if (error) theme.colors.error else theme.colors.border
-                    ),
+                    border = borderStroke,
                     shape = RoundedCornerShape(theme.dimension.defaultRadius)
                 )
             } else {
@@ -137,9 +157,6 @@ fun InputTextField(
         )
         .padding(horizontal = 12.dp, vertical = 10.dp)
 
-    /**
-     * Texfields on IOS are buggy if values are not updated within the child component
-     */
     var localValue by remember { mutableStateOf("") }
     LaunchedEffect(value) {
         if (!localValue.equals(value)) {
@@ -169,9 +186,10 @@ fun InputTextField(
 
         }
 
-        Box(
-            modifier = boxModifier
-        ) {
+        GlassCard{
+            Box(contentAlignment = Alignment.CenterStart,modifier = boxModifier) {
+
+
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 verticalAlignment = Alignment.CenterVertically
@@ -193,6 +211,7 @@ fun InputTextField(
                     modifier = fieldModifier.weight(1f).semantics {
                         if (contentType != null) this.contentType = contentType
                     },
+
                     maxLines = 1,
                     singleLine = true,
                     keyboardActions = keyboardActions,
@@ -250,6 +269,7 @@ fun InputTextField(
                     style = theme.typography.bodyMedium,
                     color = theme.colors.greyScale.c50
                 )
+            }
             }
         }
 
@@ -316,7 +336,7 @@ fun SmallButton(
             if (enabled) onClick()
         },
         shape = RoundedCornerShape(radius),
-        border = if (border) BorderStroke(1.dp, borderTint) else null,
+        border = if (border) BorderStroke(1.dp, brush = borderGradient) else null,
         color = if (enabled) backgroundColor else theme.colors.greyScale.c20
     ) {
         Box(
@@ -413,7 +433,7 @@ fun BaseButton(
             )
             .background(backgroundBrush, shape),
         shape = shape,
-        border = if (border) BorderStroke(2.dp, brush = primaryGradient) else null,
+        border = if (border) BorderStroke(1.dp, brush = borderGradient) else null,
         color = Color.Transparent,
         contentColor = contentColor.copy(alpha = contentAlpha),
     ) {
@@ -468,3 +488,148 @@ private fun IconComposable(
         )
     }
 }
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun DateInputTextField(
+    modifier: Modifier = Modifier,
+    placeholder: String = "",
+    label: String = "",
+    error: Boolean = false,
+    value: LocalDate?,
+    onValueChange: (LocalDate) -> Unit
+) {
+    var showDatePicker by remember { mutableStateOf(false) }
+
+    val theme = LocalAppTheme.current
+    val dateState = rememberDatePickerState()
+
+    LaunchedEffect(Unit) {
+        if (value == null) {
+            dateState.selectedDateMillis = Clock.System.now().toEpochMilliseconds()
+        }
+    }
+
+    fun openDatePicker() {
+        showDatePicker = true
+    }
+
+    // Displayed TextField using your InputTextField
+    InputTextField(
+        label = label,
+        value = value?.toSimpleDateString() ?: "",
+        placeholder = placeholder,
+        onValueChange = {},
+        readOnly = true,
+        error = error,
+        trailingIcon = {
+            Icon(
+                imageVector = Icons.Default.CalendarToday,
+                contentDescription = "Pick a date",
+                tint = theme.colors.greyScale.c70
+            )
+        },
+        modifier = modifier.clickable { openDatePicker() }
+    )
+
+
+    if (showDatePicker) {
+        //  DatePickerModal()
+
+        DatePickerDialog(
+            onDismissRequest = { showDatePicker = false },
+            shape = RoundedCornerShape(theme.dimension.veryLargeRadius),
+            colors = DatePickerDefaults.colors(
+                containerColor = theme.colors.greyScale.c10,
+                titleContentColor = theme.colors.primary.c50,
+                headlineContentColor = theme.colors.primary.c50,
+
+                ),
+            dismissButton = {
+                TextButton(
+//                    colors = ButtonDefaults.textButtonColors(
+//                        containerColor = theme.colors.greyScale.c10,
+//                        contentColor = theme.colors.primary.c50
+//                    ),
+                    onClick = {
+                        showDatePicker = false
+                    }
+                ) {
+                    Text("Cancel", color = theme.colors.onSurface)
+                }
+
+            },
+            confirmButton = {
+                TextButton(
+                    colors = ButtonDefaults.textButtonColors(
+                        containerColor = theme.colors.greyScale.c10,
+                        contentColor = theme.colors.primary.c50
+                    ),
+                    onClick = {
+                        showDatePicker = false
+                        dateState.selectedDateMillis?.let {
+                            val instant = Instant.fromEpochMilliseconds(it)
+                            val date = instant.toLocalDateTime(TimeZone.currentSystemDefault())
+                            onValueChange(date.date)
+                        }
+                    }
+                ) {
+                    Text("OK", color = theme.colors.blueScale.c50)
+                }
+            },
+
+            ) {
+            DatePicker(
+                dateFormatter = DatePickerDefaults.dateFormatter(
+                    selectedDateSkeleton = "dd MMM, yyyy",
+                ),
+
+                colors = DatePickerDefaults.colors(
+                    containerColor = theme.colors.greyScale.c10,
+                    titleContentColor = theme.colors.onSurface,
+                    navigationContentColor = theme.colors.onSurface,
+                    headlineContentColor = theme.colors.onSurface,
+                    selectedDayContainerColor = theme.colors.onSurface,
+                    selectedDayContentColor = Color.White,
+                    todayDateBorderColor = theme.colors.onSurface,
+                    todayContentColor = theme.colors.onSurface,
+                    dividerColor = theme.colors.onSurface,
+                ),
+
+                state = dateState,
+
+                //    title = { Text("Select Date") },
+
+            )
+        }
+    }
+}
+
+@Composable
+fun ListDivider(modifier:Modifier = Modifier){
+    HorizontalDivider(
+        modifier = modifier.padding(horizontal = theme.dimension.veryLargeSpacing),
+        thickness = 1.dp,
+        color = theme.colors.border.copy(alpha = 0.5f)
+    )
+}
+val now = Clock.System.now().toLocalDateTime(TimeZone.currentSystemDefault())
+
+fun LocalDate.toSimpleDateString(): String {
+    val formatter = LocalDate.Format {
+        dayOfMonth()
+        char('/')
+        monthNumber()
+        char('/')
+        year()
+    }
+    return this.format(formatter)
+}
+
+
+fun Long.toLocalDateTime(): LocalDateTime {
+    return Instant.fromEpochMilliseconds(this).toLocalDateTime(TimeZone.currentSystemDefault())
+}
+
+expect fun getCountries(): List<Country>
+data class Country(val countryCode: String = "", val displayText: String = "")
+

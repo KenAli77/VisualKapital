@@ -65,6 +65,12 @@ import com.example.visualmoney.greyTextColor
 import com.example.visualmoney.home.IconWithContainer
 import com.example.visualmoney.home.IconWithContainerSmall
 import com.example.visualmoney.home.format
+import org.jetbrains.compose.resources.painterResource
+import visualmoney.composeapp.generated.resources.Res
+import visualmoney.composeapp.generated.resources.arrow_back
+import visualmoney.composeapp.generated.resources.arrow_up_right
+import visualmoney.composeapp.generated.resources.plus
+import visualmoney.composeapp.generated.resources.trash
 import kotlin.math.max
 
 private val theme @Composable get() = LocalAppTheme.current
@@ -197,8 +203,7 @@ private fun AssetTopBar(
         ) {
             IconWithContainer(
                 onClick = onBack,
-                icon = Icons.Rounded.ArrowBack,
-                contentDescription = "Back",
+                icon = painterResource(Res.drawable.arrow_back),
                 containerColor = theme.colors.container
             )
 
@@ -219,8 +224,7 @@ private fun AssetTopBar(
 
         IconWithContainer(
             onClick = onPrimaryAction,
-            icon = if (inPortfolio) Icons.Rounded.DeleteOutline else Icons.Rounded.Add,
-            contentDescription = if (inPortfolio) "Remove from portfolio" else "Add to portfolio",
+            icon = painterResource(if (inPortfolio) Res.drawable.trash else Res.drawable.plus),
             containerColor = if (inPortfolio) theme.colors.container else theme.colors.primary.c50
         )
     }
@@ -310,11 +314,10 @@ private fun PriceAndChartCard(
 
                 IconWithContainerSmall(
                     onClick = {},
-                    icon = Icons.Rounded.NorthEast,
+                    icon = painterResource(Res.drawable.arrow_up_right),
                     contentDescription = "Open",
                     containerColor = theme.colors.primary.c50,
                     contentColor = theme.colors.onSurface,
-                    shape = CircleShape
                 )
             }
 

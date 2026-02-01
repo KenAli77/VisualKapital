@@ -9,11 +9,12 @@ data class AppColors(
     var error:Color = Color(0xFFc1121f),
     val warning:Color = Color(0xFFf9a340),
     val primaryShadow: Color,
-    val surface:Color = Color(0xFFF8F8F8),
+    val surface:Color = Color(0xFFfaf9f9),
+//    val surface:Color = Color(0xFF1a1a1a),
     val container:Color = Color.White,
     val blueScale:ColorVariants,
     val greenScale:ColorVariants = GreenScaleVariants,
-    val onPrimary:Color = Color.White,
+    val onPrimary:Color = Color(0XFFfffffc),
     val onSurface:Color = Color.Black,
     val border: Color = GreyScaleVariants.c20
 
@@ -78,6 +79,24 @@ val PrimaryVariants = ColorVariants(
     c90 = Color(0xFF33280F), // ~20% base + 80% black
     c100 = Color(0xFF191407) // ~10% base + 90% black
 )
+
+//val PrimaryVariants = ColorVariants(
+//    // Tints (base + white)
+//    c10  = Color(0xFFFFF2F6), // ~95% white
+//    c20  = Color(0xFFFAD0DB), // ~75% white
+//    c30  = Color(0xFFF2A7BB), // ~55% white
+//    c40  = Color(0xFFE06C8F), // ~30% white
+//
+//    // Base
+//    c50  = Color(0xFFC1254C), // base primary
+//
+//    // Shades (base + black)
+//    c60  = Color(0xFFA11F40), // ~15% black
+//    c70  = Color(0xFF7E1832), // ~35% black
+//    c80  = Color(0xFF5C1224), // ~55% black
+//    c90  = Color(0xFF3A0B16), // ~75% black
+//    c100 = Color(0xFF1F050B)  // ~90% black
+//)
 
 // For greyScale we’ll use your background and text colors plus intermediates,
 // following a scheme similar to Bootstrap’s greys.

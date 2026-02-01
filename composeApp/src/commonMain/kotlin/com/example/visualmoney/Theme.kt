@@ -72,7 +72,7 @@ fun appTypography(): AppTypography {
             fontFamily = primaryFont,
             fontSize = 31.sp,
             fontWeight = FontWeight.Medium,
-            lineHeight = 31.sp
+            lineHeight = 31.sp,
         ),
         titleSmallMedium = TextStyle(
             fontFamily = primaryFont,
