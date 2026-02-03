@@ -15,7 +15,7 @@ data class AppColors(
     val blueScale:ColorVariants,
     val greenScale:ColorVariants = GreenScaleVariants,
     val onPrimary:Color = Color(0XFFfffffc),
-    val onSurface:Color = Color.Black,
+    val onSurface:Color = Color(0XFF03071e),
     val border: Color = GreyScaleVariants.c20
 
 )

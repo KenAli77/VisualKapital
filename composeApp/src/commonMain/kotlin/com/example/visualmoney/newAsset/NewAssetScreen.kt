@@ -1,7 +1,6 @@
 package com.example.visualmoney.newAsset
 
 import androidx.compose.animation.AnimatedContent
-import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -9,22 +8,27 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.rounded.Check
 import androidx.compose.material.icons.rounded.EuroSymbol
+import androidx.compose.material.icons.rounded.KeyboardArrowDown
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.ModalBottomSheet
+import androidx.compose.material3.SecondaryTabRow
 import androidx.compose.material3.SheetState
 import androidx.compose.material3.Surface
+import androidx.compose.material3.Tab
+import androidx.compose.material3.TabRowDefaults
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -33,38 +37,39 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.text.input.KeyboardType
+import com.example.visualmoney.AssetType
+import com.example.visualmoney.AssetTypeSelector
 import com.example.visualmoney.ExploreTab
-import com.example.visualmoney.ExploreTabsRow
+import com.example.visualmoney.LocalCountries
 import com.example.visualmoney.SearchBar
 import com.example.visualmoney.SearchResultRow
-import com.example.visualmoney.SearchResultRowUi
 import com.example.visualmoney.SortMode
 import com.example.visualmoney.calendar.now
 import com.example.visualmoney.core.Country
 import com.example.visualmoney.core.DateInputTextField
-import com.example.visualmoney.core.IconPosition
 import com.example.visualmoney.core.InputTextField
-import com.example.visualmoney.core.LargeButton
 import com.example.visualmoney.core.ListDivider
 import com.example.visualmoney.core.TopNavigationBar
-import com.example.visualmoney.core.getCountries
 import com.example.visualmoney.greyTextColor
 import com.example.visualmoney.home.GlassCard
 import com.example.visualmoney.home.format
 import com.example.visualmoney.home.theme
+import com.example.visualmoney.newAsset.event.ListedAssetInputEvent
 import com.example.visualmoney.newAsset.event.ManualAssetInputEvent
-import com.example.visualmoney.sampleSearchResults
+import com.example.visualmoney.newAsset.state.ListedAssetInputState
 import kotlinx.datetime.LocalDate
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun NewAssetScreen(
     sheetState: SheetState,
+    viewModel: NewAssetViewModel,
     onBack: () -> Unit = {},
     modifier: Modifier = Modifier,
 ) {
-    var selectedTab by remember { mutableStateOf(ExploreTab.STOCKS) }
+    var selectedTab by remember { mutableStateOf(AssetType.LISTED) }
     ModalBottomSheet(
         modifier = modifier,
         sheetState = sheetState,
@@ -74,8 +79,7 @@ fun NewAssetScreen(
     ) {
         Surface(color = theme.colors.surface) {
             Box(
-                modifier = Modifier.fillMaxSize()
-                    .padding(theme.dimension.pagePadding),
+                modifier = Modifier.fillMaxSize().padding(theme.dimension.pagePadding),
                 contentAlignment = Alignment.BottomCenter
             ) {
                 Column(
@@ -87,26 +91,29 @@ fun NewAssetScreen(
                         subtitle = "Add a new asset to your portfolio",
                         onBack = onBack
                     )
-                    ExploreTabsRow(
-                        selected = selectedTab,
-                        onSelect = { selectedTab = it }
-                    )
+                    AssetTypeSelector(selected = selectedTab, onSelect = {
+                        selectedTab = it
+                    })
                     AnimatedContent(selectedTab) { tab ->
                         when (tab) {
-                            ExploreTab.STOCKS -> SearchStocksScreen()
-                            ExploreTab.CRYPTO -> Surface { }
-                            ExploreTab.FIXED -> ManualAssetInputScreen()
+                            AssetType.LISTED -> SearchStocksScreen(
+                                state = viewModel.listedAssetInputState,
+                                onEvent = { viewModel.onListedAssetInputEvent(it) })
+
+                            AssetType.UNLISTED -> ManualAssetInputScreen(
+                                state = viewModel.manualAssetInputState,
+                                onEvent = { viewModel.onFixedAssetInputEvent(it) })
                         }
                     }
                     Spacer(modifier = Modifier.height(theme.dimension.veryLargeSpacing * 3))
                 }
-                LargeButton(
-                    modifier = Modifier.padding(bottom = theme.dimension.veryLargeSpacing),
-                    text = "Save asset",
-                    iconVector = Icons.Rounded.Check,
-                    iconPosition = IconPosition.TRAILING,
-                    onClick = {},
-                )
+//                LargeButton(
+//                    modifier = Modifier.padding(bottom = theme.dimension.veryLargeSpacing),
+//                    text = "Save asset",
+//                    iconVector = Icons.Rounded.Check,
+//                    iconPosition = IconPosition.TRAILING,
+//                    onClick = {},
+//                )
 
             }
         }
@@ -118,21 +125,18 @@ data class ManualAssetInputState(
     val name: String = "",
 
     // Keep TextField-friendly values as Strings
-    val quantityText: String = "1",
-    val unitPriceText: String = "",
+    val quantityText: String = "1", val unitPriceText: String = "",
 
     val purchaseDate: LocalDate = LocalDate.now(),
 
     // Optional MVP fields that enable future diversification analysis
-    val country: Country = Country("",""), // e.g. "US", "ES" (optional)
+    val country: Country = Country("", ""), // e.g. "US", "ES" (optional)
     val sector: String = "",  // e.g. "Real Estate" (optional)
 
     // Derived (computed) values for UI display / save button enablement
-    val computedTotalValue: Double = 0.0,
-    val canSubmit: Boolean = false,
-    val error: String? = null
+    val computedTotalValue: Double = 0.0, val canSubmit: Boolean = false, val error: String? = null
 
-    )
+)
 
 @Composable
 fun ManualAssetInputScreen(
@@ -151,8 +155,7 @@ fun ManualAssetInputScreen(
             label = "Name",
             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Text),
             value = state.name,
-            onValueChange = { onEvent(ManualAssetInputEvent.NameChanged(it)) }
-        )
+            onValueChange = { onEvent(ManualAssetInputEvent.NameChanged(it)) })
 
         Row(horizontalArrangement = Arrangement.spacedBy(theme.dimension.mediumSpacing)) {
             InputTextField(
@@ -160,8 +163,7 @@ fun ManualAssetInputScreen(
                 label = "Quantity",
                 value = state.quantityText,
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                onValueChange = { onEvent(ManualAssetInputEvent.QuantityChanged(it)) }
-            )
+                onValueChange = { onEvent(ManualAssetInputEvent.QuantityChanged(it)) })
 
             InputTextField(
                 modifier = Modifier.weight(1f),
@@ -177,8 +179,7 @@ fun ManualAssetInputScreen(
                     )
                 },
                 value = state.unitPriceText,
-                onValueChange = { onEvent(ManualAssetInputEvent.UnitPriceChanged(it)) }
-            )
+                onValueChange = { onEvent(ManualAssetInputEvent.UnitPriceChanged(it)) })
         }
 
         // Quick polish: computed total
@@ -193,30 +194,40 @@ fun ManualAssetInputScreen(
                     modifier = Modifier.size(theme.dimension.smallIconSize)
                 )
             },
-            onValueChange = {}
-        )
-        Row(modifier = Modifier.clickable {
-             expanded = true
-        }) {
+            onValueChange = {})
+        Row(
+            modifier = Modifier.fillMaxWidth().clickable {
+                expanded = true
+            },
+            horizontalArrangement = Arrangement.Center,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
             InputTextField(
                 readOnly = true,
                 label = "Country",
-                value = state.country.displayText
-            )
+                value = state.country.displayText,
+                placeholder = "Choose a country..",
+                trailingIcon = {
+                    Icon(
+                        Icons.Rounded.KeyboardArrowDown,
+                        contentDescription = null,
+                        tint = theme.colors.greyTextColor,
+                        modifier = Modifier.size(theme.dimension.smallIconSize)
+                    )
+                })
             DropdownMenu(
                 expanded = expanded,
+                containerColor = theme.colors.surface,
+                shape = RoundedCornerShape(theme.dimension.defaultRadius),
                 onDismissRequest = { expanded = false },
             ) {
-                getCountries().forEach { code ->
+                LocalCountries.current.forEach { code ->
                     DropdownMenuItem(
-                        text = { Text(code.displayText) },
+                        text = { Text(code.displayText, style = theme.typography.bodySmallMedium) },
                         onClick = {
-//                        onPhoneNumberChange(
-//                            phoneNumber.copy(countryCode = code)
-//                        )
+                            onEvent(ManualAssetInputEvent.CountryChanged(code))
                             expanded = false
-                        }
-                    )
+                        })
                 }
             }
 
@@ -225,8 +236,7 @@ fun ManualAssetInputScreen(
         DateInputTextField(
             label = "Purchase date",
             value = state.purchaseDate,
-            onValueChange = { onEvent(ManualAssetInputEvent.PurchaseDateChanged(it)) }
-        )
+            onValueChange = { onEvent(ManualAssetInputEvent.PurchaseDateChanged(it)) })
 
         // Optional MVP fields (can hide behind "Advanced" expand later)
         // InputTextField(label="Country", value=state.country, onValueChange={ onEvent(FixedAssetInputEvent.CountryChanged(it)) })
@@ -238,54 +248,62 @@ fun ManualAssetInputScreen(
         }
 
 
-
     }
 }
 
 @Composable
 fun SearchStocksScreen(
-    results: List<SearchResultRowUi> = sampleSearchResults(),
-) {
-    var query by remember { mutableStateOf("") }
-    var selectedTab by remember { mutableStateOf(ExploreTab.STOCKS) }
+    state: ListedAssetInputState, onEvent: (ListedAssetInputEvent) -> Unit = {}
+) = with(state) {
     var sortMode by remember { mutableStateOf(SortMode.TRENDING) }
-    var regionSelected by remember { mutableStateOf(false) }
-    var industrySelected by remember { mutableStateOf(false) }
 
-    val filtered = remember(query, selectedTab, results) {
-        results
-            .filter { it.assetType == selectedTab }
-            .filter {
-                if (query.isBlank()) true
-                else (it.name.contains(query, ignoreCase = true)
-                        || it.symbol.contains(query, ignoreCase = true))
-            }
-    }
-
-    val sorted = remember(filtered, sortMode) {
-        when (sortMode) {
-            SortMode.TRENDING -> filtered
-            SortMode.PRICE -> filtered // (keep as-is; you can sort by numeric price if you have it)
-            SortMode.CHANGE -> filtered.sortedByDescending { it.changePct }
-        }
-    }
     Column(
         modifier = Modifier,
         verticalArrangement = Arrangement.spacedBy(theme.dimension.largeSpacing),
     ) {
+        SecondaryTabRow(
+            selectedTabIndex = currentTab.ordinal,
+            modifier = Modifier.fillMaxWidth(),
+            contentColor = theme.colors.onSurface,
+            containerColor = theme.colors.surface,
+            divider = { ListDivider() },
+            indicator = {
+                TabRowDefaults.SecondaryIndicator(
+                    Modifier.tabIndicatorOffset(currentTab.ordinal, matchContentSize = false)
+                        .clip(RoundedCornerShape(theme.dimension.verySmallRadius)),
+                    color = theme.colors.primary.c50,
+                )
+            }
+        ) {
+            ExploreTab.entries.forEach { currentTab ->
+                Tab(selected = currentTab == currentTab, onClick = {
+                    onEvent(ListedAssetInputEvent.SectionSelected(currentTab))
+                }) {
+                    Row(
+                        modifier = Modifier.padding(vertical = theme.dimension.mediumSpacing),
+                        horizontalArrangement = Arrangement.spacedBy(theme.dimension.mediumSpacing),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(
+                            text = currentTab.label,
+                            style = theme.typography.bodyMediumMedium
+                        )
+                    }
+                }
+            }
+        }
         SearchBar(
             query = query,
-            onQueryChange = { query = it },
+            onQueryChange = { onEvent(ListedAssetInputEvent.QueryChanged(it)) },
             onSortClick = {
                 sortMode = when (sortMode) {
                     SortMode.TRENDING -> SortMode.PRICE
                     SortMode.PRICE -> SortMode.CHANGE
                     SortMode.CHANGE -> SortMode.TRENDING
                 }
-            }
-        )
+            })
         Text(
-            text = "Showing ${sorted.size} results",
+            text = "Showing ${results.size} results",
             style = theme.typography.bodySmall,
             color = theme.colors.onSurface
         )
@@ -293,14 +311,62 @@ fun SearchStocksScreen(
             LazyColumn(
                 modifier = Modifier
             ) {
-                itemsIndexed(sorted) { idx, row ->
+                itemsIndexed(results) { idx, row ->
                     SearchResultRow(
-                        item = row,
-                        onClick = {
+                        item = row, onClick = {
+                            onEvent(ListedAssetInputEvent.SymbolSelected(row.symbol))
+                        })
+                    if (idx != results.lastIndex) {
+                        ListDivider()
+                    }
+                }
+            }
+        }
+    }
 
-                        }
-                    )
-                    if (idx != sorted.lastIndex) {
+}
+
+@Composable
+fun SearchCryptoScreen(
+    state: ListedAssetInputState, onEvent: (ListedAssetInputEvent) -> Unit = {}
+) = with(state) {
+    var selectedTab by remember { mutableStateOf(ExploreTab.STOCKS) }
+    var sortMode by remember { mutableStateOf(SortMode.TRENDING) }
+    var regionSelected by remember { mutableStateOf(false) }
+    var industrySelected by remember { mutableStateOf(false) }
+    var localQuery by mutableStateOf("")
+
+
+    Column(
+        modifier = Modifier,
+        verticalArrangement = Arrangement.spacedBy(theme.dimension.largeSpacing),
+    ) {
+
+        SearchBar(
+            query = query,
+            onQueryChange = { onEvent(ListedAssetInputEvent.QueryChanged(it)) },
+            onSortClick = {
+                sortMode = when (sortMode) {
+                    SortMode.TRENDING -> SortMode.PRICE
+                    SortMode.PRICE -> SortMode.CHANGE
+                    SortMode.CHANGE -> SortMode.TRENDING
+                }
+            })
+        Text(
+            text = "Showing ${results.size} results",
+            style = theme.typography.bodySmall,
+            color = theme.colors.onSurface
+        )
+        GlassCard {
+            LazyColumn(
+                modifier = Modifier
+            ) {
+                itemsIndexed(results) { idx, row ->
+                    SearchResultRow(
+                        item = row, onClick = {
+                            onEvent(ListedAssetInputEvent.SymbolSelected(row.symbol))
+                        })
+                    if (idx != results.lastIndex) {
                         ListDivider()
                     }
                 }

@@ -9,6 +9,7 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.fillMaxSize
@@ -63,8 +64,10 @@ import com.example.visualmoney.core.IconPosition
 import com.example.visualmoney.core.SmallButton
 import com.example.visualmoney.greyTextColor
 import com.example.visualmoney.newAsset.NewAssetScreen
+import com.example.visualmoney.newAsset.NewAssetViewModel
 import kotlinx.coroutines.launch
 import org.jetbrains.compose.resources.painterResource
+import org.koin.compose.viewmodel.koinViewModel
 import visualmoney.composeapp.generated.resources.Res
 import visualmoney.composeapp.generated.resources.arrow_up_right
 import visualmoney.composeapp.generated.resources.calendar
@@ -122,11 +125,11 @@ fun HomeScreen(
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
     val newAssetSheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
     val scope = rememberCoroutineScope()
-
+    val newAssetViewModel = koinViewModel<NewAssetViewModel>()
     Scaffold(
         modifier = modifier.fillMaxSize(),
         containerColor = theme.colors.surface
-    ) {
+    ) { padding ->
         if (showSearch) {
             ExploreSearchScreen(sheetState = sheetState, onBack = {
                 scope.launch {
@@ -139,6 +142,7 @@ fun HomeScreen(
         if (showNewAssetScreen) {
             NewAssetScreen(
                 newAssetSheetState,
+                viewModel = newAssetViewModel,
                 onBack = {
                     scope.launch {
                         newAssetSheetState.hide()
@@ -151,12 +155,10 @@ fun HomeScreen(
 
         Column(
             modifier = Modifier.fillMaxSize().padding(theme.dimension.pagePadding)
-                .padding(top = theme.dimension.pagePadding),
+                .padding(
+                    padding
+                ),
             verticalArrangement = Arrangement.spacedBy(theme.dimension.largeSpacing),
-//            contentPadding = PaddingValues(
-//                top = theme.dimension.pagePadding,
-//                bottom = theme.dimension.pagePadding
-//            )
         ) {
             HomeTopHeader(userName = userName, onSearch = {
                 showSearch = true
@@ -186,7 +188,6 @@ fun HomeScreen(
 
             GlassCard(
             ) {
-
                 LazyColumn {
                     items(state.holdings) { item ->
                         HoldingRow(
@@ -333,11 +334,12 @@ fun GlassCard(
 ) {
     Box(modifier = modifier.clip(RoundedCornerShape(theme.dimension.defaultRadius))) {
         Box(
-            modifier = modifier.matchParentSize().blur(radius = 1.dp)
+            modifier = Modifier.matchParentSize().blur(radius = 1.dp)
                 .border(borderStroke, shape = RoundedCornerShape(theme.dimension.defaultRadius))
-                .background(containerColor),
+                .background(containerColor)
+            ,
         )
-        Column {
+        Column() {
             content()
         }
 
@@ -533,7 +535,7 @@ fun UnlockPremiumSection(
     modifier: Modifier = Modifier,
 ) {
     GlassCard(
-        containerColor = theme.colors.primary.c20
+        containerColor = theme.colors.primary.c30
     ) {
         Box(contentAlignment = Alignment.BottomEnd) {
             Icon(
@@ -625,7 +627,7 @@ fun HoldingRow(
                 brush = borderGradient,
                 shape = RoundedCornerShape(theme.dimension.defaultRadius)
             ).clip(RoundedCornerShape(theme.dimension.defaultRadius))
-                .background(theme.colors.surface), contentAlignment = Alignment.Center
+               , contentAlignment = Alignment.Center
         ) {
             AsyncImage(
                 modifier = Modifier.size(52.dp),

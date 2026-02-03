@@ -6,6 +6,7 @@ import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.sp
+import com.example.visualmoney.core.Country
 import org.jetbrains.compose.resources.Font
 import visualmoney.composeapp.generated.resources.Res
 import visualmoney.composeapp.generated.resources.Urbanist
@@ -156,3 +157,5 @@ fun appTheme(): VisualMoneyTheme {
 }
 
 val LocalAppTheme = compositionLocalOf<VisualMoneyTheme> { error("No AppTheme provided") }
+
+val LocalCountries = compositionLocalOf<List<Country>> { error("No Countries provided")}

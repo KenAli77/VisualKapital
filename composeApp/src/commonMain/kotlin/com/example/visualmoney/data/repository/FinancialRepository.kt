@@ -2,8 +2,10 @@ package com.example.visualmoney.data.repository
 
 import com.example.visualmoney.data.local.CachedQuoteDao
 import com.example.visualmoney.data.local.CachedQuoteEntity
+import com.example.visualmoney.data.local.SearchResult
 import com.example.visualmoney.data.local.toAsset
 import com.example.visualmoney.data.remote.FmpDataSource
+
 import com.example.visualmoney.domain.model.AssetProfile
 import com.example.visualmoney.domain.model.AssetQuote
 import com.example.visualmoney.domain.model.ChartPoint
@@ -20,6 +22,14 @@ interface FinancialRepository {
     suspend fun getTopLosers(): List<AssetQuote>
     suspend fun getCommodities(): List<AssetQuote>
     suspend fun getChart(symbol: String): List<ChartPoint>
+    suspend fun searchAsset(name:String):List<SearchResult>
+
+    suspend fun loadEtfs():List<SearchResult>
+
+    suspend fun loadCryptos():List<SearchResult>
+
+    suspend fun loadCommodities():List<SearchResult>
+
 }
 
 class FinancialRepositoryImpl(
@@ -101,6 +111,33 @@ class FinancialRepositoryImpl(
 
     override suspend fun getCommodities(): List<AssetQuote> = remoteSource.getCommodities()
     override suspend fun getChart(symbol: String): List<ChartPoint> = remoteSource.getChart(symbol)
+    override suspend fun searchAsset(name: String): List<SearchResult> {
+        val remote =  remoteSource.searchCompanyByName(name)
+        println("Search result: $remote")
+        return remote
+    }
+
+    override suspend fun loadEtfs(): List<SearchResult> {
+        TODO("Not yet implemented")
+    }
+
+    override suspend fun loadCryptos(): List<SearchResult> {
+        val remote = remoteSource.getCrypto()
+//        cachedQuoteDao.upsertAll(remote.map {
+//            CachedQuoteEntity(
+//                symbol = it.symbol,
+//                exchange = it.exchange,
+//            )
+//        })
+        return remote
+    }
+
+    override suspend fun loadCommodities(): List<SearchResult> {
+        val remote = remoteSource.getCommodities()
+
+        return remote
+        TODO("Not yet implemented")
+    }
 
     suspend fun refreshStaleQuotesForPortfolio(symbols: List<String>) {
         val now = Clock.System.now().toEpochMilliseconds()

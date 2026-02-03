@@ -20,6 +20,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.CalendarToday
 import androidx.compose.material.icons.filled.Visibility
 import androidx.compose.material.icons.filled.VisibilityOff
+import androidx.compose.material.icons.rounded.CalendarToday
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DatePicker
@@ -205,7 +206,7 @@ fun InputTextField(
                     },
 
                     interactionSource = interactionSource,
-                    textStyle = theme.typography.bodyMedium.copy(color = Color.Black),
+                    textStyle = theme.typography.bodyMedium.copy(color = theme.colors.onSurface),
                     keyboardOptions = keyboardOptions,
                     visualTransformation = if (isPassword && !isPasswordVisible) PasswordVisualTransformation() else VisualTransformation.None,
                     modifier = fieldModifier.weight(1f).semantics {
@@ -523,9 +524,10 @@ fun DateInputTextField(
         error = error,
         trailingIcon = {
             Icon(
-                imageVector = Icons.Default.CalendarToday,
+                imageVector = Icons.Rounded.CalendarToday,
                 contentDescription = "Pick a date",
-                tint = theme.colors.greyScale.c70
+                tint = theme.colors.greyTextColor,
+                modifier = Modifier.size(theme.dimension.smallIconSize)
             )
         },
         modifier = modifier.clickable { openDatePicker() }
