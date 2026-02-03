@@ -135,8 +135,7 @@ class FinancialRepositoryImpl(
     override suspend fun loadCommodities(): List<SearchResult> {
         val remote = remoteSource.getCommodities()
 
-        return remote
-        TODO("Not yet implemented")
+        return emptyList()
     }
 
     suspend fun refreshStaleQuotesForPortfolio(symbols: List<String>) {
