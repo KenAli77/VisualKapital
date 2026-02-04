@@ -2,6 +2,7 @@ package com.example.visualmoney.data.remote
 
 
 import com.example.visualmoney.BuildKonfig
+import com.example.visualmoney.data.local.SearchResult
 import com.example.visualmoney.domain.model.AssetProfile
 import com.example.visualmoney.domain.model.AssetQuote
 import com.example.visualmoney.domain.model.ChartPoint
@@ -90,19 +91,18 @@ class FmpDataSource(private val client: HttpClient) {
             emptyList()
         }
     }
-    data class SearchResult (
-        val symbol: String,
-        val name:String,
-        val currency:String,
-        val exchange:String,
-    )
+
     suspend fun searchCompanyByName(query:String) : List<SearchResult> {
         return try {
-            val response = client.get("$baseUrl/search-name?query=$query") {
+            val response = client.get("$baseUrl/stable/search-name?query=$query") {
                 parameter("apikey", apiKey)
+                parameter("limit",10)
             }.body<List<SearchResult>>()
+            println("Result from search: $response")
+
             response
         } catch (e: Exception) {
+            println("Exception getting search: $e")
             emptyList()
         }
     }
@@ -124,7 +124,7 @@ class FmpDataSource(private val client: HttpClient) {
                 println("FMP API Error: ${errorResponse.errorMessage}")
                 throw Exception("FMP API Error: ${errorResponse.errorMessage}")
             } catch (e: Exception) {
-                println("FMPDataSource: Failed to parse error response: ${e.message}")
+                println("FMPDataSource: Failed to parse error response: ${e}")
                 throw Exception("FMP API returned an error: $responseText")
             }
         }
@@ -167,8 +167,8 @@ class FmpDataSource(private val client: HttpClient) {
         }.body()
     }
 
-    suspend fun getCrypto(): List<AssetQuote> {
-        return client.get("$baseUrl/stable/symbol/available-cryptocurrencies") {
+    suspend fun getCrypto(): List<SearchResult> {
+        return client.get("$baseUrl/stable/cryptocurrency-list") {
             parameter("apikey", apiKey)
         }.body()
     }

@@ -38,6 +38,7 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextField
 import androidx.compose.material3.TextFieldDefaults
+import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -55,6 +56,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.example.visualmoney.DefaultAppColors
 import com.example.visualmoney.LocalAppTheme
+import com.example.visualmoney.core.TopNavigationBar
 import com.example.visualmoney.domain.model.Asset
 import com.example.visualmoney.domain.model.AssetProfile
 import com.example.visualmoney.domain.model.AssetQuote
@@ -63,6 +65,12 @@ import com.example.visualmoney.greyTextColor
 import com.example.visualmoney.home.IconWithContainer
 import com.example.visualmoney.home.IconWithContainerSmall
 import com.example.visualmoney.home.format
+import org.jetbrains.compose.resources.painterResource
+import visualmoney.composeapp.generated.resources.Res
+import visualmoney.composeapp.generated.resources.arrow_back
+import visualmoney.composeapp.generated.resources.arrow_up_right
+import visualmoney.composeapp.generated.resources.plus
+import visualmoney.composeapp.generated.resources.trash
 import kotlin.math.max
 
 private val theme @Composable get() = LocalAppTheme.current
@@ -112,15 +120,7 @@ fun AssetDetailsScreen(
             )
         ) {
             item {
-                AssetTopBar(
-                    title = asset.name ?: asset.symbol,
-                    subtitle = asset.symbol,
-                    inPortfolio = inPortfolio,
-                    onBack = onBack,
-                    onPrimaryAction = {
-                        if (inPortfolio) onRemoveFromPortfolio() else onAddToPortfolio()
-                    }
-                )
+                TopNavigationBar(title = "Asset details", onBack = onBack)
             }
 
             item {
@@ -203,8 +203,7 @@ private fun AssetTopBar(
         ) {
             IconWithContainer(
                 onClick = onBack,
-                icon = Icons.Rounded.ArrowBack,
-                contentDescription = "Back",
+                icon = painterResource(Res.drawable.arrow_back),
                 containerColor = theme.colors.container
             )
 
@@ -225,8 +224,7 @@ private fun AssetTopBar(
 
         IconWithContainer(
             onClick = onPrimaryAction,
-            icon = if (inPortfolio) Icons.Rounded.DeleteOutline else Icons.Rounded.Add,
-            contentDescription = if (inPortfolio) "Remove from portfolio" else "Add to portfolio",
+            icon = painterResource(if (inPortfolio) Res.drawable.trash else Res.drawable.plus),
             containerColor = if (inPortfolio) theme.colors.container else theme.colors.primary.c50
         )
     }
@@ -316,11 +314,10 @@ private fun PriceAndChartCard(
 
                 IconWithContainerSmall(
                     onClick = {},
-                    icon = Icons.Rounded.NorthEast,
+                    icon = painterResource(Res.drawable.arrow_up_right),
                     contentDescription = "Open",
                     containerColor = theme.colors.primary.c50,
                     contentColor = theme.colors.onSurface,
-                    shape = CircleShape
                 )
             }
 
@@ -351,7 +348,7 @@ private fun ChartRangeTabs(
                 if (isSelected) theme.colors.onPrimary else theme.colors.surface,
                 label = "tabBg"
             )
-            val border = if (isSelected) Color.Transparent else theme.colors.greyScale.c30
+            val border = if (isSelected) Color.Transparent else theme.colors.border
             val text = if (isSelected) theme.colors.onSurface else theme.colors.greyTextColor
 
             Surface(
@@ -386,7 +383,7 @@ private fun Sparkline(
         modifier = modifier
             .clip(RoundedCornerShape(theme.dimension.defaultRadius))
             .background(theme.colors.surface)
-            .border(1.dp, theme.colors.greyScale.c30, RoundedCornerShape(theme.dimension.defaultRadius))
+            .border(1.dp, theme.colors.border, RoundedCornerShape(theme.dimension.defaultRadius))
             .padding(12.dp)
     ) {
         if (safe.size < 2) return@Canvas
@@ -409,7 +406,7 @@ private fun Sparkline(
 
         // faint baseline
         drawLine(
-            color = DefaultAppColors.greyScale.c30,
+            color = DefaultAppColors.border,
             start = Offset(0f, h),
             end = Offset(w, h),
             strokeWidth = 1.dp.toPx()
@@ -450,7 +447,7 @@ private fun PortfolioCard(
     Card(
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(theme.dimension.defaultRadius),
-        border = BorderStroke(1.dp, theme.colors.greyScale.c30),
+        border = BorderStroke(1.dp, theme.colors.border),
         elevation = CardDefaults.cardElevation(0.dp),
         colors = CardDefaults.elevatedCardColors(containerColor = theme.colors.surface)
     ) {
@@ -523,7 +520,7 @@ private fun PortfolioCard(
                         modifier = Modifier.weight(1f),
                         shape = RoundedCornerShape(theme.dimension.defaultRadius),
                         color = theme.colors.surface,
-                        border = BorderStroke(1.dp, theme.colors.greyScale.c30),
+                        border = BorderStroke(1.dp, theme.colors.border),
                         onClick = onRemove
                     ) {
                         Row(
@@ -554,7 +551,7 @@ private fun CompactTextField(
         onValueChange = onValueChange,
         modifier = modifier
             .clip(RoundedCornerShape(theme.dimension.defaultRadius))
-            .border(1.dp, theme.colors.greyScale.c30, RoundedCornerShape(theme.dimension.defaultRadius)),
+            .border(1.dp, theme.colors.border, RoundedCornerShape(theme.dimension.defaultRadius)),
         singleLine = true,
         placeholder = { Text(label, style = theme.typography.bodySmall, color = theme.colors.greyTextColor) },
         textStyle = theme.typography.bodySmallMedium,
@@ -605,7 +602,7 @@ private fun KeyStatsCard(
     Card(
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(theme.dimension.defaultRadius),
-        border = BorderStroke(1.dp, theme.colors.greyScale.c30),
+        border = BorderStroke(1.dp, theme.colors.border),
         elevation = CardDefaults.cardElevation(0.dp),
         colors = CardDefaults.elevatedCardColors(containerColor = theme.colors.surface)
     ) {
@@ -693,7 +690,7 @@ private fun AboutCard(
     Card(
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(theme.dimension.defaultRadius),
-        border = BorderStroke(1.dp, theme.colors.greyScale.c30),
+        border = BorderStroke(1.dp, theme.colors.border),
         elevation = CardDefaults.cardElevation(0.dp),
         colors = CardDefaults.elevatedCardColors(containerColor = theme.colors.surface)
     ) {

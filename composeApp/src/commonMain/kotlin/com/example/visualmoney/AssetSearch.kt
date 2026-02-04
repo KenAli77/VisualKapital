@@ -16,8 +16,11 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.KeyboardActions
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.FilterAlt
 import androidx.compose.material.icons.rounded.ArrowBack
@@ -34,25 +37,48 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextField
 import androidx.compose.material3.TextFieldDefaults
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Shape
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import coil3.compose.AsyncImage
+import com.example.visualmoney.core.TopNavigationBar
+import com.example.visualmoney.domain.model.Asset
+import com.example.visualmoney.home.GlassCard
+import com.example.visualmoney.home.borderStroke
 import com.example.visualmoney.home.format
+import kotlinx.coroutines.FlowPreview
+import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.flow.collectLatest
+import kotlinx.coroutines.flow.debounce
+import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.launch
+import org.jetbrains.compose.resources.painterResource
+import visualmoney.composeapp.generated.resources.Res
+import visualmoney.composeapp.generated.resources.search
 import kotlin.math.abs
 
 private val theme @Composable get() = LocalAppTheme.current
 
 // ---------- Models ----------
-enum class ExploreTab(val label: String) { STOCKS("Stocks"), ETFS("ETFs"), CRYPTO("Crypto"), FUNDS("Funds") }
+enum class ExploreTab(val label: String) {
+    STOCKS("Stocks"), CRYPTO("Crypto"), ETF("ETFs"), FUNDS("Funds")
+}
+
+enum class AssetType(val label: String) { LISTED("Listed Asset"), UNLISTED("Unlisted Asset") }
 enum class SortMode(val label: String) { TRENDING("Trending"), PRICE("Price"), CHANGE("Change") }
 
 
@@ -60,8 +86,10 @@ data class SearchResultRowUi(
     val symbol: String,
     val name: String,
     val priceText: String,
-    val changePct: Double, // e.g. -0.08
-    val assetType: ExploreTab
+    val changePct: Double = 0.0, // e.g. -0.08
+    val assetType: ExploreTab,
+    val iconUrl: String? = null,
+    val exchangeName: String = "", // e.g. -0.08
 )
 
 // ---------- Screen ----------
@@ -85,13 +113,13 @@ fun ExploreSearchScreen(
     var industrySelected by remember { mutableStateOf(false) }
 
     val filtered = remember(query, selectedTab, results) {
-        results
-            .filter { it.assetType == selectedTab }
-            .filter {
-                if (query.isBlank()) true
-                else (it.name.contains(query, ignoreCase = true)
-                        || it.symbol.contains(query, ignoreCase = true))
-            }
+        results.filter { it.assetType == selectedTab }.filter {
+            if (query.isBlank()) true
+            else (it.name.contains(query, ignoreCase = true) || it.symbol.contains(
+                query,
+                ignoreCase = true
+            ))
+        }
     }
 
     val sorted = remember(filtered, sortMode) {
@@ -105,87 +133,50 @@ fun ExploreSearchScreen(
         modifier = modifier,
         sheetState = sheetState,
         onDismissRequest = { onBack() },
+        dragHandle = {},
         containerColor = theme.colors.surface,
     ) {
-        LazyColumn(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(horizontal = theme.dimension.pagePadding),
+        Column(
+            modifier = Modifier.fillMaxSize().padding(theme.dimension.pagePadding),
             verticalArrangement = Arrangement.spacedBy(theme.dimension.largeSpacing),
-            contentPadding = PaddingValues(
-                top = theme.dimension.pagePadding,
-                bottom = theme.dimension.pagePadding
-            )
         ) {
-            item {
-                TopBar(
-                    title = title,
-                    onBack = onBack
-                )
-            }
-
-            item {
-                SearchBar(
-                    query = query,
-                    onQueryChange = { query = it },
-                    onSortClick = {
-                        sortMode = when (sortMode) {
-                            SortMode.TRENDING -> SortMode.PRICE
-                            SortMode.PRICE -> SortMode.CHANGE
-                            SortMode.CHANGE -> SortMode.TRENDING
-                        }
-                    }
-                )
-            }
-
-            item {
-                ExploreTabsRow(
-                    selected = selectedTab,
-                    onSelect = { selectedTab = it }
-                )
-            }
-
-            item {
-                FiltersRow(
-                    regionSelected = regionSelected,
-                    industrySelected = industrySelected,
-                    onToggleRegion = { regionSelected = !regionSelected; onOpenFilters() },
-                    onToggleIndustry = { industrySelected = !industrySelected; onOpenFilters() }
-                )
-            }
-
-            item {
-                Text(
-                    text = "Showing ${resultsCount ?: sorted.size} results",
-                    style = theme.typography.bodySmall,
-                    color = theme.colors.greyScale.c60
-                )
-            }
-
-            item {
-                Column(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .border(
-                            1.dp,
-                            theme.colors.greyScale.c30,
-                            RoundedCornerShape(theme.dimension.defaultRadius)
+            TopNavigationBar(
+                title = title, onBack = onBack
+            )
+            SearchBar(query = query, onQueryChange = { query = it }, onSortClick = {
+                sortMode = when (sortMode) {
+                    SortMode.TRENDING -> SortMode.PRICE
+                    SortMode.PRICE -> SortMode.CHANGE
+                    SortMode.CHANGE -> SortMode.TRENDING
+                }
+            })
+            ExploreTabsRow(
+                selected = selectedTab, onSelect = { selectedTab = it })
+            FiltersRow(
+                regionSelected = regionSelected,
+                industrySelected = industrySelected,
+                onToggleRegion = { regionSelected = !regionSelected; onOpenFilters() },
+                onToggleIndustry = { industrySelected = !industrySelected; onOpenFilters() })
+            Text(
+                text = "Showing ${resultsCount ?: sorted.size} results",
+                style = theme.typography.bodySmall,
+                color = theme.colors.onSurface
+            )
+            LazyColumn(
+                modifier = Modifier.fillMaxWidth().border(
+                    1.dp, theme.colors.border, RoundedCornerShape(theme.dimension.defaultRadius)
+                ).clip(RoundedCornerShape(theme.dimension.defaultRadius))
+                    .background(theme.colors.surface)
+            ) {
+                itemsIndexed(sorted) { idx, row ->
+                    SearchResultRow(
+                        item = row, onClick = { onResultClick(row.symbol) })
+                    if (idx != sorted.lastIndex) {
+                        HorizontalDivider(
+                            thickness = 1.dp,
+                            color = theme.colors.border,
+                            modifier = Modifier.padding(horizontal = theme.dimension.largeSpacing)
                         )
-                        .clip(RoundedCornerShape(theme.dimension.defaultRadius))
-                        .background(theme.colors.surface)
-                ) {
-                    sorted.forEachIndexed { idx, row ->
-                        SearchResultRow(
-                            item = row,
-                            onClick = { onResultClick(row.symbol) }
-                        )
-                        if (idx != sorted.lastIndex) {
-                            HorizontalDivider(
-                                thickness = 1.dp,
-                                color = theme.colors.greyScale.c30,
-                                modifier = Modifier.padding(horizontal = theme.dimension.largeSpacing)
-                            )
-                        }
                     }
                 }
             }
@@ -193,90 +184,69 @@ fun ExploreSearchScreen(
     }
 }
 
-// ---------- Top bar ----------
-@Composable
-private fun TopBar(
-    title: String,
-    onBack: () -> Unit
-) {
-    Row(
-        modifier = Modifier.fillMaxWidth(),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(theme.dimension.mediumSpacing)
-    ) {
-        IconWithContainer(
-            onClick = onBack,
-            icon = Icons.Rounded.ArrowBack,
-            contentDescription = "Back",
-            containerColor = theme.colors.container
-        )
-        Text(
-            text = title,
-            style = theme.typography.bodyMediumMedium,
-            color = theme.colors.onSurface
-        )
-    }
-}
 
 // ---------- Search bar ----------
+@OptIn(FlowPreview::class)
 @Composable
-private fun SearchBar(
+fun SearchBar(
     query: String,
     onQueryChange: (String) -> Unit,
     onSortClick: () -> Unit,
 ) {
-    Row(
-        modifier = Modifier.fillMaxWidth(),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(theme.dimension.mediumSpacing)
-    ) {
-        TextField(
-            value = query,
-            onValueChange = onQueryChange,
-            modifier = Modifier
-                .weight(1f)
-                .clip(RoundedCornerShape(theme.dimension.defaultRadius))
-                .border(
-                    1.dp,
-                    theme.colors.greyScale.c30,
-                    RoundedCornerShape(theme.dimension.defaultRadius)
-                ),
-            singleLine = true,
-            placeholder = {
-                Text(
-                    "Search by name, ticker, or ISIN…",
-                    style = theme.typography.bodySmall,
-                    color = theme.colors.greyTextColor
-                )
-            },
-            leadingIcon = {
-                Icon(Icons.Rounded.Search, contentDescription = null)
-            },
-            colors = TextFieldDefaults.colors(
-                focusedContainerColor = theme.colors.surface,
-                unfocusedContainerColor = theme.colors.surface,
-                disabledContainerColor = theme.colors.surface,
-                focusedIndicatorColor = Color.Transparent,
-                unfocusedIndicatorColor = Color.Transparent,
-                disabledIndicatorColor = Color.Transparent
-            ),
-            textStyle = theme.typography.bodySmallMedium
-        )
+    GlassCard() {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(theme.dimension.mediumSpacing)
+        ) {
 
-        IconWithContainer(
-            onClick = onSortClick,
-            icon = Icons.Rounded.SwapVert,
-            contentDescription = "Sort",
-            containerColor = theme.colors.container
-        )
+            TextField(
+                value = query,
+                onValueChange = onQueryChange,
+                modifier = Modifier.weight(1f)
+                    .clip(RoundedCornerShape(theme.dimension.defaultRadius)).border(borderStroke),
+                singleLine = true,
+                placeholder = {
+                    Text(
+                        "Search ticker…",
+                        style = theme.typography.bodySmall,
+                        color = theme.colors.greyTextColor
+                    )
+                },
+                leadingIcon = {
+                    Icon(
+                        painterResource(Res.drawable.search),
+                        modifier = Modifier.size(theme.dimension.smallIconSize),
+                        contentDescription = null
+                    )
+                },
+                colors = TextFieldDefaults.colors(
+                    focusedContainerColor = theme.colors.onPrimary,
+                    unfocusedContainerColor = theme.colors.onPrimary,
+                    disabledContainerColor = theme.colors.onPrimary,
+                    focusedIndicatorColor = Color.Transparent,
+                    unfocusedIndicatorColor = Color.Transparent,
+                    disabledIndicatorColor = Color.Transparent
+                ),
+                textStyle = theme.typography.bodySmallMedium,
+                keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search)
+
+            )
+
+//        IconWithContainer(
+//            onClick = onSortClick,
+//            icon = Icons.Rounded.SwapVert,
+//            contentDescription = "Sort",
+//            containerColor = theme.colors.container
+//        )
+        }
     }
 }
 
 // ---------- Tabs ----------
 @Composable
-private fun ExploreTabsRow(
-    selected: ExploreTab,
-    onSelect: (ExploreTab) -> Unit
+fun ExploreTabsRow(
+    selected: ExploreTab, onSelect: (ExploreTab) -> Unit
 ) {
     Row(
         modifier = Modifier.fillMaxWidth(),
@@ -285,26 +255,23 @@ private fun ExploreTabsRow(
         ExploreTab.entries.forEach { tab ->
             val isSelected = tab == selected
             val bg by animateColorAsState(
-                if (isSelected) theme.colors.container else Color.Transparent,
+                if (isSelected) theme.colors.onSurface else theme.colors.greyScale.c20,
                 label = "tabBg"
             )
-            val border = if (isSelected) Color.Transparent else theme.colors.greyScale.c30
-            val textColor = if (isSelected) theme.colors.onSurface else theme.colors.greyTextColor
-
-            Surface(
+            val border = if (isSelected) Color.Transparent else theme.colors.border
+            val textColor = if (isSelected) theme.colors.onPrimary else theme.colors.greyTextColor
+            GlassCard(
                 modifier = Modifier.weight(1f),
-                shape = RoundedCornerShape(theme.dimension.defaultRadius),
-                color = bg,
-                border = BorderStroke(1.dp, border),
-                onClick = { onSelect(tab) }
+                containerColor = bg
             ) {
                 Box(
-                    modifier = Modifier.padding(vertical = 12.dp),
+                    modifier = Modifier.fillMaxWidth().clickable { onSelect(tab) }
+                        .padding(vertical = theme.dimension.largeSpacing),
                     contentAlignment = Alignment.Center
                 ) {
                     Text(
                         text = tab.label,
-                        style = theme.typography.bodySmallMedium,
+                        style = theme.typography.bodyMediumStrong,
                         color = textColor
                     )
                 }
@@ -313,9 +280,54 @@ private fun ExploreTabsRow(
     }
 }
 
+@Composable
+fun AssetTypeSelector(
+    selected: AssetType, onSelect: (AssetType) -> Unit
+) {
+    Row(
+        modifier = Modifier.fillMaxWidth().border(borderStroke, shape = RoundedCornerShape(theme.dimension.defaultRadius)),
+        horizontalArrangement = Arrangement.spacedBy(0.dp)
+    ) {
+        AssetType.entries.forEach { tab ->
+            val isSelected = tab == selected
+            val bg by animateColorAsState(
+                if (isSelected) theme.colors.primary.c50 else theme.colors.greyScale.c20,
+                label = "tabBg"
+            )
+            val border = if (isSelected) Color.Transparent else theme.colors.border
+            val shape = if (tab.ordinal == 0) RoundedCornerShape(
+                topStart = theme.dimension.defaultRadius,
+                bottomStart = theme.dimension.defaultRadius
+            ) else RoundedCornerShape(
+                topEnd = theme.dimension.defaultRadius,
+                bottomEnd = theme.dimension.defaultRadius
+            )
+            val textColor = if (isSelected) theme.colors.onSurface else theme.colors.greyTextColor.copy(alpha = 0.7f)
+            Surface(
+                modifier = Modifier.weight(1f),
+                color = bg,
+                shape = shape
+            ) {
+                Box(
+                    modifier = Modifier.fillMaxWidth().clickable { onSelect(tab) }
+                        .padding(vertical = theme.dimension.mediumSpacing),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text(
+                        text = tab.label,
+                        style = theme.typography.bodyMediumStrong,
+                        color = textColor
+                    )
+                }
+
+            }
+        }
+    }
+}
+
 // ---------- Filters ----------
 @Composable
-private fun FiltersRow(
+fun FiltersRow(
     regionSelected: Boolean,
     industrySelected: Boolean,
     onToggleRegion: () -> Unit,
@@ -342,21 +354,20 @@ private fun FiltersRow(
 }
 
 @Composable
-private fun FilterChip(
+fun FilterChip(
     text: String,
     selected: Boolean,
     icon: androidx.compose.ui.graphics.vector.ImageVector,
     onClick: () -> Unit
 ) {
     val bg by animateColorAsState(
-        if (selected) theme.colors.container else theme.colors.surface,
-        label = "chipBg"
+        if (selected) theme.colors.container else theme.colors.surface, label = "chipBg"
     )
 
     Surface(
         shape = RoundedCornerShape(theme.dimension.defaultRadius),
         color = bg,
-        border = BorderStroke(1.dp, theme.colors.greyScale.c30),
+        border = BorderStroke(1.dp, theme.colors.border),
         onClick = onClick
     ) {
         Row(
@@ -376,27 +387,24 @@ private fun FilterChip(
 
 // ---------- Row item ----------
 @Composable
-private fun SearchResultRow(
+fun SearchResultRow(
     item: SearchResultRowUi,
     onClick: () -> Unit,
 ) {
     Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clickable(onClick = onClick)
+        modifier = Modifier.fillMaxWidth().clickable(onClick = onClick)
             .padding(theme.dimension.largeSpacing),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(theme.dimension.mediumSpacing)
     ) {
         // Logo placeholder
         Box(
-            modifier = Modifier
-                .size(44.dp)
-                .clip(CircleShape)
-                .background(theme.colors.onPrimary),
+            modifier = Modifier.size(44.dp).clip(CircleShape).background(theme.colors.surface),
             contentAlignment = Alignment.Center
         ) {
-            Text(
+            item.iconUrl?.let {
+                AsyncImage(model = it, contentDescription = null, contentScale = ContentScale.Crop)
+            } ?: Text(
                 text = item.symbol.take(1),
                 style = theme.typography.bodyMediumMedium,
                 fontWeight = FontWeight.Medium
@@ -422,16 +430,7 @@ private fun SearchResultRow(
 
         Column(horizontalAlignment = Alignment.End) {
             Text(
-                text = item.priceText,
-                style = theme.typography.bodyMediumMedium
-            )
-            val pct = item.changePct
-            val arrow = if (pct >= 0) "▲" else "▼"
-            val pctText = "$arrow ${"%.2f".format(abs(pct))}%"
-            Text(
-                text = pctText,
-                style = theme.typography.bodySmallMedium,
-                color = if (pct >= 0) theme.colors.greenScale.c50 else theme.colors.error
+                text = item.exchangeName, style = theme.typography.bodyMediumMedium
             )
         }
     }
@@ -448,16 +447,11 @@ private fun IconWithContainer(
     shape: Shape = CircleShape
 ) {
     Box(
-        modifier = modifier
-            .clip(shape)
-            .background(containerColor)
-            .clickable { onClick() }
-    ) {
+        modifier = modifier.clip(shape).background(containerColor).clickable { onClick() }) {
         Icon(
             icon,
             contentDescription = contentDescription,
-            modifier = Modifier
-                .padding(theme.dimension.mediumSpacing)
+            modifier = Modifier.padding(theme.dimension.mediumSpacing)
                 .size(theme.dimension.iconSize),
             tint = theme.colors.onSurface
         )
@@ -465,7 +459,7 @@ private fun IconWithContainer(
 }
 
 // ---------- Sample data ----------
-private fun sampleSearchResults() = listOf(
+fun sampleSearchResults() = listOf(
     SearchResultRowUi("RHM", "Rheinmetall", "1,828.50 €", -0.08, ExploreTab.STOCKS),
     SearchResultRowUi("NVDA", "NVIDIA", "158.62 €", -0.09, ExploreTab.STOCKS),
     SearchResultRowUi("PLTR", "Palantir Technologies", "143.16 €", -0.25, ExploreTab.STOCKS),
@@ -473,7 +467,7 @@ private fun sampleSearchResults() = listOf(
     SearchResultRowUi("VLA", "Valneva", "4.12 €", -0.48, ExploreTab.STOCKS),
     SearchResultRowUi("AAPL", "Apple", "209.50 €", -0.14, ExploreTab.STOCKS),
 
-    SearchResultRowUi("SPY", "SPDR S&P 500 ETF", "506.11 $", +0.12, ExploreTab.ETFS),
+    SearchResultRowUi("SPY", "SPDR S&P 500 ETF", "506.11 $", +0.12, ExploreTab.FUNDS),
     SearchResultRowUi("BTC", "Bitcoin", "43,210 $", +1.35, ExploreTab.CRYPTO),
     SearchResultRowUi("VTI", "Vanguard Total Stock Market", "255.44 $", -0.05, ExploreTab.FUNDS),
 )

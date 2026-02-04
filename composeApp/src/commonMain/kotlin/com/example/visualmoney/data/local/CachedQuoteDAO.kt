@@ -8,10 +8,8 @@ import kotlinx.coroutines.flow.Flow
 
 @Dao
 interface CachedQuoteDao {
-
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun upsert(quote: CachedQuoteEntity)
-
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun upsertAll(quotes: List<CachedQuoteEntity>)
 
@@ -29,7 +27,6 @@ interface CachedQuoteDao {
 
     @Query("DELETE FROM cached_quotes")
     suspend fun clearAll()
-
     // Find quotes that are "stale" (older than cutoff)
     @Query("SELECT * FROM cached_quotes WHERE updatedAtEpochMs < :staleBeforeEpochMs")
     suspend fun getStale(staleBeforeEpochMs: Long): List<CachedQuoteEntity>

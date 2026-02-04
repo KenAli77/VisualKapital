@@ -32,7 +32,6 @@ data class CachedQuoteEntity(
     val pe: Double? = null,
     val earningsAnnouncement: String? = null,
     val sharesOutstanding: Long? = null,
-
     )
 
 fun CachedQuoteEntity.toAsset():AssetQuote = AssetQuote(

@@ -1,50 +1,41 @@
 package com.example.visualmoney.data.repository
 
-import com.example.visualmoney.data.local.AssetType
 import com.example.visualmoney.data.local.CachedQuoteDao
 import com.example.visualmoney.data.local.CachedQuoteEntity
-import com.example.visualmoney.data.local.PortfolioBuyDao
+import com.example.visualmoney.data.local.SearchResult
 import com.example.visualmoney.data.local.toAsset
 import com.example.visualmoney.data.remote.FmpDataSource
+
 import com.example.visualmoney.domain.model.AssetProfile
 import com.example.visualmoney.domain.model.AssetQuote
 import com.example.visualmoney.domain.model.ChartPoint
-import kotlinx.coroutines.ExperimentalCoroutinesApi
-import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.combine
-import kotlinx.coroutines.flow.flatMapLatest
-import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.firstOrNull
 import kotlin.time.Clock
 
 private const val QUOTE_TTL_MS = 5 * 60 * 60 * 1000L // 5 hours
-
-// Data class to combine portfolio position with live quote data
-data class PortfolioHoldingWithQuote(
-    val symbol: String,
-    val type: AssetType,
-    val totalQuantity: Double,
-    val costBasis: Double,
-    val avgCost: Double,
-    val currentPrice: Double,
-    val changePct: Double,
-    val dayLow: Double?,
-    val dayHigh: Double?,
-    val name: String?
-)
 
 interface FinancialRepository {
     suspend fun getQuote(symbol: String): AssetQuote
     suspend fun getQuotes(symbols: List<String>): List<AssetQuote>
     suspend fun getProfile(symbol: String): AssetProfile
+    suspend fun getTopGainers(): List<AssetQuote>
+    suspend fun getTopLosers(): List<AssetQuote>
     suspend fun getCommodities(): List<AssetQuote>
     suspend fun getChart(symbol: String): List<ChartPoint>
-    fun observePortfolioWithQuotes(): Flow<List<PortfolioHoldingWithQuote>>
+    suspend fun searchAsset(name:String):List<SearchResult>
+
+    suspend fun loadEtfs():List<SearchResult>
+
+    suspend fun loadCryptos():List<SearchResult>
+
+    suspend fun loadCommodities():List<SearchResult>
+
 }
 
 class FinancialRepositoryImpl(
     private val remoteSource: FmpDataSource,
-    private val cachedQuoteDao: CachedQuoteDao,
-    private val portfolioBuyDao: PortfolioBuyDao
+    private val cachedQuoteDao: CachedQuoteDao
+
 ) : FinancialRepository {
     override suspend fun getQuote(symbol: String): AssetQuote {
         val now = Clock.System.now().toEpochMilliseconds()
@@ -55,7 +46,7 @@ class FinancialRepositoryImpl(
         val entity = CachedQuoteEntity(
             symbol = remote.symbol,
             price = remote.price,
-            changePct = remote.changePercentage,
+            changePct = remote.changesPercentage,
             change = remote.change,
             dayLow = remote.dayLow,
             dayHigh = remote.dayHigh,
@@ -104,98 +95,47 @@ class FinancialRepositoryImpl(
 
     override suspend fun getProfile(symbol: String): AssetProfile = remoteSource.getProfile(symbol)
 
-    override suspend fun getCommodities(): List<AssetQuote> = remoteSource.getCommodities()
-    override suspend fun getChart(symbol: String): List<ChartPoint> = remoteSource.getChart(symbol)
-
-    @OptIn(ExperimentalCoroutinesApi::class)
-    override fun observePortfolioWithQuotes(): Flow<List<PortfolioHoldingWithQuote>> {
-        println("FinancialRepository: Setting up observePortfolioWithQuotes flow")
-        return portfolioBuyDao.observePositions()
-            .flatMapLatest { positions ->
-                println("FinancialRepository: Got ${positions.size} positions, refreshing stale quotes first...")
-                
-                // First, refresh any stale quotes for portfolio symbols
-                if (positions.isNotEmpty()) {
-                    val symbols = positions.map { it.symbol }
-                    refreshStaleQuotesForSymbols(symbols)
-                }
-                
-                // After refresh completes, observe the cache (which now has fresh data)
-                cachedQuoteDao.observeAll().map { quotes ->
-                    println("FinancialRepository: Combining ${positions.size} positions with ${quotes.size} quotes")
-                    
-                    val quotesBySymbol = quotes.associateBy { it.symbol }
-                    positions.map { position ->
-                        val quote = quotesBySymbol[position.symbol]
-                        println("FinancialRepository: ${position.symbol} -> price=${quote?.price ?: 0.0}, changePct=${quote?.changePct ?: 0.0}")
-                        
-                        PortfolioHoldingWithQuote(
-                            symbol = position.symbol,
-                            type = AssetType.valueOf(position.type),
-                            totalQuantity = position.totalQuantity,
-                            costBasis = position.costBasis,
-                            avgCost = position.avgCost,
-                            currentPrice = quote?.price ?: 0.0,
-                            changePct = quote?.changePct ?: 0.0,
-                            dayLow = quote?.dayLow,
-                            dayHigh = quote?.dayHigh,
-                            name = null
-                        )
-                    }
-                }
-            }
+    override suspend fun getTopGainers(): List<AssetQuote> {
+        val cache = cachedQuoteDao.observeAll().firstOrNull()
+        if (!cache.isNullOrEmpty()) {
+            return cache.map { it.toAsset() }
+        } else {
+            val now = Clock.System.now().toEpochMilliseconds()
+            val remote = remoteSource.getTopGainers()
+            cachedQuoteDao.upsertAll(remote.map { it.toCachedQuoteEntity(updatedAt = now) })
+            return remote
+        }
     }
 
-    /**
-     * Checks which quotes are stale (>5 hours) or missing and refreshes them from API.
-     */
-    private suspend fun refreshStaleQuotesForSymbols(symbols: List<String>) {
-        try {
-            val now = Clock.System.now().toEpochMilliseconds()
-            val cutoff = now - QUOTE_TTL_MS
+    override suspend fun getTopLosers(): List<AssetQuote> = remoteSource.getTopLosers()
 
-            // Get cached quotes for these symbols
-            val cachedQuotes = symbols.mapNotNull { cachedQuoteDao.get(it) }
-            val cachedBySymbol = cachedQuotes.associateBy { it.symbol }
+    override suspend fun getCommodities(): List<AssetQuote> = remoteSource.getCommodities()
+    override suspend fun getChart(symbol: String): List<ChartPoint> = remoteSource.getChart(symbol)
+    override suspend fun searchAsset(name: String): List<SearchResult> {
+        val remote =  remoteSource.searchCompanyByName(name)
+        println("Search result: $remote")
+        return remote
+    }
 
-            // Find stale or missing symbols
-            val staleOrMissingSymbols = symbols.filter { sym ->
-                val cached = cachedBySymbol[sym]
-                val isStale = cached == null || cached.updatedAtEpochMs < cutoff
-                if (isStale) {
-                    val age = cached?.let { (now - it.updatedAtEpochMs) / (60 * 60 * 1000) } ?: -1
-                    println("FinancialRepository: Symbol $sym is stale (age: ${age}h) or missing, will refresh")
-                }
-                isStale
-            }
+    override suspend fun loadEtfs(): List<SearchResult> {
+        TODO("Not yet implemented")
+    }
 
-            if (staleOrMissingSymbols.isEmpty()) {
-                println("FinancialRepository: All quotes are fresh, no API call needed")
-                return
-            }
+    override suspend fun loadCryptos(): List<SearchResult> {
+        val remote = remoteSource.getCrypto()
+//        cachedQuoteDao.upsertAll(remote.map {
+//            CachedQuoteEntity(
+//                symbol = it.symbol,
+//                exchange = it.exchange,
+//            )
+//        })
+        return remote
+    }
 
-            println("FinancialRepository: Fetching ${staleOrMissingSymbols.size} stale quotes from API: $staleOrMissingSymbols")
+    override suspend fun loadCommodities(): List<SearchResult> {
+        val remote = remoteSource.getCommodities()
 
-            // Fetch from API
-            val freshQuotes = remoteSource.getQuotes(staleOrMissingSymbols)
-            println("FinancialRepository: Received ${freshQuotes.size} quotes from API")
-
-            // IMPORTANT: Only update cache if API returned data, otherwise keep stale cache
-            if (freshQuotes.isEmpty()) {
-                println("FinancialRepository: API returned empty response, keeping existing cache data")
-                return
-            }
-
-            // Update cache with fresh data
-            val entities = freshQuotes.map { it.toCachedQuoteEntity(updatedAt = now) }
-            cachedQuoteDao.upsertAll(entities)
-            println("FinancialRepository: Updated cache with ${entities.size} fresh quotes")
-
-        } catch (e: Exception) {
-            // Don't fail the flow if API call fails, just log and use cached data
-            println("FinancialRepository: Error refreshing quotes from API: ${e.message}")
-            e.printStackTrace()
-        }
+        return emptyList()
     }
 
     suspend fun refreshStaleQuotesForPortfolio(symbols: List<String>) {
@@ -217,7 +157,7 @@ class FinancialRepositoryImpl(
             CachedQuoteEntity(
                 symbol = q.symbol,
                 price = q.price,
-                changePct = q.changePercentage,
+                changePct = q.changesPercentage,
                 change = q.change,
                 dayLow = q.dayLow,
                 dayHigh = q.dayHigh,
@@ -238,7 +178,7 @@ private fun AssetQuote.toCachedQuoteEntity(updatedAt: Long): CachedQuoteEntity {
     return CachedQuoteEntity(
         symbol = symbol,
         price = price,
-        changePct = changePercentage,
+        changePct = changesPercentage,
         change = change,
         dayLow = dayLow,
         dayHigh = dayHigh,

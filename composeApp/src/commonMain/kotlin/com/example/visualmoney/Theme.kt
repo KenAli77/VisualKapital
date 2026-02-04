@@ -6,6 +6,7 @@ import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.sp
+import com.example.visualmoney.core.Country
 import org.jetbrains.compose.resources.Font
 import visualmoney.composeapp.generated.resources.Res
 import visualmoney.composeapp.generated.resources.Urbanist
@@ -72,7 +73,7 @@ fun appTypography(): AppTypography {
             fontFamily = primaryFont,
             fontSize = 31.sp,
             fontWeight = FontWeight.Medium,
-            lineHeight = 31.sp
+            lineHeight = 31.sp,
         ),
         titleSmallMedium = TextStyle(
             fontFamily = primaryFont,
@@ -156,3 +157,5 @@ fun appTheme(): VisualMoneyTheme {
 }
 
 val LocalAppTheme = compositionLocalOf<VisualMoneyTheme> { error("No AppTheme provided") }
+
+val LocalCountries = compositionLocalOf<List<Country>> { error("No Countries provided")}

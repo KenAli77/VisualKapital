@@ -1,6 +1,7 @@
 import java.util.Properties
 import org.jetbrains.compose.desktop.application.dsl.TargetFormat
 import org.jetbrains.kotlin.gradle.dsl.JvmTarget
+import org.jetbrains.kotlin.gradle.plugin.mpp.KotlinNativeTarget
 
 plugins {
     alias(libs.plugins.kotlinMultiplatform)
@@ -22,14 +23,22 @@ kotlin {
     
     listOf(
         iosArm64(),
-        iosSimulatorArm64()
+      //  iosX64(),
+        iosSimulatorArm64(),
     ).forEach { iosTarget ->
         iosTarget.binaries.framework {
             baseName = "ComposeApp"
             isStatic = true
         }
     }
-    
+    project.afterEvaluate {
+        tasks.named("kspKotlinIosArm64") {
+            dependsOn(tasks.named("generateResourceAccessorsForIosArm64Main"))
+            enabled = false
+        }
+    }
+
+
     sourceSets {
         androidMain.dependencies {
             implementation(libs.compose.uiToolingPreview)
@@ -100,10 +109,9 @@ dependencies {
     debugImplementation(libs.compose.uiTooling)
     add("kspAndroid", libs.androidx.room.compiler)
     add("kspIosSimulatorArm64", libs.androidx.room.compiler)
-//    add("kspIosX64", libs.androidx.room.compiler)
+  //  add("kspIosX64", libs.androidx.room.compiler)
     add("kspIosArm64", libs.androidx.room.compiler)
 }
-
 
 buildkonfig {
     packageName = "com.example.visualmoney"

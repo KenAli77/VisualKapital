@@ -67,6 +67,12 @@ import kotlinx.datetime.minus
 import kotlinx.datetime.number
 import kotlinx.datetime.plus
 import kotlinx.datetime.toLocalDateTime
+import org.jetbrains.compose.resources.painterResource
+import visualmoney.composeapp.generated.resources.Res
+import visualmoney.composeapp.generated.resources.arrow_back
+import visualmoney.composeapp.generated.resources.calendar
+import visualmoney.composeapp.generated.resources.plus
+import visualmoney.composeapp.generated.resources.search
 import kotlin.math.min
 import kotlin.time.Clock
 
@@ -209,8 +215,7 @@ private fun CalendarTopHeader(
         ) {
             IconWithContainer(
                 onClick = onBack,
-                icon = Icons.Rounded.ArrowBack,
-                contentDescription = "Back",
+                icon = painterResource(Res.drawable.arrow_back),
                 containerColor = theme.colors.container
             )
             Column(verticalArrangement = Arrangement.spacedBy(theme.dimension.veryCloseSpacing)) {
@@ -230,14 +235,12 @@ private fun CalendarTopHeader(
         Row(horizontalArrangement = Arrangement.spacedBy(theme.dimension.mediumSpacing)) {
             IconWithContainer(
                 onClick = onSearch,
-                icon = Icons.Rounded.Search,
-                contentDescription = "Search",
+                icon = painterResource(Res.drawable.search),
                 containerColor = theme.colors.container
             )
             IconWithContainer(
                 onClick = onAdd,
-                icon = Icons.Rounded.Add,
-                contentDescription = "Add",
+                icon = painterResource(Res.drawable.plus),
                 containerColor = theme.colors.primary.c50
             )
         }
@@ -289,7 +292,7 @@ private fun CalendarCard(
             ) {
                 IconWithContainerSmall(
                     onClick = {},
-                    icon = Icons.Rounded.CalendarToday,
+                    icon = painterResource(Res.drawable.calendar),
                     contentDescription = "Calendar"
                 )
                 Text(
@@ -424,7 +427,7 @@ private fun DayCell(
         date == null -> Color.Transparent
         isSelected -> Color.Transparent
         isToday -> theme.colors.primary.c50
-        else -> theme.colors.greyScale.c30
+        else -> theme.colors.border
     }
 
     val textColor = when {
@@ -570,7 +573,7 @@ private fun EmptyStateCard(
     Card(
         modifier = modifier.fillMaxWidth(),
         shape = RoundedCornerShape(theme.dimension.defaultRadius),
-        border = BorderStroke(1.dp, theme.colors.greyScale.c30),
+        border = BorderStroke(1.dp, theme.colors.border),
         elevation = CardDefaults.cardElevation(0.dp),
         colors = CardDefaults.elevatedCardColors(containerColor = theme.colors.surface)
     ) {
@@ -601,7 +604,7 @@ private fun ReminderRow(
     Card(
         modifier = modifier.fillMaxWidth(),
         shape = RoundedCornerShape(theme.dimension.defaultRadius),
-        border = BorderStroke(1.dp, theme.colors.greyScale.c30),
+        border = BorderStroke(1.dp, theme.colors.border),
         elevation = CardDefaults.cardElevation(0.dp),
         colors = CardDefaults.elevatedCardColors(containerColor = theme.colors.surface),
         onClick = onClick
