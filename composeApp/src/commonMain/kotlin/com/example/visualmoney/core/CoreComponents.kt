@@ -46,6 +46,7 @@ import androidx.compose.ui.autofill.ContentType
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.RectangleShape
 import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.painter.Painter
@@ -84,34 +85,39 @@ import kotlin.time.Instant
 fun TopNavigationBar(
     modifier: Modifier = Modifier,
     title: String,
-    subtitle:String = "",
+    subtitle: String = "",
     onBack: () -> Unit
 ) {
-    Row(
-        modifier = modifier.fillMaxWidth(),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(theme.dimension.mediumSpacing)
+    Column(
+        modifier = Modifier.fillMaxWidth(),
+        verticalArrangement = Arrangement.spacedBy(theme.dimension.veryCloseSpacing)
     ) {
-        IconWithContainer(
-            onClick = onBack,
-            icon = painterResource(Res.drawable.arrow_back),
-            containerColor = theme.colors.container
-        )
-        Column {
-            Text(
-                textAlign = TextAlign.Start,
-                text = title,
-                style = theme.typography.bodyLargeMedium,
-                color = theme.colors.onSurface
+        Row(
+            modifier = modifier.fillMaxWidth().padding(theme.dimension.pagePadding),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(theme.dimension.mediumSpacing)
+        ) {
+            IconWithContainer(
+                onClick = onBack,
+                icon = painterResource(Res.drawable.arrow_back),
+                containerColor = theme.colors.container
             )
-            if (subtitle.isNotBlank()) {
+            Column(verticalArrangement = Arrangement.spacedBy(theme.dimension.closeSpacing)) {
                 Text(
-                    textAlign = TextAlign.Start,
-                    text = subtitle,
-                    style = theme.typography.bodyMedium,
-                    color = theme.colors.greyTextColor
+                    textAlign = TextAlign.Center,
+                    text = title,
+                    style = theme.typography.titleSmall,
+                    color = theme.colors.onSurface
                 )
+                if (subtitle.isNotBlank()) {
+                    Text(
+                        textAlign = TextAlign.Center,
+                        text = subtitle,
+                        style = theme.typography.bodyMedium,
+                        color = theme.colors.greyTextColor
+                    )
 
+                }
             }
         }
     }
@@ -145,7 +151,7 @@ fun InputTextField(
     val boxModifier = Modifier
         .fillMaxWidth()
         .clip(RoundedCornerShape(theme.dimension.defaultRadius))
-        .background(theme.colors.onPrimary)
+        .background(theme.colors.surface)
         .then(
             if (!readOnly || borderAlwaysVisible) {
                 Modifier.border(
@@ -176,101 +182,100 @@ fun InputTextField(
                 .fillMaxWidth().padding(bottom = theme.dimension.veryCloseSpacing),
         verticalArrangement = Arrangement.spacedBy(theme.dimension.veryCloseSpacing)
     ) {
-        // Label above the text field
+
         if (label.isNotEmpty()) {
             Text(
                 modifier = Modifier.padding(bottom = theme.dimension.veryCloseSpacing),
                 text = label,
-                style = theme.typography.bodyMedium,
-                color = if (error) theme.colors.error else theme.colors.greyScale.c80
+                style = theme.typography.bodyMediumStrong,
+                color = if (error) theme.colors.error else theme.colors.onSurface
             )
 
         }
 
-        GlassCard{
-            Box(contentAlignment = Alignment.CenterStart,modifier = boxModifier) {
-
-
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                BasicTextField(
-                    value = localValue,
-                    enabled = !readOnly,
-                    onValueChange = {
-                        if (!readOnly) {
-                            localValue = it
-                            onValueChange(it)
-                        }
-                    },
-
-                    interactionSource = interactionSource,
-                    textStyle = theme.typography.bodyMedium.copy(color = theme.colors.onSurface),
-                    keyboardOptions = keyboardOptions,
-                    visualTransformation = if (isPassword && !isPasswordVisible) PasswordVisualTransformation() else VisualTransformation.None,
-                    modifier = fieldModifier.weight(1f).semantics {
-                        if (contentType != null) this.contentType = contentType
-                    },
-
-                    maxLines = 1,
-                    singleLine = true,
-                    keyboardActions = keyboardActions,
-                )
-
-                if (trailingIcon != null && !isLoading && !isPassword) {
-                    Box(
-                        modifier = Modifier.padding(start = 8.dp), // Space between text and icon
-                        contentAlignment = Alignment.Center
-                    ) {
-                        trailingIcon()
-                    }
-                } else if (isPassword) {
-                    Box(
-                        modifier = Modifier.padding(start = 8.dp).clickable {
-                            isPasswordVisible = !isPasswordVisible
-                            onPasswordVisibilityChange(isPasswordVisible)
+        GlassCard {
+            Box(contentAlignment = Alignment.CenterStart, modifier = boxModifier) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    BasicTextField(
+                        value = localValue,
+                        enabled = !readOnly,
+                        onValueChange = {
+                            if (!readOnly) {
+                                localValue = it
+                                onValueChange(it)
+                            }
                         },
-                        contentAlignment = Alignment.Center
+
+                        interactionSource = interactionSource,
+                        textStyle = theme.typography.bodyMedium.copy(color = theme.colors.onSurface),
+                        keyboardOptions = keyboardOptions,
+                        visualTransformation = if (isPassword && !isPasswordVisible) PasswordVisualTransformation() else VisualTransformation.None,
+                        modifier = fieldModifier.weight(1f).semantics {
+                            if (contentType != null) this.contentType = contentType
+                        },
+
+                        maxLines = 1,
+                        singleLine = true,
+                        keyboardActions = keyboardActions,
+
                     )
-                    {
-                        if (isPasswordVisible) {
-                            Icon(
-                                imageVector = Icons.Default.VisibilityOff,
-                                contentDescription = null,
-                                tint = theme.colors.greyScale.c70
-                            )
-                        } else {
-                            Icon(
-                                imageVector = Icons.Default.Visibility,
-                                contentDescription = null,
-                                tint = theme.colors.greyScale.c70
-                            )
+
+                    if (trailingIcon != null && !isLoading && !isPassword) {
+                        Box(
+                            modifier = Modifier.padding(start = 8.dp), // Space between text and icon
+                            contentAlignment = Alignment.Center
+                        ) {
+                            trailingIcon()
+                        }
+                    } else if (isPassword) {
+                        Box(
+                            modifier = Modifier.padding(start = 8.dp).clickable {
+                                isPasswordVisible = !isPasswordVisible
+                                onPasswordVisibilityChange(isPasswordVisible)
+                            },
+                            contentAlignment = Alignment.Center
+                        )
+                        {
+                            if (isPasswordVisible) {
+                                Icon(
+                                    imageVector = Icons.Default.VisibilityOff,
+                                    contentDescription = null,
+                                    tint = theme.colors.greyTextColor
+                                )
+                            } else {
+                                Icon(
+                                    imageVector = Icons.Default.Visibility,
+                                    contentDescription = null,
+                                    tint = theme.colors.greyTextColor
+                                )
+                            }
                         }
                     }
-                }
-                if (isLoading) {
-                    Box(
-                        modifier = Modifier.padding(start = 8.dp),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        CircularProgressIndicator(
-                            modifier = Modifier.size(theme.dimension.navBarIconSize),
-                            strokeWidth = 2.dp,
-                            color = theme.colors.primary.c50
-                        )
+                    if (isLoading) {
+                        Box(
+                            modifier = Modifier.padding(start = 8.dp),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            CircularProgressIndicator(
+                                modifier = Modifier.size(theme.dimension.navBarIconSize),
+                                strokeWidth = 2.dp,
+                                color = theme.colors.primary.c50
+                            )
+                        }
+
                     }
-
                 }
-            }
 
-            if (value.isEmpty()) {
-                Text(
-                    text = placeholder,
-                    style = theme.typography.bodyMedium,
-                    color = theme.colors.greyScale.c50
-                )
-            }
+                if (value.isEmpty()) {
+                    Text(
+                        text = placeholder,
+                        style = theme.typography.bodyMedium,
+                        color = theme.colors.greyTextColor
+                    )
+                }
             }
         }
 
@@ -318,14 +323,14 @@ fun SmallButton(
             Icon(
                 painter = iconPainter,
                 contentDescription = null,
-                tint = if (enabled )contentColor else theme.colors.greyScale.c40,
+                tint = if (enabled) contentColor else theme.colors.greyScale.c40,
                 modifier = Modifier.size(theme.dimension.smallIconSize)
             )
         } else if (iconVector != null) {
             Icon(
                 imageVector = iconVector,
                 contentDescription = null,
-                tint = if (enabled )contentColor else theme.colors.greyScale.c40,
+                tint = if (enabled) contentColor else theme.colors.greyScale.c40,
                 modifier = Modifier.size(theme.dimension.smallIconSize)
             )
         }
@@ -352,7 +357,11 @@ fun SmallButton(
                 if (iconPosition == IconPosition.LEADING) {
                     icon()
                 }
-                Text(text, style = theme.typography.bodySmall, color = if (enabled )contentColor else theme.colors.greyScale.c40)
+                Text(
+                    text,
+                    style = theme.typography.bodySmall,
+                    color = if (enabled) contentColor else theme.colors.greyScale.c40
+                )
                 if (iconPosition == IconPosition.TRAILING) {
                     icon()
                 }
@@ -362,6 +371,7 @@ fun SmallButton(
     }
 
 }
+
 @Composable
 fun LargeButton(
     modifier: Modifier = Modifier,
@@ -392,6 +402,7 @@ fun LargeButton(
         shape
     )
 }
+
 enum class IconPosition {
     LEADING,
     TRAILING
@@ -489,6 +500,7 @@ private fun IconComposable(
         )
     }
 }
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun DateInputTextField(
@@ -607,13 +619,14 @@ fun DateInputTextField(
 }
 
 @Composable
-fun ListDivider(modifier:Modifier = Modifier){
+fun ListDivider(modifier: Modifier = Modifier) {
     HorizontalDivider(
-        modifier = modifier.padding(horizontal = theme.dimension.veryLargeSpacing),
+        modifier = modifier.clip(RoundedCornerShape(theme.dimension.defaultRadius)),
         thickness = 1.dp,
-        color = theme.colors.border.copy(alpha = 0.5f)
+        color = theme.colors.border
     )
 }
+
 val now = Clock.System.now().toLocalDateTime(TimeZone.currentSystemDefault())
 
 fun LocalDate.toSimpleDateString(): String {

@@ -9,10 +9,12 @@ import androidx.lifecycle.viewModelScope
 import com.example.visualmoney.ExploreTab
 import com.example.visualmoney.SearchResultRowUi
 import com.example.visualmoney.data.repository.FinancialRepository
+import com.example.visualmoney.exchangeName
 import com.example.visualmoney.newAsset.event.ListedAssetInputEvent
 import com.example.visualmoney.newAsset.event.ManualAssetInputEvent
 import com.example.visualmoney.newAsset.state.ListedAssetInputState
 import com.example.visualmoney.util.LogoUtil
+import kotlinx.coroutines.FlowPreview
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.debounce
 import kotlinx.coroutines.flow.distinctUntilChanged
@@ -32,12 +34,17 @@ class NewAssetViewModel(private val repo: FinancialRepository) : ViewModel() {
         searchListedAsset()
     }
 
+    @OptIn(FlowPreview::class)
     fun searchListedAsset() {
+        val priorityExchanges = setOf("NYSE", "NASDAQ", "OTC")
         viewModelScope.launch {
             snapshotFlow {
                 listedAssetInputState.query
             }.debounce { 300 }.distinctUntilChanged().collectLatest {
-                val results = repo.searchAsset(it)
+                val exchange =  listedAssetInputState.currentTab.exchangeName
+                val results = repo.searchAsset(it, exchange).sortedBy { asset ->
+                    if (asset.exchange in priorityExchanges) 0 else 1
+                }
                 isLoading = true
                 listedAssetInputState = listedAssetInputState.copy(
                     results = results.map {
@@ -47,7 +54,7 @@ class NewAssetViewModel(private val repo: FinancialRepository) : ViewModel() {
                             priceText = it.currency,
                             assetType = ExploreTab.STOCKS,
                             exchangeName = it.exchange,
-                            iconUrl = LogoUtil.getLogoUrl(it.symbol)
+                            iconUrl = if (it.exchange == "CRYPTO") LogoUtil.getCryptoLogoUrl(it.symbol) else LogoUtil.getLogoUrl(it.symbol)
                         )
                     }
                 )

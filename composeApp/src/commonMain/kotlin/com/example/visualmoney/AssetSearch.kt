@@ -47,9 +47,11 @@ import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.focus.FocusManager
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.style.TextOverflow
@@ -57,9 +59,11 @@ import androidx.compose.ui.unit.dp
 import coil3.compose.AsyncImage
 import com.example.visualmoney.core.TopNavigationBar
 import com.example.visualmoney.domain.model.Asset
+import com.example.visualmoney.home.ChipContainer
 import com.example.visualmoney.home.GlassCard
 import com.example.visualmoney.home.borderStroke
 import com.example.visualmoney.home.format
+import com.example.visualmoney.home.theme
 import kotlinx.coroutines.FlowPreview
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.flow.collectLatest
@@ -68,14 +72,20 @@ import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.launch
 import org.jetbrains.compose.resources.painterResource
 import visualmoney.composeapp.generated.resources.Res
+import visualmoney.composeapp.generated.resources.chevron_right
 import visualmoney.composeapp.generated.resources.search
 import kotlin.math.abs
 
-private val theme @Composable get() = LocalAppTheme.current
 
 // ---------- Models ----------
 enum class ExploreTab(val label: String) {
-    STOCKS("Stocks"), CRYPTO("Crypto"), ETF("ETFs"), FUNDS("Funds")
+    STOCKS("Stocks"), CRYPTO("Crypto"), ETF("ETFs"), COMMODITIES("Commodities"), OTHER("Other")
+}
+
+val ExploreTab.exchangeName: String get() = when(this) {
+    ExploreTab.CRYPTO -> "CRYPTO"
+    ExploreTab.COMMODITIES -> "COMMODITY"
+    else -> ""
 }
 
 enum class AssetType(val label: String) { LISTED("Listed Asset"), UNLISTED("Unlisted Asset") }
@@ -189,27 +199,30 @@ fun ExploreSearchScreen(
 @OptIn(FlowPreview::class)
 @Composable
 fun SearchBar(
+    modifier: Modifier = Modifier,
     query: String,
+    placeholder:String = "",
     onQueryChange: (String) -> Unit,
     onSortClick: () -> Unit,
 ) {
-    GlassCard() {
+//    GlassCard() {
         Row(
-            modifier = Modifier.fillMaxWidth(),
+            modifier = Modifier.fillMaxWidth().border(borderStroke, shape = RoundedCornerShape(theme.dimension.defaultRadius))
+                .clip(RoundedCornerShape(theme.dimension.defaultRadius)),
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(theme.dimension.mediumSpacing)
         ) {
-
             TextField(
                 value = query,
+
                 onValueChange = onQueryChange,
                 modifier = Modifier.weight(1f)
-                    .clip(RoundedCornerShape(theme.dimension.defaultRadius)).border(borderStroke),
+                    .clip(RoundedCornerShape(theme.dimension.defaultRadius)),
                 singleLine = true,
                 placeholder = {
                     Text(
-                        "Search ticker…",
-                        style = theme.typography.bodySmall,
+                        placeholder,
+                        style = theme.typography.bodyMediumMedium,
                         color = theme.colors.greyTextColor
                     )
                 },
@@ -221,14 +234,15 @@ fun SearchBar(
                     )
                 },
                 colors = TextFieldDefaults.colors(
-                    focusedContainerColor = theme.colors.onPrimary,
-                    unfocusedContainerColor = theme.colors.onPrimary,
-                    disabledContainerColor = theme.colors.onPrimary,
+                    focusedContainerColor = theme.colors.container,
+                    unfocusedContainerColor = theme.colors.container,
+                    disabledContainerColor = theme.colors.container,
                     focusedIndicatorColor = Color.Transparent,
                     unfocusedIndicatorColor = Color.Transparent,
-                    disabledIndicatorColor = Color.Transparent
+                    disabledIndicatorColor = Color.Transparent,
+
                 ),
-                textStyle = theme.typography.bodySmallMedium,
+                textStyle = theme.typography.bodyMedium.copy(color = theme.colors.onSurface),
                 keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search)
 
             )
@@ -239,7 +253,7 @@ fun SearchBar(
 //            contentDescription = "Sort",
 //            containerColor = theme.colors.container
 //        )
-        }
+//        }
     }
 }
 
@@ -285,7 +299,8 @@ fun AssetTypeSelector(
     selected: AssetType, onSelect: (AssetType) -> Unit
 ) {
     Row(
-        modifier = Modifier.fillMaxWidth().border(borderStroke, shape = RoundedCornerShape(theme.dimension.defaultRadius)),
+        modifier = Modifier.fillMaxWidth()
+            .border(borderStroke, shape = RoundedCornerShape(theme.dimension.defaultRadius)),
         horizontalArrangement = Arrangement.spacedBy(0.dp)
     ) {
         AssetType.entries.forEach { tab ->
@@ -302,7 +317,8 @@ fun AssetTypeSelector(
                 topEnd = theme.dimension.defaultRadius,
                 bottomEnd = theme.dimension.defaultRadius
             )
-            val textColor = if (isSelected) theme.colors.onSurface else theme.colors.greyTextColor.copy(alpha = 0.7f)
+            val textColor =
+                if (isSelected) theme.colors.onPrimary else theme.colors.greyTextColor.copy(alpha = 0.7f)
             Surface(
                 modifier = Modifier.weight(1f),
                 color = bg,
@@ -403,11 +419,12 @@ fun SearchResultRow(
             contentAlignment = Alignment.Center
         ) {
             item.iconUrl?.let {
-                AsyncImage(model = it, contentDescription = null, contentScale = ContentScale.Crop)
+                AsyncImage(model = it, contentDescription = null, contentScale = ContentScale.Fit)
             } ?: Text(
                 text = item.symbol.take(1),
                 style = theme.typography.bodyMediumMedium,
-                fontWeight = FontWeight.Medium
+                fontWeight = FontWeight.Medium,
+
             )
         }
 
@@ -419,20 +436,20 @@ fun SearchResultRow(
                 text = item.name,
                 style = theme.typography.bodyMediumMedium,
                 maxLines = 1,
-                overflow = TextOverflow.Ellipsis
+                overflow = TextOverflow.Ellipsis,
+                color = theme.colors.onSurface
             )
             Text(
                 text = item.symbol,
                 style = theme.typography.bodySmall,
-                color = theme.colors.greyScale.c60
+                color = theme.colors.greyTextColor
             )
         }
 
         Column(horizontalAlignment = Alignment.End) {
-            Text(
-                text = item.exchangeName, style = theme.typography.bodyMediumMedium
-            )
+            ChipContainer(item.exchangeName)
         }
+        Icon(painterResource(Res.drawable.chevron_right),null,modifier = Modifier.size(theme.dimension.smallIconSize), tint = theme.colors.greyTextColor)
     }
 }
 
@@ -467,7 +484,7 @@ fun sampleSearchResults() = listOf(
     SearchResultRowUi("VLA", "Valneva", "4.12 €", -0.48, ExploreTab.STOCKS),
     SearchResultRowUi("AAPL", "Apple", "209.50 €", -0.14, ExploreTab.STOCKS),
 
-    SearchResultRowUi("SPY", "SPDR S&P 500 ETF", "506.11 $", +0.12, ExploreTab.FUNDS),
+    SearchResultRowUi("SPY", "SPDR S&P 500 ETF", "506.11 $", +0.12, ExploreTab.ETF),
     SearchResultRowUi("BTC", "Bitcoin", "43,210 $", +1.35, ExploreTab.CRYPTO),
-    SearchResultRowUi("VTI", "Vanguard Total Stock Market", "255.44 $", -0.05, ExploreTab.FUNDS),
+    SearchResultRowUi("VTI", "Vanguard Total Stock Market", "255.44 $", -0.05, ExploreTab.ETF),
 )

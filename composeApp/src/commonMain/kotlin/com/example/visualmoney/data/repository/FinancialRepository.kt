@@ -22,7 +22,7 @@ interface FinancialRepository {
     suspend fun getTopLosers(): List<AssetQuote>
     suspend fun getCommodities(): List<AssetQuote>
     suspend fun getChart(symbol: String): List<ChartPoint>
-    suspend fun searchAsset(name:String):List<SearchResult>
+    suspend fun searchAsset(name:String,exchange: String):List<SearchResult>
 
     suspend fun loadEtfs():List<SearchResult>
 
@@ -111,8 +111,8 @@ class FinancialRepositoryImpl(
 
     override suspend fun getCommodities(): List<AssetQuote> = remoteSource.getCommodities()
     override suspend fun getChart(symbol: String): List<ChartPoint> = remoteSource.getChart(symbol)
-    override suspend fun searchAsset(name: String): List<SearchResult> {
-        val remote =  remoteSource.searchCompanyByName(name)
+    override suspend fun searchAsset(name: String, exchange:String): List<SearchResult> {
+        val remote =  remoteSource.searchCompanyByName(name,exchange)
         println("Search result: $remote")
         return remote
     }

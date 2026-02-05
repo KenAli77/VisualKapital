@@ -58,7 +58,9 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import coil3.compose.AsyncImage
+import com.example.visualmoney.DefaultAppColors
 import com.example.visualmoney.ExploreSearchScreen
+import com.example.visualmoney.GreenGradient
 import com.example.visualmoney.LocalAppTheme
 import com.example.visualmoney.core.IconPosition
 import com.example.visualmoney.core.SmallButton
@@ -113,22 +115,17 @@ fun HomeScreen(
     balanceUsd: Double = 5738.25,
     profitUsd: Double = 295.83,
     mlPct: Double = 300.00,
-    tabs: List<HomeTab> = HomeTab.entries,
     onGoToCalendar: () -> Unit = {},
     onGoToBalance: () -> Unit = {},
-    onGoToNews: () -> Unit = {},
+    onNewAsset: () -> Unit = {},
     onGoToAssetDetails: (String) -> Unit = {}
 ) = with(viewModel) {
-    var selectedTab by remember { mutableStateOf(HomeTab.Favourites) }
     var showSearch by remember { mutableStateOf(false) }
-    var showNewAssetScreen by remember { mutableStateOf(false) }
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
-    val newAssetSheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
     val scope = rememberCoroutineScope()
-    val newAssetViewModel = koinViewModel<NewAssetViewModel>()
     Scaffold(
         modifier = modifier.fillMaxSize(),
-        containerColor = theme.colors.surface
+        containerColor = Color.Transparent
     ) { padding ->
         if (showSearch) {
             ExploreSearchScreen(sheetState = sheetState, onBack = {
@@ -139,19 +136,6 @@ fun HomeScreen(
                 }
             })
         }
-        if (showNewAssetScreen) {
-            NewAssetScreen(
-                newAssetSheetState,
-                viewModel = newAssetViewModel,
-                onBack = {
-                    scope.launch {
-                        newAssetSheetState.hide()
-                    }.invokeOnCompletion {
-                        showNewAssetScreen = false
-                    }
-                },
-            )
-        }
 
         Column(
             modifier = Modifier.fillMaxSize().padding(theme.dimension.pagePadding)
@@ -160,9 +144,7 @@ fun HomeScreen(
                 ),
             verticalArrangement = Arrangement.spacedBy(theme.dimension.largeSpacing),
         ) {
-            HomeTopHeader(userName = userName, onSearch = {
-                showSearch = true
-            })
+            HomeTopHeader(userName = userName, onGoToCalendar = onGoToCalendar)
             BalanceCard(
                 balanceUsd = balanceUsd,
                 profitUsd = profitUsd,
@@ -180,10 +162,15 @@ fun HomeScreen(
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.SpaceBetween
             ) {
-                Text("My assets", style = theme.typography.titleSmall)
+                Text(
+                    "My assets",
+                    style = theme.typography.titleSmall,
+                    color = theme.colors.onSurface
+                )
                 IconWithContainer(
                     icon = painterResource(Res.drawable.plus),
-                    onClick = { showNewAssetScreen = true })
+                    onClick = onNewAsset
+                )
             }
 
             GlassCard(
@@ -213,7 +200,7 @@ fun HomeScreen(
 // ---------- Header ----------
 @Composable
 fun HomeTopHeader(
-    userName: String, modifier: Modifier = Modifier, onSearch: () -> Unit = {}
+    userName: String, modifier: Modifier = Modifier, onGoToCalendar: () -> Unit = {}
 ) {
     Row(
         modifier = modifier.fillMaxWidth(),
@@ -246,14 +233,8 @@ fun HomeTopHeader(
         }
         Row(horizontalArrangement = Arrangement.spacedBy(theme.dimension.mediumSpacing)) {
             IconWithContainer(
-                onClick = { /* scan */ },
+                onClick = onGoToCalendar,
                 painterResource(Res.drawable.calendar),
-            )
-            IconWithContainer(
-                onClick = {
-                    onSearch()
-                },
-                painterResource(Res.drawable.search),
             )
         }
 
@@ -334,12 +315,13 @@ fun GlassCard(
 ) {
     Box(modifier = modifier.clip(RoundedCornerShape(theme.dimension.defaultRadius))) {
         Box(
-            modifier = Modifier.matchParentSize().blur(radius = 1.dp)
+            modifier = Modifier.matchParentSize()
+                .clip(RoundedCornerShape(theme.dimension.defaultRadius))
                 .border(borderStroke, shape = RoundedCornerShape(theme.dimension.defaultRadius))
-                .background(containerColor)
-            ,
+                .blur(radius = 1.dp).padding(1.dp)
+                .background(containerColor),
         )
-        Column() {
+        Column {
             content()
         }
 
@@ -507,21 +489,15 @@ val primaryGradient = Brush.linearGradient(
     ), start = Offset(0f, 0f), end = Offset.Infinite
 )
 
-val DarkBackgroundGradient = Brush.linearGradient(
-    colors = listOf(
-        Color(0xFF0F1F1A), // deep green-black
-        Color(0xFF132824), // muted emerald
-        Color(0xFF1B2F2B), // desaturated teal
-        Color(0xFF0B1412)  // near-black
-    ), start = Offset(0f, 0f), end = Offset.Infinite
-)
 
 val borderGradient = Brush.linearGradient(
     colorStops = arrayOf(
-        0.0f to Color(0xFFFFFFFF).copy(alpha = 0.9f),
-        0.5f to Color(0xFFFFFFFF).copy(alpha = 0f),
-        1.0f to Color(0xFFFFFFFF).copy(alpha = 0.9f)
-    ), start = Offset(-500f, 1000f), end = Offset(1500f, -100f)
+        0.0f to DefaultAppColors.greyScale.c80.copy(alpha = 1f),
+//        0.25f to Color(0xFFFFFFFF).copy(alpha = 0.5f),
+        0.5f to DefaultAppColors.greyScale.c80.copy(alpha = 0f),
+//        0.75f to Color(0xFFFFFFFF).copy(alpha = 0.5f),
+        1.0f to DefaultAppColors.greyScale.c80.copy(alpha = 1f)
+    ), start = Offset(-500f, 100f), end = Offset(150f, -100f)
 )
 
 val borderStroke = BorderStroke(1.dp, brush = borderGradient)
@@ -535,12 +511,13 @@ fun UnlockPremiumSection(
     modifier: Modifier = Modifier,
 ) {
     GlassCard(
-        containerColor = theme.colors.primary.c30
+        containerColor = Color.Transparent
     ) {
-        Box(contentAlignment = Alignment.BottomEnd) {
+        Box(contentAlignment = Alignment.BottomEnd, modifier = Modifier.background(GreenGradient)) {
             Icon(
                 painterResource(Res.drawable.zigzag),
-                modifier = Modifier.size(theme.dimension.largeIconSize * 4).padding(theme.dimension.veryLargeSpacing),
+                modifier = Modifier.size(theme.dimension.largeIconSize * 4)
+                    .padding(theme.dimension.veryLargeSpacing),
                 contentDescription = "",
                 tint = theme.colors.onSurface
             )
@@ -555,11 +532,11 @@ fun UnlockPremiumSection(
                 ) {
                     Text(
                         title,
-                        style = theme.typography.titleSmall
+                        style = theme.typography.titleSmall,
+                        color = theme.colors.onSurface
                     )
 
                     Text(
-
                         subtitle,
                         style = theme.typography.bodySmallMedium,
                         color = theme.colors.onSurface,
@@ -567,11 +544,11 @@ fun UnlockPremiumSection(
                     )
                     SmallButton(
                         text = "Show me",
-                        contentColor = theme.colors.onSurface,
+                        contentColor = theme.colors.onPrimary,
                         border = true,
                         iconPosition = IconPosition.TRAILING,
                         iconPainter = painterResource(Res.drawable.arrow_up_right),
-                        backgroundColor = theme.colors.primary.c50,
+                        backgroundColor = Color.Black,
                     )
                 }
             }
@@ -626,8 +603,8 @@ fun HoldingRow(
                 1.dp,
                 brush = borderGradient,
                 shape = RoundedCornerShape(theme.dimension.defaultRadius)
-            ).clip(RoundedCornerShape(theme.dimension.defaultRadius))
-               , contentAlignment = Alignment.Center
+            ).clip(RoundedCornerShape(theme.dimension.defaultRadius)),
+            contentAlignment = Alignment.Center
         ) {
             AsyncImage(
                 modifier = Modifier.size(52.dp),
@@ -646,9 +623,12 @@ fun HoldingRow(
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
                 style = theme.typography.bodyMediumStrong,
+                color = theme.colors.onSurface
             )
             Text(
-                text = item.symbol
+                text = item.symbol,
+                style = theme.typography.bodyMediumMedium,
+                color = theme.colors.onSurface
             )
 //            AssetCategoryChip(
 //                modifier = Modifier.wrapContentWidth(), assetClass = item.assetClass
@@ -669,6 +649,8 @@ fun HoldingRow(
             Text(
                 text = "%.2f".format(item.price),
                 style = theme.typography.bodyMediumStrong,
+                color =
+                    theme.colors.onSurface
             )
             val changeText =
                 (if (item.changePct >= 0) "+" else "") + "%.2f".format(item.changePct) + "%"
@@ -779,15 +761,15 @@ fun HomeBottomBar(
 //)
 
 @Composable
-fun AssetCategoryChip(modifier: Modifier = Modifier, assetClass: AssetClass) {
+fun ChipContainer(label: String, modifier: Modifier = Modifier) {
     Surface(
         modifier = modifier,
-        shape = RoundedCornerShape(theme.dimension.defaultRadius),
-        color = theme.colors.primary.c10
+        shape = RoundedCornerShape(theme.dimension.verySmallRadius),
+        color = theme.colors.primary.c20
     ) {
         Box(contentAlignment = Alignment.Center) {
             Text(
-                assetClass.label,
+                label,
                 style = theme.typography.bodySmallMedium,
                 color = theme.colors.greyScale.c60,
                 modifier = Modifier.padding(
