@@ -67,6 +67,7 @@ class FmpDataSource(private val client: HttpClient) {
 
     suspend fun getProfile(symbol: String): AssetProfile {
         return try {
+            println("Getting profile for $baseUrl/stable/profile?symbol=$symbol ")
             val response: List<AssetProfile> = client.get("$baseUrl/stable/profile?symbol=$symbol") {
                 parameter("apikey", apiKey)
             }.body()
@@ -92,11 +93,14 @@ class FmpDataSource(private val client: HttpClient) {
         }
     }
 
-    suspend fun searchCompanyByName(query:String) : List<SearchResult> {
+    suspend fun searchCompanyByName(query:String, exchange: String = "") : List<SearchResult> {
         return try {
             val response = client.get("$baseUrl/stable/search-name?query=$query") {
                 parameter("apikey", apiKey)
                 parameter("limit",10)
+                exchange.takeIf { it.isNotEmpty() }?.let {
+                    parameter("exchange", it)
+                }
             }.body<List<SearchResult>>()
             println("Result from search: $response")
 

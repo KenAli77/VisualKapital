@@ -56,12 +56,15 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.example.visualmoney.DefaultAppColors
 import com.example.visualmoney.LocalAppTheme
+import com.example.visualmoney.core.IconPosition
+import com.example.visualmoney.core.LargeButton
 import com.example.visualmoney.core.TopNavigationBar
 import com.example.visualmoney.domain.model.Asset
 import com.example.visualmoney.domain.model.AssetProfile
 import com.example.visualmoney.domain.model.AssetQuote
 import com.example.visualmoney.domain.model.ChartPoint
 import com.example.visualmoney.greyTextColor
+import com.example.visualmoney.home.GlassCard
 import com.example.visualmoney.home.IconWithContainer
 import com.example.visualmoney.home.IconWithContainerSmall
 import com.example.visualmoney.home.format
@@ -240,11 +243,8 @@ private fun PriceAndChartCard(
     selectedRange: ChartRange,
     onSelectRange: (ChartRange) -> Unit
 ) {
-    ElevatedCard(
+    GlassCard(
         modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(theme.dimension.defaultRadius),
-        elevation = CardDefaults.cardElevation(0.dp),
-        colors = CardDefaults.elevatedCardColors(containerColor = theme.colors.container)
     ) {
         Column(
             modifier = Modifier.padding(theme.dimension.largeSpacing),
@@ -311,14 +311,6 @@ private fun PriceAndChartCard(
                         color = if (pct >= 0) theme.colors.greenScale.c50 else theme.colors.error
                     )
                 }
-
-                IconWithContainerSmall(
-                    onClick = {},
-                    icon = painterResource(Res.drawable.arrow_up_right),
-                    contentDescription = "Open",
-                    containerColor = theme.colors.primary.c50,
-                    contentColor = theme.colors.onSurface,
-                )
             }
 
             Sparkline(
@@ -328,7 +320,7 @@ private fun PriceAndChartCard(
                     .height(140.dp)
             )
 
-            ChartRangeTabs(selected = selectedRange, onSelect = onSelectRange)
+          //  ChartRangeTabs(selected = selectedRange, onSelect = onSelectRange)
         }
     }
 }
@@ -444,12 +436,8 @@ private fun PortfolioCard(
     onRemove: () -> Unit,
     onSave: () -> Unit,
 ) {
-    Card(
+    GlassCard(
         modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(theme.dimension.defaultRadius),
-        border = BorderStroke(1.dp, theme.colors.border),
-        elevation = CardDefaults.cardElevation(0.dp),
-        colors = CardDefaults.elevatedCardColors(containerColor = theme.colors.surface)
     ) {
         Column(
             modifier = Modifier.padding(theme.dimension.largeSpacing),
@@ -492,9 +480,10 @@ private fun PortfolioCard(
 
             Row(horizontalArrangement = Arrangement.spacedBy(theme.dimension.mediumSpacing)) {
                 if (!inPortfolio) {
-                    GradientButton(
-                        title = "Add to portfolio",
-                        icon = Icons.Rounded.Add,
+                    LargeButton(
+                        text = "Add to portfolio",
+                        iconVector = Icons.Rounded.Add,
+                        iconPosition = IconPosition.LEADING,
                         onClick = onAdd,
                         modifier = Modifier.weight(1f)
                     )

@@ -1,7 +1,26 @@
 package com.example.visualmoney
 
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 
+//data class AppColors(
+//    val primary: ColorVariants,
+//    val greyScale: ColorVariants,
+//    val overlay: Color,
+//    var error:Color = Color(0xFFc1121f),
+//    val warning:Color = Color(0xFFf9a340),
+//    val primaryShadow: Color,
+//    val surface:Color = Color(0xFFfaf9f9),
+////    val surface:Color = Color(0xFF1a1a1a),
+//    val container:Color = Color.White,
+//    val blueScale:ColorVariants,
+//    val greenScale:ColorVariants = GreenScaleVariants,
+//    val onPrimary:Color = Color(0XFFfffffc),
+//    val onSurface:Color = Color(0XFF03071e),
+//    val border: Color = GreyScaleVariants.c20
+//
+//)
 data class AppColors(
     val primary: ColorVariants,
     val greyScale: ColorVariants,
@@ -9,18 +28,17 @@ data class AppColors(
     var error:Color = Color(0xFFc1121f),
     val warning:Color = Color(0xFFf9a340),
     val primaryShadow: Color,
-    val surface:Color = Color(0xFFfaf9f9),
+    val surface:Color = Color(0xFF0e0e10),
 //    val surface:Color = Color(0xFF1a1a1a),
-    val container:Color = Color.White,
+    val container:Color = Color(0xFF17171a),
     val blueScale:ColorVariants,
     val greenScale:ColorVariants = GreenScaleVariants,
     val onPrimary:Color = Color(0XFFfffffc),
-    val onSurface:Color = Color(0XFF03071e),
-    val border: Color = GreyScaleVariants.c20
-
+    val onSurface:Color = Color.White,
+    val border: Color = GreyScaleVariants.c90
 )
 
-val AppColors.greyTextColor: Color get() = greyScale.c70
+val AppColors.greyTextColor: Color get() = greyScale.c50
 
 data class ColorVariants(
     val c10: Color,
@@ -129,9 +147,41 @@ val BlueScaleVariants = ColorVariants(
 // Here, overlay might be a semi-transparent variant of your text black,
 // for example with 0x88 (~53% opacity). And primaryShadow is set as the darkest primary variant.
 val DefaultAppColors = AppColors(
-    primary = PrimaryVariants,
+    primary = GreenScaleVariants,
     greyScale = GreyScaleVariants,
     overlay = Color(0x88212529),  // text black with ~53% opacity
     primaryShadow = PrimaryVariants.c100,
     blueScale = BlueScaleVariants
 )
+
+//val DarkBackgroundGradient = Brush.linearGradient(
+//    colors = listOf(
+//        Color(0xFF0F1F1A), // deep green-black
+//        Color(0xFF132824), // muted emerald
+//        Color(0xFF1B2F2B), // desaturated teal
+//        Color(0xFF0B1412)  // near-black
+//    ), start = Offset(0f, 0f), end = Offset.Infinite
+//)
+
+val DarkBackgroundGradient = Brush.linearGradient(
+    colors = listOf(
+        Color(0xFF0E0E10), // primary surface (anchor)
+        Color(0xFF141418), // slightly lifted
+        Color(0xFF0B1412),  // near-black
+        Color(0xFF1A1A1F), // soft mid-dark
+        Color(0xFF0B0B0D)  // deep shadow
+    ),
+    start = Offset(0f, 0f),
+    end = Offset.Infinite
+)
+val GreenGradient = Brush.linearGradient(
+    colors = listOf(
+        Color(0xFF91B7AA), // rgba(145, 183, 170, 1) – light green
+        Color(0xFF226F54), // rgba(34, 111, 84, 1) – mid green
+        Color(0xFF0E2C22)  // rgba(14, 44, 34, 1) – dark green
+    ),
+    start = Offset(0f, 0f),            // left
+    end = Offset.Infinite              // right
+)
+
+val surface:Color = Color(0xFF0e0e10)
