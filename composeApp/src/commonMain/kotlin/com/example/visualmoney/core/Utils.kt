@@ -24,3 +24,19 @@ fun Modifier.dismissKeyboardOnScroll(focusManager:FocusManager): Modifier = comp
         )
     }
 }
+
+fun String.toSafeInt():Int {
+    return try {
+        this.toInt()
+    } catch (e: Exception) {
+        0
+    }
+}
+
+fun String.toSafeDouble():Double {
+    return try {
+        this.toDouble()
+    } catch (e: Exception) {
+        0.0
+    }
+}

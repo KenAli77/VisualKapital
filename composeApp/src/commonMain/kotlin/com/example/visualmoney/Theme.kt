@@ -20,6 +20,7 @@ data class AppTypography(
     val titleSmallMedium: TextStyle,
     val bodyLarge: TextStyle,
     val bodyLargeMedium: TextStyle,
+    val bodyLargeStrong: TextStyle,
     val bodyLargeThin: TextStyle,
     val bodyMedium: TextStyle,
     val bodyMediumThin: TextStyle,
@@ -85,6 +86,11 @@ fun appTypography(): AppTypography {
             fontFamily = primaryFont,
             fontSize = 21.sp,
             fontWeight = FontWeight.Normal
+        ),
+        bodyLargeStrong = TextStyle(
+            fontFamily = primaryFont,
+            fontSize = 21.sp,
+            fontWeight = FontWeight.SemiBold
         ),
         bodyLargeThin = TextStyle(
             fontFamily = primaryFont,

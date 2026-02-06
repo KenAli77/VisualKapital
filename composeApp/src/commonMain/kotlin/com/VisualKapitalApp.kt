@@ -3,6 +3,7 @@ package com
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Scaffold
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -28,9 +29,7 @@ import com.example.visualmoney.navigation.Routes
 import com.example.visualmoney.newAsset.NewAssetScreen
 import com.example.visualmoney.newAsset.NewAssetViewModel
 import org.koin.compose.viewmodel.koinViewModel
-import org.koin.core.annotation.KoinExperimentalAPI
 
-@OptIn(KoinExperimentalAPI::class)
 @Composable
 fun VisualKapitalApp(navController: NavHostController = rememberNavController()) {
     var symbol by remember { mutableStateOf("") }
@@ -38,11 +37,12 @@ fun VisualKapitalApp(navController: NavHostController = rememberNavController())
         Scaffold(
             modifier = Modifier.fillMaxSize(),
             containerColor = Color.Transparent,
-        ) {
+        ) { paddingValues ->
             NavHost(navController, startDestination = Routes.HOME) {
                 composable(route = Routes.HOME) {
                     val viewModel = koinViewModel<HomeViewModel>()
                     HomeScreen(
+                        modifier = Modifier.padding(top = paddingValues.calculateTopPadding()),
                         viewModel = viewModel, onGoToAssetDetails = {
                             symbol = it
                             navController.navigate(Routes.details(it))
@@ -56,6 +56,7 @@ fun VisualKapitalApp(navController: NavHostController = rememberNavController())
                     val viewModel = koinViewModel<NewAssetViewModel>()
 
                     NewAssetScreen(
+                        modifier = Modifier.padding(top = paddingValues.calculateTopPadding()),
                         onBack = { navController.popBackStack() },
                         viewModel = viewModel,
                         onNavigateToAssetDetails = {
@@ -76,10 +77,8 @@ fun VisualKapitalApp(navController: NavHostController = rememberNavController())
                         koinViewModel<AssetDetailsViewModel>(viewModelStoreOwner = backStackEntry)
                     viewModel.loadSymbolData(symbol)
                     AssetDetailsScreen(
-                        asset = viewModel.asset.toAsset(),
-                        profile = viewModel.asset,
-                        quote = viewModel.assetQuote,
-                        chart = viewModel.chartPoints,
+                        modifier = Modifier.padding(top = paddingValues.calculateTopPadding()),
+                        viewModel = viewModel,
                         onBack = {
                             navController.popBackStack()
                             symbol = ""

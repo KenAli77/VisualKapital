@@ -8,7 +8,6 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -19,74 +18,56 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.FilterAlt
-import androidx.compose.material.icons.rounded.ArrowBack
-import androidx.compose.material.icons.rounded.Search
-import androidx.compose.material.icons.rounded.SwapVert
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.ModalBottomSheet
-import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SheetState
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextField
 import androidx.compose.material3.TextFieldDefaults
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
-import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.focus.FocusManager
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Shape
-import androidx.compose.ui.layout.ContentScale
-import androidx.compose.ui.platform.LocalFocusManager
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import coil3.compose.AsyncImage
+import com.example.visualmoney.assetDetails.AssetLogoContainer
 import com.example.visualmoney.core.TopNavigationBar
-import com.example.visualmoney.domain.model.Asset
 import com.example.visualmoney.home.ChipContainer
-import com.example.visualmoney.home.GlassCard
+import com.example.visualmoney.home.CardContainer
 import com.example.visualmoney.home.borderStroke
-import com.example.visualmoney.home.format
 import com.example.visualmoney.home.theme
 import kotlinx.coroutines.FlowPreview
-import kotlinx.coroutines.coroutineScope
-import kotlinx.coroutines.flow.collectLatest
-import kotlinx.coroutines.flow.debounce
-import kotlinx.coroutines.flow.distinctUntilChanged
-import kotlinx.coroutines.launch
 import org.jetbrains.compose.resources.painterResource
 import visualmoney.composeapp.generated.resources.Res
 import visualmoney.composeapp.generated.resources.chevron_right
+import visualmoney.composeapp.generated.resources.edit_variant
 import visualmoney.composeapp.generated.resources.search
-import kotlin.math.abs
 
 
 // ---------- Models ----------
-enum class ExploreTab(val label: String) {
-    STOCKS("Stocks"), CRYPTO("Crypto"), ETF("ETFs"), COMMODITIES("Commodities"), OTHER("Other")
+enum class AssetCategory(val label: String) {
+    STOCKS("Security"), CRYPTO("Crypto"), COMMODITIES("Commodities"), OTHER("Other")
 }
 
-val ExploreTab.exchangeName: String get() = when(this) {
-    ExploreTab.CRYPTO -> "CRYPTO"
-    ExploreTab.COMMODITIES -> "COMMODITY"
-    else -> ""
-}
+val AssetCategory.exchangeName: String
+    get() = when (this) {
+        AssetCategory.CRYPTO -> "CRYPTO"
+        AssetCategory.COMMODITIES -> "COMMODITY"
+        else -> ""
+    }
 
 enum class AssetType(val label: String) { LISTED("Listed Asset"), UNLISTED("Unlisted Asset") }
 enum class SortMode(val label: String) { TRENDING("Trending"), PRICE("Price"), CHANGE("Change") }
@@ -97,7 +78,7 @@ data class SearchResultRowUi(
     val name: String,
     val priceText: String,
     val changePct: Double = 0.0, // e.g. -0.08
-    val assetType: ExploreTab,
+    val assetType: AssetCategory,
     val iconUrl: String? = null,
     val exchangeName: String = "", // e.g. -0.08
 )
@@ -109,7 +90,7 @@ fun ExploreSearchScreen(
     modifier: Modifier = Modifier,
     sheetState: SheetState,
     title: String = "Explore investments",
-    initialTab: ExploreTab = ExploreTab.STOCKS,
+    initialTab: AssetCategory = AssetCategory.STOCKS,
     resultsCount: Int? = null,
     results: List<SearchResultRowUi> = sampleSearchResults(),
     onBack: () -> Unit = {},
@@ -153,13 +134,7 @@ fun ExploreSearchScreen(
             TopNavigationBar(
                 title = title, onBack = onBack
             )
-            SearchBar(query = query, onQueryChange = { query = it }, onSortClick = {
-                sortMode = when (sortMode) {
-                    SortMode.TRENDING -> SortMode.PRICE
-                    SortMode.PRICE -> SortMode.CHANGE
-                    SortMode.CHANGE -> SortMode.TRENDING
-                }
-            })
+            SearchBar(query = query, onQueryChange = { query = it })
             ExploreTabsRow(
                 selected = selectedTab, onSelect = { selectedTab = it })
             FiltersRow(
@@ -201,51 +176,52 @@ fun ExploreSearchScreen(
 fun SearchBar(
     modifier: Modifier = Modifier,
     query: String,
-    placeholder:String = "",
+    placeholder: String = "",
     onQueryChange: (String) -> Unit,
-    onSortClick: () -> Unit,
 ) {
 //    GlassCard() {
-        Row(
-            modifier = Modifier.fillMaxWidth().border(borderStroke, shape = RoundedCornerShape(theme.dimension.defaultRadius))
+    Row(
+        modifier = modifier.fillMaxWidth()
+            .border(borderStroke, shape = RoundedCornerShape(theme.dimension.defaultRadius))
+            .clip(RoundedCornerShape(theme.dimension.defaultRadius)),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(theme.dimension.mediumSpacing)
+    ) {
+        TextField(
+            value = query,
+            onValueChange = onQueryChange,
+            modifier = Modifier.weight(1f)
                 .clip(RoundedCornerShape(theme.dimension.defaultRadius)),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(theme.dimension.mediumSpacing)
-        ) {
-            TextField(
-                value = query,
+            singleLine = true,
+            placeholder = {
+                Text(
+                    placeholder,
+                    style = theme.typography.bodyMediumMedium,
+                    color = theme.colors.greyTextColor
+                )
+            },
+            leadingIcon = {
+                Icon(
+                    painterResource(Res.drawable.search),
+                    modifier = Modifier.size(theme.dimension.smallIconSize),
+                    contentDescription = null,
+                    tint = theme.colors.onSurface
+                )
+            },
+            colors = TextFieldDefaults.colors(
+                focusedContainerColor = theme.colors.container,
+                unfocusedContainerColor = theme.colors.container,
+                disabledContainerColor = theme.colors.container,
+                focusedIndicatorColor = Color.Transparent,
+                unfocusedIndicatorColor = Color.Transparent,
+                disabledIndicatorColor = Color.Transparent,
+                cursorColor = theme.colors.primary.c50
 
-                onValueChange = onQueryChange,
-                modifier = Modifier.weight(1f)
-                    .clip(RoundedCornerShape(theme.dimension.defaultRadius)),
-                singleLine = true,
-                placeholder = {
-                    Text(
-                        placeholder,
-                        style = theme.typography.bodyMediumMedium,
-                        color = theme.colors.greyTextColor
-                    )
-                },
-                leadingIcon = {
-                    Icon(
-                        painterResource(Res.drawable.search),
-                        modifier = Modifier.size(theme.dimension.smallIconSize),
-                        contentDescription = null
-                    )
-                },
-                colors = TextFieldDefaults.colors(
-                    focusedContainerColor = theme.colors.container,
-                    unfocusedContainerColor = theme.colors.container,
-                    disabledContainerColor = theme.colors.container,
-                    focusedIndicatorColor = Color.Transparent,
-                    unfocusedIndicatorColor = Color.Transparent,
-                    disabledIndicatorColor = Color.Transparent,
+            ),
+            textStyle = theme.typography.bodyMedium.copy(color = theme.colors.onSurface),
+            keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search)
 
-                ),
-                textStyle = theme.typography.bodyMedium.copy(color = theme.colors.onSurface),
-                keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search)
-
-            )
+        )
 
 //        IconWithContainer(
 //            onClick = onSortClick,
@@ -260,13 +236,13 @@ fun SearchBar(
 // ---------- Tabs ----------
 @Composable
 fun ExploreTabsRow(
-    selected: ExploreTab, onSelect: (ExploreTab) -> Unit
+    selected: AssetCategory, onSelect: (AssetCategory) -> Unit
 ) {
     Row(
         modifier = Modifier.fillMaxWidth(),
         horizontalArrangement = Arrangement.spacedBy(theme.dimension.mediumSpacing)
     ) {
-        ExploreTab.entries.forEach { tab ->
+        AssetCategory.entries.forEach { tab ->
             val isSelected = tab == selected
             val bg by animateColorAsState(
                 if (isSelected) theme.colors.onSurface else theme.colors.greyScale.c20,
@@ -274,7 +250,7 @@ fun ExploreTabsRow(
             )
             val border = if (isSelected) Color.Transparent else theme.colors.border
             val textColor = if (isSelected) theme.colors.onPrimary else theme.colors.greyTextColor
-            GlassCard(
+            CardContainer(
                 modifier = Modifier.weight(1f),
                 containerColor = bg
             ) {
@@ -405,8 +381,10 @@ fun FilterChip(
 @Composable
 fun SearchResultRow(
     item: SearchResultRowUi,
-    onClick: () -> Unit,
-) {
+    compact: Boolean = false,
+    onClick: () -> Unit = {},
+
+    ) {
     Row(
         modifier = Modifier.fillMaxWidth().clickable(onClick = onClick)
             .padding(theme.dimension.largeSpacing),
@@ -414,19 +392,7 @@ fun SearchResultRow(
         horizontalArrangement = Arrangement.spacedBy(theme.dimension.mediumSpacing)
     ) {
         // Logo placeholder
-        Box(
-            modifier = Modifier.size(44.dp).clip(CircleShape).background(theme.colors.surface),
-            contentAlignment = Alignment.Center
-        ) {
-            item.iconUrl?.let {
-                AsyncImage(model = it, contentDescription = null, contentScale = ContentScale.Fit)
-            } ?: Text(
-                text = item.symbol.take(1),
-                style = theme.typography.bodyMediumMedium,
-                fontWeight = FontWeight.Medium,
-
-            )
-        }
+        AssetLogoContainer(item.iconUrl, item.symbol)
 
         Column(
             modifier = Modifier.weight(1f),
@@ -446,10 +412,17 @@ fun SearchResultRow(
             )
         }
 
-        Column(horizontalAlignment = Alignment.End) {
-            ChipContainer(item.exchangeName)
+        if (!compact) {
+            Column(horizontalAlignment = Alignment.End) {
+                ChipContainer(item.exchangeName)
+            }
+            Icon(
+                painterResource(Res.drawable.chevron_right),
+                null,
+                modifier = Modifier.size(theme.dimension.smallIconSize),
+                tint = theme.colors.greyTextColor
+            )
         }
-        Icon(painterResource(Res.drawable.chevron_right),null,modifier = Modifier.size(theme.dimension.smallIconSize), tint = theme.colors.greyTextColor)
     }
 }
 
@@ -475,16 +448,78 @@ private fun IconWithContainer(
     }
 }
 
+@Composable
+fun SelectedAssetField(modifier: Modifier = Modifier, rowItem: SearchResultRowUi) {
+    val boxModifier = Modifier
+        .fillMaxWidth()
+        .clip(RoundedCornerShape(theme.dimension.defaultRadius))
+        .background(theme.colors.surface)
+        .border(
+            border = borderStroke,
+            shape = RoundedCornerShape(theme.dimension.defaultRadius)
+        )
+        .padding(horizontal = 12.dp, vertical = 10.dp)
+
+    Column(
+        modifier =
+            modifier
+                .fillMaxWidth().padding(bottom = theme.dimension.veryCloseSpacing),
+        verticalArrangement = Arrangement.spacedBy(theme.dimension.veryCloseSpacing)
+    ) {
+        CardContainer {
+            Box(contentAlignment = Alignment.CenterStart, modifier = boxModifier) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(theme.dimension.mediumSpacing)
+                ) {
+                    AssetLogoContainer(
+                        rowItem.iconUrl,
+                        symbol = rowItem.symbol,
+                        size = theme.dimension.smallIconSize
+                    )
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(theme.dimension.closeSpacing)
+                    ) {
+                        Text(
+                            rowItem.name,
+                            style = theme.typography.bodyMediumStrong,
+                            color = theme.colors.onSurface
+                        )
+                        Text(
+                            rowItem.symbol,
+                            style = theme.typography.bodyMedium,
+                            color = theme.colors.greyTextColor
+                        )
+                    }
+                    Spacer(Modifier.weight(1f))
+
+                    Icon(
+                        painterResource(Res.drawable.edit_variant),
+                        null,
+                        tint = theme.colors.greyTextColor,
+                        modifier = Modifier.size(theme.dimension.smallIconSize)
+                           ,
+
+                        )
+
+
+                }
+
+            }
+        }
+
+    }
+}
+
 // ---------- Sample data ----------
 fun sampleSearchResults() = listOf(
-    SearchResultRowUi("RHM", "Rheinmetall", "1,828.50 €", -0.08, ExploreTab.STOCKS),
-    SearchResultRowUi("NVDA", "NVIDIA", "158.62 €", -0.09, ExploreTab.STOCKS),
-    SearchResultRowUi("PLTR", "Palantir Technologies", "143.16 €", -0.25, ExploreTab.STOCKS),
-    SearchResultRowUi("TSLA", "Tesla", "379.80 €", -0.06, ExploreTab.STOCKS),
-    SearchResultRowUi("VLA", "Valneva", "4.12 €", -0.48, ExploreTab.STOCKS),
-    SearchResultRowUi("AAPL", "Apple", "209.50 €", -0.14, ExploreTab.STOCKS),
+    SearchResultRowUi("RHM", "Rheinmetall", "1,828.50 €", -0.08, AssetCategory.STOCKS),
+    SearchResultRowUi("NVDA", "NVIDIA", "158.62 €", -0.09, AssetCategory.STOCKS),
+    SearchResultRowUi("PLTR", "Palantir Technologies", "143.16 €", -0.25, AssetCategory.STOCKS),
+    SearchResultRowUi("TSLA", "Tesla", "379.80 €", -0.06, AssetCategory.STOCKS),
+    SearchResultRowUi("VLA", "Valneva", "4.12 €", -0.48, AssetCategory.STOCKS),
+    SearchResultRowUi("AAPL", "Apple", "209.50 €", -0.14, AssetCategory.STOCKS),
 
-    SearchResultRowUi("SPY", "SPDR S&P 500 ETF", "506.11 $", +0.12, ExploreTab.ETF),
-    SearchResultRowUi("BTC", "Bitcoin", "43,210 $", +1.35, ExploreTab.CRYPTO),
-    SearchResultRowUi("VTI", "Vanguard Total Stock Market", "255.44 $", -0.05, ExploreTab.ETF),
 )

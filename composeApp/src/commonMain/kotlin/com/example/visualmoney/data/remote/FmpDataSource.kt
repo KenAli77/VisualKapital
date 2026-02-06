@@ -79,7 +79,7 @@ class FmpDataSource(private val client: HttpClient) {
         }
     }
 
-    suspend fun getChart(symbol: String): List<ChartPoint> {
+    suspend fun getChart(symbol: String, from:String, to: String): List<ChartPoint> {
         return try {
             val response: List<ChartPointDTO> =
                 client.get("$baseUrl/stable/historical-price-eod/light?symbol=$symbol") {

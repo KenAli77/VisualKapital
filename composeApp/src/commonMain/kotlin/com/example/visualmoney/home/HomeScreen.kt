@@ -9,11 +9,12 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
-import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.RowScope
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.wrapContentWidth
@@ -48,9 +49,11 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.blur
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.graphics.painter.Painter
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.ContentScale
@@ -62,19 +65,18 @@ import com.example.visualmoney.DefaultAppColors
 import com.example.visualmoney.ExploreSearchScreen
 import com.example.visualmoney.GreenGradient
 import com.example.visualmoney.LocalAppTheme
+import com.example.visualmoney.assetDetails.AssetLogoContainer
 import com.example.visualmoney.core.IconPosition
+import com.example.visualmoney.core.ListDivider
 import com.example.visualmoney.core.SmallButton
 import com.example.visualmoney.greyTextColor
-import com.example.visualmoney.newAsset.NewAssetScreen
-import com.example.visualmoney.newAsset.NewAssetViewModel
 import kotlinx.coroutines.launch
 import org.jetbrains.compose.resources.painterResource
-import org.koin.compose.viewmodel.koinViewModel
 import visualmoney.composeapp.generated.resources.Res
 import visualmoney.composeapp.generated.resources.arrow_up_right
 import visualmoney.composeapp.generated.resources.calendar
 import visualmoney.composeapp.generated.resources.plus
-import visualmoney.composeapp.generated.resources.search
+import visualmoney.composeapp.generated.resources.portfolio
 import visualmoney.composeapp.generated.resources.trending_up
 import visualmoney.composeapp.generated.resources.zigzag
 import kotlin.math.round
@@ -123,10 +125,9 @@ fun HomeScreen(
     var showSearch by remember { mutableStateOf(false) }
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
     val scope = rememberCoroutineScope()
-    Scaffold(
+    Box(
         modifier = modifier.fillMaxSize(),
-        containerColor = Color.Transparent
-    ) { padding ->
+    ) {
         if (showSearch) {
             ExploreSearchScreen(sheetState = sheetState, onBack = {
                 scope.launch {
@@ -137,58 +138,70 @@ fun HomeScreen(
             })
         }
 
+
         Column(
-            modifier = Modifier.fillMaxSize().padding(theme.dimension.pagePadding)
-                .padding(
-                    padding
-                ),
-            verticalArrangement = Arrangement.spacedBy(theme.dimension.largeSpacing),
+            modifier = Modifier.fillMaxSize().padding(theme.dimension.pagePadding),
+            verticalArrangement = Arrangement.spacedBy(theme.dimension.veryLargeSpacing),
         ) {
             HomeTopHeader(userName = userName, onGoToCalendar = onGoToCalendar)
-            BalanceCard(
-                balanceUsd = balanceUsd,
-                profitUsd = profitUsd,
-                mlPct = mlPct,
-                onOpen = {},
-                onCurrencyClick = {},
-            )
-
-            UnlockPremiumSection(
-                title = "Smarter investing starts here",
-                subtitle = "See risk exposure, portfolio health, and actionable insights. All in one place.",
-                onOpen = {})
-            Row(
-                modifier = Modifier.fillMaxWidth().padding(start = theme.dimension.largeSpacing),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.SpaceBetween
+            LazyColumn(
+                modifier = Modifier.clip(
+                    RoundedCornerShape(
+                        topStart = theme.dimension.defaultRadius,
+                        topEnd = theme.dimension.defaultRadius
+                    )
+                ),
+                verticalArrangement = Arrangement.spacedBy(theme.dimension.veryLargeSpacing)
             ) {
-                Text(
-                    "My assets",
-                    style = theme.typography.titleSmall,
-                    color = theme.colors.onSurface
-                )
-                IconWithContainer(
-                    icon = painterResource(Res.drawable.plus),
-                    onClick = onNewAsset
-                )
-            }
+                item {
+                    BalanceCard(
+                        balanceUsd = balanceUsd,
+                        profitUsd = profitUsd,
+                        mlPct = mlPct,
+                        onOpen = onGoToBalance,
+                        onCurrencyClick = {},
+                    )
+                }
+                item {
+                    UnlockPremiumSection(
+                        title = "Smarter investing starts here",
+                        subtitle = "See risk exposure, portfolio health, and actionable insights. All in one place.",
+                        onOpen = {})
+                }
 
-            GlassCard(
-            ) {
-                LazyColumn {
-                    items(state.holdings) { item ->
-                        HoldingRow(
-                            modifier = Modifier, item = item, onClick = {
-                                onGoToAssetDetails(item.symbol)
-                            })
-
-                        HorizontalDivider(
-                            modifier = Modifier.padding(horizontal = theme.dimension.veryLargeSpacing),
-                            thickness = 1.dp,
-                            color = theme.colors.border.copy(alpha = 0.5f)
+                item {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.SpaceBetween
+                    ) {
+                        Text(
+                            "My portfolio",
+                            style = theme.typography.bodyMediumMedium,
+                            color = theme.colors.greyTextColor
                         )
+                        Row(
+                            horizontalArrangement = Arrangement.spacedBy(theme.dimension.mediumSpacing),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Text(
+                                "Add asset",
+                                style = theme.typography.bodyMediumStrong,
+                                color = theme.colors.onSurface
+                            )
+                            IconWithContainer(
+                                icon = painterResource(Res.drawable.plus),
+                                onClick = onNewAsset
+                            )
+                        }
                     }
-
+                }
+                items(state.holdings) { item ->
+                    HoldingRow(
+                        modifier = Modifier, item = item, onClick = {
+                            onGoToAssetDetails(item.symbol)
+                        })
+                    ListDivider()
                 }
 
             }
@@ -246,16 +259,17 @@ fun HomeTopHeader(
 fun IconWithContainer(
     onClick: () -> Unit = {},
     icon: Painter,
-    containerColor: Color = theme.colors.container,
+    containerColor: Color = theme.colors.surface,
     modifier: Modifier = Modifier
 ) {
-    Card(
-        modifier = modifier,
+    CardContainer(
+        modifier = modifier.clickable { onClick() },
+        containerColor = containerColor,
         shape = CircleShape,
-        onClick = onClick,
-        elevation = CardDefaults.cardElevation(0.dp),
-        border = borderStroke,
-        colors = CardDefaults.elevatedCardColors(containerColor = containerColor)
+//        onClick = onClick,
+//        elevation = CardDefaults.cardElevation(0.dp),
+//        border = borderStroke,
+//        colors = CardDefaults.elevatedCardColors(containerColor = containerColor)
     ) {
         Box(
             modifier = Modifier.padding(theme.dimension.mediumSpacing),
@@ -308,16 +322,24 @@ fun IconWithContainerSmall(
 }
 
 @Composable
-fun GlassCard(
+fun CardContainer(
     modifier: Modifier = Modifier,
     containerColor: Color = theme.colors.container,
+    shape: Shape = RoundedCornerShape(theme.dimension.defaultRadius),
     content: @Composable ColumnScope.() -> Unit
 ) {
-    Box(modifier = modifier.clip(RoundedCornerShape(theme.dimension.defaultRadius))) {
+    Box(
+        modifier = modifier.shadow(
+            elevation = 8.dp,
+            shape,
+            spotColor = theme.colors.greenScale.c90,
+            ambientColor = theme.colors.greenScale.c50
+        )
+    ) {
         Box(
             modifier = Modifier.matchParentSize()
-                .clip(RoundedCornerShape(theme.dimension.defaultRadius))
-                .border(borderStroke, shape = RoundedCornerShape(theme.dimension.defaultRadius))
+                .clip(shape)
+                .border(borderStroke, shape = shape)
                 .blur(radius = 1.dp).padding(1.dp)
                 .background(containerColor),
         )
@@ -338,11 +360,11 @@ fun BalanceCard(
     onCurrencyClick: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    GlassCard(
+    CardContainer(
         modifier = modifier.fillMaxWidth(),
     ) {
         Column(
-            modifier = Modifier.padding(theme.dimension.largeSpacing).background(Color.Transparent),
+            modifier = Modifier.padding(theme.dimension.largeSpacing),
             verticalArrangement = Arrangement.spacedBy(theme.dimension.veryLargeSpacing)
         ) {
             Row(
@@ -356,8 +378,7 @@ fun BalanceCard(
                     modifier = Modifier
                 ) {
                     IconWithContainerSmall(
-                        onClick = {},
-                        icon = painterResource(Res.drawable.trending_up),
+                        icon = painterResource(Res.drawable.portfolio),
                         contentDescription = "Balance",
                     )
                     Text(
@@ -510,16 +531,20 @@ fun UnlockPremiumSection(
     onOpen: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    GlassCard(
+    CardContainer(
+        modifier = modifier,
         containerColor = Color.Transparent
     ) {
-        Box(contentAlignment = Alignment.BottomEnd, modifier = Modifier.background(GreenGradient)) {
+        Box(
+            contentAlignment = Alignment.BottomEnd,
+            modifier = Modifier.clickable { onOpen() }.background(Color.White)
+        ) {
             Icon(
                 painterResource(Res.drawable.zigzag),
                 modifier = Modifier.size(theme.dimension.largeIconSize * 4)
                     .padding(theme.dimension.veryLargeSpacing),
                 contentDescription = "",
-                tint = theme.colors.onSurface
+                tint = theme.colors.surface
             )
             Row(
                 modifier = Modifier.padding(theme.dimension.largeSpacing),
@@ -533,13 +558,13 @@ fun UnlockPremiumSection(
                     Text(
                         title,
                         style = theme.typography.titleSmall,
-                        color = theme.colors.onSurface
+                        color = theme.colors.surface
                     )
 
                     Text(
                         subtitle,
                         style = theme.typography.bodySmallMedium,
-                        color = theme.colors.onSurface,
+                        color = theme.colors.surface,
                         modifier = Modifier.fillMaxWidth(0.7f)
                     )
                     SmallButton(
@@ -547,7 +572,7 @@ fun UnlockPremiumSection(
                         contentColor = theme.colors.onPrimary,
                         border = true,
                         iconPosition = IconPosition.TRAILING,
-                        iconPainter = painterResource(Res.drawable.arrow_up_right),
+//                        iconPainter = painterResource(Res.drawable.arrow_up_right),
                         backgroundColor = Color.Black,
                     )
                 }
@@ -594,25 +619,14 @@ fun HoldingRow(
     modifier: Modifier = Modifier,
 ) {
     Row(modifier = modifier.fillMaxWidth().clickable { onClick() }
-        .padding(theme.dimension.largeSpacing),
+        .padding(vertical = theme.dimension.largeSpacing),
         verticalAlignment = Alignment.Top,
         horizontalArrangement = Arrangement.spacedBy(theme.dimension.mediumSpacing)) {
-        // Icon placeholder
-        Box(
-            modifier = Modifier.border(
-                1.dp,
-                brush = borderGradient,
-                shape = RoundedCornerShape(theme.dimension.defaultRadius)
-            ).clip(RoundedCornerShape(theme.dimension.defaultRadius)),
-            contentAlignment = Alignment.Center
-        ) {
-            AsyncImage(
-                modifier = Modifier.size(52.dp),
-                model = item.logoUrl,
-                contentDescription = null,
-                contentScale = ContentScale.Crop,
-            )
-        }
+
+        AssetLogoContainer(
+            logoUrl = item.logoUrl,
+            symbol = item.symbol
+        )
         Column(
             modifier = Modifier.weight(1f),
             verticalArrangement = Arrangement.spacedBy(theme.dimension.mediumSpacing),
@@ -630,15 +644,6 @@ fun HoldingRow(
                 style = theme.typography.bodyMediumMedium,
                 color = theme.colors.onSurface
             )
-//            AssetCategoryChip(
-//                modifier = Modifier.wrapContentWidth(), assetClass = item.assetClass
-//            )
-
-//                Text(
-//                    text = "Min ${"%.2f".format(item.dayLow)}   Max ${"%.2f".format(item.dayHigh)}",
-//                    style = theme.typography.bodySmall,
-//                    color = theme.colors.onSurface
-//                )
         }
 
 
@@ -653,7 +658,7 @@ fun HoldingRow(
                     theme.colors.onSurface
             )
             val changeText =
-                (if (item.changePct >= 0) "+" else "") + "%.2f".format(item.changePct) + "%"
+                (if (item.changePct >= 0) "▲" else "▼") + " " + "%.2f".format(item.changePct) + "%"
             Text(
                 text = changeText,
                 style = theme.typography.bodyMediumMedium,

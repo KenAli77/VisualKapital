@@ -10,6 +10,8 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -17,7 +19,6 @@ import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.CalendarToday
 import androidx.compose.material.icons.filled.Visibility
 import androidx.compose.material.icons.filled.VisibilityOff
 import androidx.compose.material.icons.rounded.CalendarToday
@@ -29,7 +30,6 @@ import androidx.compose.material3.DatePickerDialog
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
-import androidx.compose.material3.SelectableDates
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -43,26 +43,26 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.autofill.ContentType
+import androidx.compose.ui.draw.blur
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.RectangleShape
 import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.painter.Painter
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.semantics.contentType
 import androidx.compose.ui.semantics.semantics
-import androidx.compose.ui.text.TextGranularity.Companion.Character
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.VisualTransformation
-import androidx.compose.ui.text.intl.Locale
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import com.example.visualmoney.DarkBackgroundGradient
 import com.example.visualmoney.LocalAppTheme
+import com.example.visualmoney.createGlassGradient
 import com.example.visualmoney.greyTextColor
-import com.example.visualmoney.home.GlassCard
+import com.example.visualmoney.home.CardContainer
 import com.example.visualmoney.home.IconWithContainer
 import com.example.visualmoney.home.borderGradient
 import com.example.visualmoney.home.borderStroke
@@ -89,18 +89,18 @@ fun TopNavigationBar(
     onBack: () -> Unit
 ) {
     Column(
-        modifier = Modifier.fillMaxWidth(),
+        modifier = modifier.fillMaxWidth().heightIn(min = theme.dimension.topBarHeight)
+            .padding(top = theme.dimension.veryLargeSpacing),
         verticalArrangement = Arrangement.spacedBy(theme.dimension.veryCloseSpacing)
     ) {
         Row(
-            modifier = modifier.fillMaxWidth().padding(theme.dimension.pagePadding),
+            modifier = modifier.fillMaxWidth(),
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(theme.dimension.mediumSpacing)
         ) {
             IconWithContainer(
                 onClick = onBack,
                 icon = painterResource(Res.drawable.arrow_back),
-                containerColor = theme.colors.container
             )
             Column(verticalArrangement = Arrangement.spacedBy(theme.dimension.closeSpacing)) {
                 Text(
@@ -118,9 +118,11 @@ fun TopNavigationBar(
                     )
 
                 }
+
             }
         }
     }
+
 }
 
 @Composable
@@ -142,6 +144,7 @@ fun InputTextField(
     minCount: Int = 0,
     readOnly: Boolean = false,
     trailingIcon: @Composable (() -> Unit)? = null,
+    leadingIcon: @Composable (() -> Unit)? = null,
     borderAlwaysVisible: Boolean = false,
 ) {
     var hasError by remember { mutableStateOf(false) }
@@ -162,7 +165,7 @@ fun InputTextField(
                 Modifier // No border at all
             }
         )
-        .padding(horizontal = 12.dp, vertical = 10.dp)
+        .padding(horizontal = theme.dimension.largeSpacing, vertical = theme.dimension.largeSpacing)
 
     var localValue by remember { mutableStateOf("") }
     LaunchedEffect(value) {
@@ -180,25 +183,33 @@ fun InputTextField(
             modifier
                 //  .imePadding()
                 .fillMaxWidth().padding(bottom = theme.dimension.veryCloseSpacing),
-        verticalArrangement = Arrangement.spacedBy(theme.dimension.veryCloseSpacing)
+        verticalArrangement = Arrangement.spacedBy(theme.dimension.closeSpacing)
     ) {
 
         if (label.isNotEmpty()) {
             Text(
                 modifier = Modifier.padding(bottom = theme.dimension.veryCloseSpacing),
                 text = label,
-                style = theme.typography.bodyMediumStrong,
+                style = theme.typography.bodySmallStrong,
                 color = if (error) theme.colors.error else theme.colors.onSurface
             )
 
         }
 
-        GlassCard {
+        CardContainer {
             Box(contentAlignment = Alignment.CenterStart, modifier = boxModifier) {
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
+                    if (leadingIcon != null) {
+                        Box(
+                            modifier = Modifier.padding(end = theme.dimension.mediumSpacing), // Space between text and icon
+                            contentAlignment = Alignment.Center
+                        ) {
+                            leadingIcon()
+                        }
+                    }
                     BasicTextField(
                         value = localValue,
                         enabled = !readOnly,
@@ -208,7 +219,7 @@ fun InputTextField(
                                 onValueChange(it)
                             }
                         },
-
+                        cursorBrush = SolidColor(theme.colors.primary.c50),
                         interactionSource = interactionSource,
                         textStyle = theme.typography.bodyMedium.copy(color = theme.colors.onSurface),
                         keyboardOptions = keyboardOptions,
@@ -216,11 +227,9 @@ fun InputTextField(
                         modifier = fieldModifier.weight(1f).semantics {
                             if (contentType != null) this.contentType = contentType
                         },
-
                         maxLines = 1,
                         singleLine = true,
                         keyboardActions = keyboardActions,
-
                     )
 
                     if (trailingIcon != null && !isLoading && !isPassword) {
@@ -271,6 +280,7 @@ fun InputTextField(
 
                 if (value.isEmpty()) {
                     Text(
+                        modifier = Modifier.padding(start = if (leadingIcon != null) theme.dimension.smallIconSize + theme.dimension.mediumSpacing else 0.dp),
                         text = placeholder,
                         style = theme.typography.bodyMedium,
                         color = theme.colors.greyTextColor
@@ -429,7 +439,7 @@ fun BaseButton(
 
     val backgroundBrush = when {
         !enabled -> SolidColor(
-            theme.colors.greyScale.c20,
+            theme.colors.greyScale.c90,
         )
 
         brush != null -> brush
@@ -451,7 +461,7 @@ fun BaseButton(
     ) {
         Box(
             modifier = Modifier.padding(
-                vertical = theme.dimension.mediumSpacing + theme.dimension.veryCloseSpacing,
+                vertical = theme.dimension.veryLargeSpacing,
                 horizontal = theme.dimension.mediumSpacing
             ),
             contentAlignment = Alignment.Center
@@ -466,7 +476,7 @@ fun BaseButton(
                 Text(
                     text = text,
                     style = theme.typography.bodyMediumMedium,
-                    color = if (!enabled) theme.colors.greyScale.c40 else contentColor.copy(alpha = contentAlpha)
+                    color = if (!enabled) theme.colors.greyScale.c70 else contentColor.copy(alpha = contentAlpha)
                 )
                 if (iconPosition == IconPosition.TRAILING) {
                     IconComposable(iconPainter, iconVector, contentColor, contentAlpha)
@@ -533,6 +543,7 @@ fun DateInputTextField(
         placeholder = placeholder,
         onValueChange = {},
         readOnly = true,
+        borderAlwaysVisible = true,
         error = error,
         trailingIcon = {
             Icon(
@@ -636,6 +647,17 @@ fun LocalDate.toSimpleDateString(): String {
         monthNumber()
         char('/')
         year()
+    }
+    return this.format(formatter)
+}
+
+fun LocalDate.toApiDateString(): String {
+    val formatter = LocalDate.Format {
+        year()
+        char('-')
+        day()
+        char('/')
+        monthNumber()
     }
     return this.format(formatter)
 }

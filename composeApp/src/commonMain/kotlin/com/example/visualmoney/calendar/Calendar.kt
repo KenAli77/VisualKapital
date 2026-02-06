@@ -128,15 +128,12 @@ fun CalendarScreen(
     val remindersForSelected = remember(reminders, selectedDate) {
         reminders.filter { it.date == selectedDate }.sortedBy { it.timeLabel }
     }
-
-    Scaffold(
+    Box(
         modifier = modifier.fillMaxSize(),
-        containerColor = theme.colors.surface
-    ) { padding ->
+    ) {
         LazyColumn(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(padding)
                 .padding(horizontal = theme.dimension.pagePadding),
             verticalArrangement = Arrangement.spacedBy(theme.dimension.largeSpacing),
             contentPadding = PaddingValues(

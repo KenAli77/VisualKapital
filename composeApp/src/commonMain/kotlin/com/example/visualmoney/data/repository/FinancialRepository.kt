@@ -2,6 +2,8 @@ package com.example.visualmoney.data.repository
 
 import com.example.visualmoney.data.local.CachedQuoteDao
 import com.example.visualmoney.data.local.CachedQuoteEntity
+import com.example.visualmoney.data.local.PortfolioAsset
+import com.example.visualmoney.data.local.PortfolioAssetDAO
 import com.example.visualmoney.data.local.SearchResult
 import com.example.visualmoney.data.local.toAsset
 import com.example.visualmoney.data.remote.FmpDataSource
@@ -9,6 +11,7 @@ import com.example.visualmoney.data.remote.FmpDataSource
 import com.example.visualmoney.domain.model.AssetProfile
 import com.example.visualmoney.domain.model.AssetQuote
 import com.example.visualmoney.domain.model.ChartPoint
+import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.firstOrNull
 import kotlin.time.Clock
 
@@ -21,7 +24,7 @@ interface FinancialRepository {
     suspend fun getTopGainers(): List<AssetQuote>
     suspend fun getTopLosers(): List<AssetQuote>
     suspend fun getCommodities(): List<AssetQuote>
-    suspend fun getChart(symbol: String): List<ChartPoint>
+    suspend fun getChart(symbol: String,from: String,to: String): List<ChartPoint>
     suspend fun searchAsset(name:String,exchange: String):List<SearchResult>
 
     suspend fun loadEtfs():List<SearchResult>
@@ -30,18 +33,29 @@ interface FinancialRepository {
 
     suspend fun loadCommodities():List<SearchResult>
 
+    suspend fun addAssetToPortfolio(asset: PortfolioAsset)
+
+    suspend fun getPortfolioAssets(): Flow<List<PortfolioAsset>>
+
 }
 
 class FinancialRepositoryImpl(
     private val remoteSource: FmpDataSource,
-    private val cachedQuoteDao: CachedQuoteDao
+    private val cachedQuoteDao: CachedQuoteDao,
+    private val portfolioDao: PortfolioAssetDAO
 
 ) : FinancialRepository {
+    override suspend fun addAssetToPortfolio(asset: PortfolioAsset) {
+        portfolioDao.upsert(asset)
+    }
+
+    override suspend fun getPortfolioAssets(): Flow<List<PortfolioAsset>> {
+       return portfolioDao.observeAllAssets()
+    }
+
+
     override suspend fun getQuote(symbol: String): AssetQuote {
         val now = Clock.System.now().toEpochMilliseconds()
-        val cached = cachedQuoteDao.get(symbol)
-        val isFresh = cached != null && (now - cached.updatedAtEpochMs) < QUOTE_TTL_MS
-        if (isFresh) return cached.toAsset()
         val remote = remoteSource.getQuote(symbol)
         val entity = CachedQuoteEntity(
             symbol = remote.symbol,
@@ -110,7 +124,7 @@ class FinancialRepositoryImpl(
     override suspend fun getTopLosers(): List<AssetQuote> = remoteSource.getTopLosers()
 
     override suspend fun getCommodities(): List<AssetQuote> = remoteSource.getCommodities()
-    override suspend fun getChart(symbol: String): List<ChartPoint> = remoteSource.getChart(symbol)
+    override suspend fun getChart(symbol: String, from: String, to: String): List<ChartPoint> = remoteSource.getChart(symbol, from = from, to = to)
     override suspend fun searchAsset(name: String, exchange:String): List<SearchResult> {
         val remote =  remoteSource.searchCompanyByName(name,exchange)
         println("Search result: $remote")

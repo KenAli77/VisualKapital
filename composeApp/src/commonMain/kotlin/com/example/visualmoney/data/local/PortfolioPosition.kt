@@ -6,7 +6,7 @@ import androidx.room.Index
 import androidx.room.PrimaryKey
 import kotlin.time.Clock
 
-enum class AssetType { EQUITY, CRYPTO, COMMODITY }
+enum class AssetType { SECURITY, CRYPTO, COMMODITY,OTHER }
 enum class ManualInvestmentType { FIXED_INCOME, REAL_ESTATE, CASH_ACCOUNT, PHYSICAL_ASSET, OTHER }
 
 @Entity(
@@ -22,11 +22,9 @@ data class TrackedAssetEntity(
     val name: String? = null,
     val exchange: String? = null,
     val currency: String? = null,
-
     // diversification metadata (optional, can be filled after profile fetch)
     val sector: String? = null,
     val country: String? = null,
-
     val updatedAtEpochMs: Long = Clock.System.now().toEpochMilliseconds()
 )
 
