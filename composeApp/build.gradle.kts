@@ -12,6 +12,7 @@ plugins {
     alias(libs.plugins.buildkonfig)
     alias(libs.plugins.ksp)
     alias(libs.plugins.androidx.room)
+    alias(libs.plugins.kotlinCocoapods)
 }
 
 
@@ -40,6 +41,28 @@ kotlin {
 //        }
 //    }
 
+    cocoapods {
+        summary = "VisualMoney shared module"
+        homepage ="Link to shared module homepage"
+        ios.deploymentTarget = "16.0"
+        version = "1.0"
+        podfile = project.file("../iosApp/Podfile")
+
+
+        framework{
+            baseName = "ComposeApp"
+            isStatic = true
+        }
+
+        pod("RevenueCat"){
+            extraOpts += listOf("-compiler-option", "-fmodules") //Extra opts is important
+        }
+        pod("RevenueCatUI"){
+            extraOpts += listOf("-compiler-option", "-fmodules") //Extra opts is important
+        }
+
+    }
+
 
     sourceSets {
         androidMain.dependencies {
@@ -47,6 +70,8 @@ kotlin {
             implementation(libs.androidx.activity.compose)
             implementation(libs.koin.android)
             implementation(libs.ktor.client.okhttp)
+            implementation(libs.purchases)
+            implementation(libs.purchases.ui)
         }
         iosMain.dependencies {
             implementation(libs.ktor.client.darwin)
@@ -129,9 +154,13 @@ buildkonfig {
     defaultConfigs {
         val fmpKey = localProperties.getProperty("FMP_API_KEY") ?: "invalid"
         val logoKey = localProperties.getProperty("LOGO_DEV_KEY") ?: "invalid"
+        val rcAndroidKey = localProperties.getProperty("RC_API_KEY_ANDROID") ?: "invalid"
+        val rcIosKey = localProperties.getProperty("RC_API_KEY_IOS") ?: "invalid"
 
         buildConfigField(com.codingfeline.buildkonfig.compiler.FieldSpec.Type.STRING, "FMP_API_KEY", fmpKey)
         buildConfigField(com.codingfeline.buildkonfig.compiler.FieldSpec.Type.STRING, "LOGO_DEV_KEY", logoKey)
+        buildConfigField(com.codingfeline.buildkonfig.compiler.FieldSpec.Type.STRING, "RC_API_KEY_ANDROID", rcAndroidKey)
+        buildConfigField(com.codingfeline.buildkonfig.compiler.FieldSpec.Type.STRING, "RC_API_KEY_IOS", rcIosKey)
     }
 }
 
