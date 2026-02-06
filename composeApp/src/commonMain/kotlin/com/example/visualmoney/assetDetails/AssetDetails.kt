@@ -30,7 +30,6 @@ import androidx.compose.material.icons.rounded.WorkspacePremium
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Icon
-import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextField
@@ -46,7 +45,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.Outline
+import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.PathEffect
 import androidx.compose.ui.graphics.StrokeCap
@@ -71,6 +70,7 @@ import com.example.visualmoney.domain.model.AssetProfile
 import com.example.visualmoney.domain.model.AssetQuote
 import com.example.visualmoney.domain.model.ChartPoint
 import com.example.visualmoney.domain.model.iconUrl
+import com.example.visualmoney.domain.model.logoUrl
 import com.example.visualmoney.greyTextColor
 import com.example.visualmoney.home.CardContainer
 import com.example.visualmoney.home.IconWithContainer
@@ -78,9 +78,7 @@ import com.example.visualmoney.home.borderGradient
 import com.example.visualmoney.home.format
 import com.example.visualmoney.home.theme
 import kotlinx.datetime.DatePeriod
-import kotlinx.datetime.DateTimePeriod
 import kotlinx.datetime.TimeZone
-import kotlinx.datetime.format
 import kotlinx.datetime.minus
 import kotlinx.datetime.toLocalDateTime
 import org.jetbrains.compose.resources.painterResource
@@ -88,7 +86,6 @@ import visualmoney.composeapp.generated.resources.Res
 import visualmoney.composeapp.generated.resources.arrow_back
 import visualmoney.composeapp.generated.resources.plus
 import visualmoney.composeapp.generated.resources.trash
-import kotlin.math.log
 import kotlin.math.max
 import kotlin.time.Clock
 
@@ -103,7 +100,7 @@ data class ChartPeriod(
     val start: String, val end: String
 )
 
-val ChartRange.period: ChartPeriod
+val ChartRange.apiPeriod: ChartPeriod
     get() {
         val today = Clock.System.now().toLocalDateTime(TimeZone.currentSystemDefault()).date
         return when (this) {
@@ -144,29 +141,21 @@ data class PortfolioPositionUi(
 @Composable
 fun AssetDetailsScreen(
     modifier: Modifier = Modifier,
-    asset: Asset,
-    quote: AssetQuote,
-    profile: AssetProfile? = null,
-    chart: List<ChartPoint> = emptyList(),
-    inPortfolio: Boolean = false,
-    position: PortfolioPositionUi? = null,
+    viewModel: AssetDetailsViewModel,
     onBack: () -> Unit = {},
-    onAddToPortfolio: () -> Unit = {},
-    onRemoveFromPortfolio: () -> Unit = {},
-    onEditPosition: (quantity: Double, avgCost: Double) -> Unit = { _, _ -> },
     onOpenWebsite: (String) -> Unit = {},
-) {
-    var selectedRange by remember { mutableStateOf(ChartRange.ONE_MONTH) }
-    var qtyText by remember(position) {
-        mutableStateOf(
-            position?.quantity?.toString() ?: ""
-        )
-    }
-    var avgText by remember(position) {
-        mutableStateOf(
-            position?.avgCost?.toString() ?: ""
-        )
-    }
+) = with(viewModel) {
+//    var selectedRange by remember { mutableStateOf(ChartRange.ONE_MONTH) }
+//    var qtyText by remember(position) {
+//        mutableStateOf(
+//            position?.quantity?.toString() ?: ""
+//        )
+//    }
+//    var avgText by remember(position) {
+//        mutableStateOf(
+//            position?.avgCost?.toString() ?: ""
+//        )
+//    }
 
     Box(
         modifier = modifier.fillMaxSize(),
@@ -185,44 +174,52 @@ fun AssetDetailsScreen(
                 item() {
                     TopNavigationBar(title = "Asset details", onBack = onBack)
                 }
+
                 item() {
-                    PriceAndChartCard(
-                        asset = asset,
-                        quote = quote,
-                        chart = chart,
-                        selectedRange = selectedRange,
-                        onSelectRange = { selectedRange = it })
+                    state.profile?.let { profile ->
+                        state.quote?.let { quote ->
+                            PriceAndChartCard(
+                                quote = quote,
+                                profile = profile,
+                                chart = state.chart,
+                                selectedRange = state.selectedChartRange,
+                                onSelectRange = { onEvent(AssetDetailEvent.ChartPeriodChanged(it)) }
+                            )
+                        }
+                    }
                 }
 
-                item {
-                    PortfolioCard(
-                        inPortfolio = inPortfolio,
-                        currency = profile?.currency ?: "USD",
-                        qtyText = qtyText,
-                        avgText = avgText,
-                        onQtyChange = { qtyText = it },
-                        onAvgChange = { avgText = it },
-                        onAdd = onAddToPortfolio,
-                        onRemove = onRemoveFromPortfolio,
-                        onSave = {
-                            val q = qtyText.toSafeDouble()
-                            val a = avgText.toSafeDouble()
-                            onEditPosition(q, a)
-                        })
-                }
+//                item {
+//                    PortfolioCard(
+//                        inPortfolio = inPortfolio,
+//                        currency = profile?.currency ?: "USD",
+//                        qtyText = qtyText,
+//                        avgText = avgText,
+//                        onQtyChange = { qtyText = it },
+//                        onAvgChange = { avgText = it },
+//                        onAdd = onAddToPortfolio,
+//                        onRemove = onRemoveFromPortfolio,
+//                        onSave = {
+//                            val q = qtyText.toSafeDouble()
+//                            val a = avgText.toSafeDouble()
+//                            onEditPosition(q, a)
+//                        })
+//                }
+                state.quote?.let {
+                    item {
+                        KeyStatsCard(quote = it, profile = state.profile ?: AssetProfile())
+                    }
 
-                item {
-                    KeyStatsCard(quote = quote, profile = profile)
                 }
-                profile?.description?.takeIf { it.isNotBlank() }?.let {
+                state.profile?.let {
                     item {
                         AboutCard(
-                            companyName = profile.companyName ?: quote.name ?: asset.name,
-                            industry = profile.industry,
-                            sector = profile.sector,
-                            country = profile.country,
-                            description = profile.description,
-                            website = profile.website,
+                            companyName = it.companyName ?: "",
+                            industry = it.industry,
+                            sector = it.sector,
+                            country = it.country,
+                            description = it.description,
+                            website = it.website,
                             onOpenWebsite = onOpenWebsite
                         )
                     }
@@ -283,114 +280,109 @@ private fun AssetTopBar(
 // ---------- Price + chart ----------
 @Composable
 private fun PriceAndChartCard(
-    asset: Asset,
+    profile: AssetProfile,
     quote: AssetQuote,
     chart: List<ChartPoint>,
     selectedRange: ChartRange,
     onSelectRange: (ChartRange) -> Unit
 ) {
-    Box(
-        modifier = Modifier.fillMaxWidth(),
-    ) {
-        Column(
-            verticalArrangement = Arrangement.spacedBy(theme.dimension.largeSpacing)
+    Column(verticalArrangement = Arrangement.spacedBy(theme.dimension.veryLargeSpacing)) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.SpaceBetween
         ) {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.SpaceBetween
-            ) {
-                Column(verticalArrangement = Arrangement.spacedBy(theme.dimension.mediumSpacing)) {
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.SpaceBetween
+            Column(verticalArrangement = Arrangement.spacedBy(theme.dimension.mediumSpacing)) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.SpaceBetween
+                ) {
+                    Column(
+                        verticalArrangement = Arrangement.spacedBy(theme.dimension.closeSpacing),
+                        horizontalAlignment = Alignment.Start
                     ) {
-                        Column(
-                            verticalArrangement = Arrangement.spacedBy(theme.dimension.closeSpacing),
-                            horizontalAlignment = Alignment.Start
-                        ) {
+                        Text(
+                            text = profile.symbol,
+                            style = theme.typography.bodyLargeStrong,
+                            color = theme.colors.onSurface,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis
+                        )
+                        Text(
+                            text = profile.companyName ?: "",
+                            style = theme.typography.bodySmallStrong,
+                            color = theme.colors.greyTextColor,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis
+                        )
+                    }
+                    Surface(
+                        shape = RoundedCornerShape(theme.dimension.verySmallRadius),
+                        color = theme.colors.greyScale.c10
+                    ) {
+                        Text(
+                            text = "NASDAQ",
+                            style = theme.typography.bodySmallMedium,
+                            color = theme.colors.greyScale.c60,
+                            modifier = Modifier.padding(
+                                horizontal = theme.dimension.closeSpacing,
+                                vertical = theme.dimension.veryCloseSpacing
+                            )
+                        )
+                    }
+                }
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.Top,
+                    horizontalArrangement = Arrangement.SpaceBetween
+                ) {
+                    Column(verticalArrangement = Arrangement.spacedBy(theme.dimension.mediumSpacing)) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            val price = "%.2f".format(quote.price)
                             Text(
-                                text = asset.symbol,
-                                style = theme.typography.bodyLargeStrong,
-                                color = theme.colors.onSurface,
-                                maxLines = 1,
-                                overflow = TextOverflow.Ellipsis
+                                text = price.substringBeforeLast("."),
+                                style = theme.typography.titleLarge,
+                                color = theme.colors.onSurface
                             )
                             Text(
-                                text = asset.name,
-                                style = theme.typography.bodySmallStrong,
-                                color = theme.colors.greyTextColor,
-                                maxLines = 1,
-                                overflow = TextOverflow.Ellipsis
+                                text = "." + price.substringAfterLast("."),
+                                style = theme.typography.titleLarge,
+                                color = theme.colors.greyScale.c50
                             )
                         }
-                        Surface(
-                            shape = RoundedCornerShape(theme.dimension.verySmallRadius),
-                            color = theme.colors.greyScale.c10
-                        ) {
+                        val pct = quote.changesPercentage
+                        val absChange = quote.change
+                        val pctChange = if (absChange >= 0) "+" else ""
+                        val pctText = (if (pct >= 0) "+" else "") + "%.2f".format(pct) + "%"
+                        Row {
                             Text(
-                                text = "NASDAQ",
+                                text = "$pctText ($pctChange$absChange)",
                                 style = theme.typography.bodySmallMedium,
-                                color = theme.colors.greyScale.c60,
-                                modifier = Modifier.padding(
-                                    horizontal = theme.dimension.closeSpacing,
-                                    vertical = theme.dimension.veryCloseSpacing
-                                )
+                                color = if (pct >= 0) theme.colors.greenScale.c50 else theme.colors.error
                             )
+
+                            Spacer(Modifier.width(theme.dimension.closeSpacing))
+                            Text(
+                                text = "Today",
+                                style = theme.typography.bodySmall,
+                                color = theme.colors.greyTextColor
+                            )
+
                         }
                     }
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.SpaceBetween
-                    ) {
-                        Column(verticalArrangement = Arrangement.spacedBy(theme.dimension.mediumSpacing)) {
-                            Row(verticalAlignment = Alignment.CenterVertically) {
-                                val price = "%.2f".format(quote.price)
-                                Text(
-                                    text = price.substringBeforeLast("."),
-                                    style = theme.typography.titleLarge,
-                                    color = theme.colors.onSurface
-                                )
-                                Text(
-                                    text = "." + price.substringAfterLast("."),
-                                    style = theme.typography.titleLarge,
-                                    color = theme.colors.greyScale.c50
-                                )
-                            }
-                            val pct = quote.changesPercentage
-                            val pctText = (if (pct >= 0) "+" else "") + "%.2f".format(pct) + "%"
-                            Row {
-                                Text(
-                                    text = pctText,
-                                    style = theme.typography.bodySmallMedium,
-                                    color = if (pct >= 0) theme.colors.greenScale.c50 else theme.colors.error
-                                )
-
-                                Spacer(Modifier.width(theme.dimension.closeSpacing))
-                                Text(
-                                    text = "Today",
-                                    style = theme.typography.bodySmall,
-                                    color = theme.colors.greyTextColor
-                                )
-
-                            }
-                        }
-                        AssetLogoContainer(asset.iconUrl, asset.symbol,size = 60.dp)
-                    }
-
-
+                    AssetLogoContainer(profile.logoUrl, profile.symbol, size = 60.dp)
                 }
             }
-
-            Sparkline(
-                points = chart.map { it.price }, modifier = Modifier.fillMaxWidth().height(200.dp)
-            )
-
-            ChartRangeTabs(selected = selectedRange, onSelect = onSelectRange)
         }
+
+        Sparkline(
+            points = chart.map { it.price }, modifier = Modifier.fillMaxWidth().height(200.dp)
+        )
+
+        ChartRangeTabs(selected = selectedRange, onSelect = onSelectRange)
     }
+
 }
 
 @Composable
@@ -404,7 +396,8 @@ private fun ChartRangeTabs(
         ChartRange.entries.forEach { r ->
             val isSelected = r == selected
             val bg by animateColorAsState(
-                if (isSelected) theme.colors.primary.c50 else theme.colors.surface, label = "tabBg"
+                if (isSelected) theme.colors.primary.c50 else theme.colors.surface,
+                label = "tabBg"
             )
             val border = if (isSelected) Color.Transparent else theme.colors.border
             val text = if (isSelected) theme.colors.onPrimary else theme.colors.greyTextColor
@@ -495,30 +488,41 @@ private fun Sparkline(
             // line
             drawPath(
                 path = path, color = DefaultAppColors.greenScale.c50, style = Stroke(
-                    width = 2.dp.toPx(), join = StrokeJoin.Round, cap = StrokeCap.Round
+                    width = 1.dp.toPx(), join = StrokeJoin.Round, cap = StrokeCap.Round
                 )
             )
 
         }
         ListDivider()
         Row(
-            modifier = Modifier.padding(vertical = theme.dimension.veryCloseSpacing).fillMaxWidth(),
+            modifier = Modifier.padding(vertical = theme.dimension.veryCloseSpacing)
+                .fillMaxWidth(),
             horizontalArrangement = Arrangement.SpaceBetween
         ) {
             Text(
-                "09AM", style = theme.typography.bodySmallMedium, color = theme.colors.greyTextColor
+                "09AM",
+                style = theme.typography.bodySmallMedium,
+                color = theme.colors.greyTextColor
             )
             Text(
-                "10AM", style = theme.typography.bodySmallMedium, color = theme.colors.greyTextColor
+                "10AM",
+                style = theme.typography.bodySmallMedium,
+                color = theme.colors.greyTextColor
             )
             Text(
-                "11AM", style = theme.typography.bodySmallMedium, color = theme.colors.greyTextColor
+                "11AM",
+                style = theme.typography.bodySmallMedium,
+                color = theme.colors.greyTextColor
             )
             Text(
-                "12AM", style = theme.typography.bodySmallMedium, color = theme.colors.greyTextColor
+                "12AM",
+                style = theme.typography.bodySmallMedium,
+                color = theme.colors.greyTextColor
             )
             Text(
-                "1PM", style = theme.typography.bodySmallMedium, color = theme.colors.greyTextColor
+                "1PM",
+                style = theme.typography.bodySmallMedium,
+                color = theme.colors.greyTextColor
             )
         }
     }
@@ -721,7 +725,9 @@ private fun KeyStatsCard(
         verticalArrangement = Arrangement.spacedBy(theme.dimension.largeSpacing)
     ) {
         Text(
-            "Key stats", style = theme.typography.titleSmallMedium, color = theme.colors.onSurface
+            "Key stats",
+            style = theme.typography.titleSmallMedium,
+            color = theme.colors.onSurface
         )
         CardContainer(
             modifier = Modifier.fillMaxWidth()
@@ -835,7 +841,9 @@ private fun AboutCard(
                 country?.takeIf { it.isNotBlank() }).joinToString(" • ")
             if (meta.isNotBlank()) {
                 Text(
-                    meta, style = theme.typography.bodySmallMedium, color = theme.colors.onSurface
+                    meta,
+                    style = theme.typography.bodySmallMedium,
+                    color = theme.colors.onSurface
                 )
             }
 
@@ -933,37 +941,54 @@ private fun fmtCompact(v: Double): String {
     }
 }
 
-// ---------- Sample chart ----------
-//private fun sampleChart(): List<ChartPoint> {
-//    // lightweight stub (replace with real points per selected range)
-//    val base = listOf(
-//        100.0, 101.2, 100.9, 103.5, 102.8, 104.1, 103.6, 105.2, 104.7, 106.3,
-//        107.1, 106.4, 108.2, 109.0, 108.6, 110.3, 109.7, 111.2, 110.6, 112.0
-//    )
-//    return base.mapIndexed { i, c ->
-//        ChartPoint(
-//            date = "2025-01-${(i + 1).toString().padStart(2, '0')}",
-//            open = c - 0.6,
-//            low = c - 1.1,
-//            high = c + 0.9,
-//            close = c,
-//            volume = 1_000_000L + (i * 25_000L)
-//        )
-//    }
-//}
+fun ImageBitmap.averageColor(sampleSize: Int = 8): Color {
+    val width = this.width
+    val height = this.height
+
+    var r = 0f
+    var g = 0f
+    var b = 0f
+    var count = 0
+
+    val stepX = maxOf(1, width / sampleSize)
+    val stepY = maxOf(1, height / sampleSize)
+
+    for (x in 0 until width step stepX) {
+        for (y in 0 until height step stepY) {
+            val pixel = this
+//            r += pixel.red
+//            g += pixel.green
+//            b += pixel.blue
+            count++
+        }
+    }
+
+    return Color(r / count, g / count, b / count)
+}
 
 @Composable
-fun AssetLogoContainer(logoUrl: String?,symbol:String, size: Dp = 48.dp, modifier: Modifier = Modifier) {
-    println("Logo url: $logoUrl")
+fun AssetLogoContainer(
+    logoUrl: String?,
+    symbol: String,
+    size: Dp = 48.dp,
+    modifier: Modifier = Modifier
+) {
+
     Box(
-        modifier = modifier.border(
-            1.dp, brush = borderGradient, shape = RoundedCornerShape(theme.dimension.defaultRadius)
-        ).clip(RoundedCornerShape(theme.dimension.defaultRadius)).background(theme.colors.surface),
+        modifier = modifier.size(size)
+            .clip(RoundedCornerShape(theme.dimension.defaultRadius))
+            .border(
+                1.dp,
+                brush = borderGradient,
+                shape = RoundedCornerShape(theme.dimension.defaultRadius)
+            )
+            .background(borderGradient),
         contentAlignment = Alignment.Center
     ) {
         logoUrl?.let {
             AsyncImage(
-                modifier = Modifier.size(size),
+                modifier = Modifier.padding(1.dp)
+                    .clip(RoundedCornerShape(theme.dimension.defaultRadius)),
                 model = logoUrl,
                 contentDescription = null,
                 contentScale = ContentScale.Crop,

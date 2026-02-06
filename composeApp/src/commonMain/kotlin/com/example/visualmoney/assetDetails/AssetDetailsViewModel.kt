@@ -3,32 +3,58 @@ package com.example.visualmoney.assetDetails
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
-import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.visualmoney.data.repository.FinancialRepository
-import com.example.visualmoney.domain.model.AssetProfile
-import com.example.visualmoney.domain.model.AssetQuote
-import com.example.visualmoney.domain.model.ChartPoint
-import com.example.visualmoney.navigation.Routes
 import kotlinx.coroutines.launch
 
-class AssetDetailsViewModel( private val repository: FinancialRepository) : ViewModel() {
+class AssetDetailsViewModel(private val repository: FinancialRepository) : ViewModel() {
 
-    var asset by mutableStateOf(AssetProfile())
-        private set
-    var assetQuote by mutableStateOf(AssetQuote())
+    var state by mutableStateOf(AssetDetailState())
         private set
 
-    var chartPoints by mutableStateOf(emptyList<ChartPoint>())
-        private set
 
-    fun loadSymbolData(symbol:String) {
+    fun loadSymbolData(symbol: String) {
         viewModelScope.launch {
-            asset = repository.getProfile(symbol)
-            assetQuote = repository.getQuote(symbol)
-            chartPoints = repository.getChart(symbol)
+            val profile = repository.getProfile(symbol)
+            val quote = repository.getQuote(symbol)
+            val chartPeriod = state.selectedChartRange.apiPeriod
+            val chart = repository.getChart(symbol, chartPeriod.start, chartPeriod.end)
+            state = state.copy(
+                profile = profile,
+                quote = quote,
+                chart = chart
+            )
 
         }
+    }
+
+    fun onEvent(event: AssetDetailEvent) {
+        viewModelScope.launch {
+            when (event) {
+                is AssetDetailEvent.AddToPortfolio -> {
+
+                }
+                is AssetDetailEvent.ChartPeriodChanged -> {
+                    state = state.copy(
+                        selectedChartRange = event.period
+                    )
+                    val period = event.period.apiPeriod
+                    state.profile?.let { prof ->
+                        val chart = repository.getChart(prof.symbol, period.start, period.end)
+
+                        state = state.copy(
+                            chart = chart
+                        )
+
+                    }
+                }
+
+                is AssetDetailEvent.RemoveFromPortfolio -> {
+
+                }
+            }
+        }
+
     }
 }

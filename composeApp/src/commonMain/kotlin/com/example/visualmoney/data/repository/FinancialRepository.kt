@@ -24,7 +24,7 @@ interface FinancialRepository {
     suspend fun getTopGainers(): List<AssetQuote>
     suspend fun getTopLosers(): List<AssetQuote>
     suspend fun getCommodities(): List<AssetQuote>
-    suspend fun getChart(symbol: String): List<ChartPoint>
+    suspend fun getChart(symbol: String,from: String,to: String): List<ChartPoint>
     suspend fun searchAsset(name:String,exchange: String):List<SearchResult>
 
     suspend fun loadEtfs():List<SearchResult>
@@ -56,9 +56,6 @@ class FinancialRepositoryImpl(
 
     override suspend fun getQuote(symbol: String): AssetQuote {
         val now = Clock.System.now().toEpochMilliseconds()
-        val cached = cachedQuoteDao.get(symbol)
-        val isFresh = cached != null && (now - cached.updatedAtEpochMs) < QUOTE_TTL_MS
-        if (isFresh) return cached.toAsset()
         val remote = remoteSource.getQuote(symbol)
         val entity = CachedQuoteEntity(
             symbol = remote.symbol,
@@ -127,7 +124,7 @@ class FinancialRepositoryImpl(
     override suspend fun getTopLosers(): List<AssetQuote> = remoteSource.getTopLosers()
 
     override suspend fun getCommodities(): List<AssetQuote> = remoteSource.getCommodities()
-    override suspend fun getChart(symbol: String): List<ChartPoint> = remoteSource.getChart(symbol)
+    override suspend fun getChart(symbol: String, from: String, to: String): List<ChartPoint> = remoteSource.getChart(symbol, from = from, to = to)
     override suspend fun searchAsset(name: String, exchange:String): List<SearchResult> {
         val remote =  remoteSource.searchCompanyByName(name,exchange)
         println("Search result: $remote")

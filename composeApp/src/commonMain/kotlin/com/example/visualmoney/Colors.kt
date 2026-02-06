@@ -36,7 +36,7 @@ data class AppColors(
     val greenScale:ColorVariants = GreenScaleVariants,
     val onPrimary:Color = Color(0XFFfffffc),
     val onSurface:Color = Color.White,
-    val border: Color = GreyScaleVariants.c90
+    val border: Color = GreyScaleVariants.c80
 )
 
 val AppColors.greyTextColor: Color get() = greyScale.c50
@@ -154,7 +154,6 @@ val DefaultAppColors = AppColors(
     blueScale = BlueScaleVariants
 )
 
-val DarkBackgroundGradient = createGlassGradient(DefaultAppColors.primary.c100, alpha = 1f)
 val GreenGradient = Brush.linearGradient(
     colors = listOf(
         Color(0xFF91B7AA), // rgba(145, 183, 170, 1) – light green
@@ -166,13 +165,12 @@ val GreenGradient = Brush.linearGradient(
 )
 
 val surface:Color = Color(0xFF0e0e10)
+val DarkBackgroundGradient = createGlassGradient(DefaultAppColors.primary.c100, alpha = 1f)
 
 fun createGlassGradient(baseColor: Color, alpha: Float): Brush {
     return Brush.verticalGradient(
         colors = listOf(
             baseColor.copy(alpha = alpha / 1.1f),  // Slightly brighter at top
-            baseColor.copy(alpha = alpha / 1.01f),  // Slightly brighter at middle
-            baseColor.copy(alpha = alpha),         // Base opacity
             baseColor.copy(alpha = alpha),         // Base opacity
             baseColor.copy(alpha = alpha)          // Consistent bottom
         )

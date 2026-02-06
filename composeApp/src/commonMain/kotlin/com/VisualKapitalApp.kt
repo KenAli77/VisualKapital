@@ -29,9 +29,7 @@ import com.example.visualmoney.navigation.Routes
 import com.example.visualmoney.newAsset.NewAssetScreen
 import com.example.visualmoney.newAsset.NewAssetViewModel
 import org.koin.compose.viewmodel.koinViewModel
-import org.koin.core.annotation.KoinExperimentalAPI
 
-@OptIn(KoinExperimentalAPI::class)
 @Composable
 fun VisualKapitalApp(navController: NavHostController = rememberNavController()) {
     var symbol by remember { mutableStateOf("") }

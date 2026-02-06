@@ -76,6 +76,7 @@ import visualmoney.composeapp.generated.resources.Res
 import visualmoney.composeapp.generated.resources.arrow_up_right
 import visualmoney.composeapp.generated.resources.calendar
 import visualmoney.composeapp.generated.resources.plus
+import visualmoney.composeapp.generated.resources.portfolio
 import visualmoney.composeapp.generated.resources.trending_up
 import visualmoney.composeapp.generated.resources.zigzag
 import kotlin.math.round
@@ -137,79 +138,72 @@ fun HomeScreen(
             })
         }
 
+
         Column(
             modifier = Modifier.fillMaxSize().padding(theme.dimension.pagePadding),
             verticalArrangement = Arrangement.spacedBy(theme.dimension.veryLargeSpacing),
         ) {
             HomeTopHeader(userName = userName, onGoToCalendar = onGoToCalendar)
-            BalanceCard(
-                balanceUsd = balanceUsd,
-                profitUsd = profitUsd,
-                mlPct = mlPct,
-                onOpen = {},
-                onCurrencyClick = {},
-            )
-
-            UnlockPremiumSection(
-                title = "Smarter investing starts here",
-                subtitle = "See risk exposure, portfolio health, and actionable insights. All in one place.",
-                onOpen = {})
-
-//            CardContainer(
-//                containerColor = Color.Black
-//            ) {
-            Column(verticalArrangement = Arrangement.spacedBy(theme.dimension.mediumSpacing)) {
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.SpaceBetween
-                ) {
-                    Text(
-                        "My portfolio",
-                        style = theme.typography.bodyMediumMedium,
-                        color = theme.colors.greyTextColor
+            LazyColumn(
+                modifier = Modifier.clip(
+                    RoundedCornerShape(
+                        topStart = theme.dimension.defaultRadius,
+                        topEnd = theme.dimension.defaultRadius
                     )
+                ),
+                verticalArrangement = Arrangement.spacedBy(theme.dimension.veryLargeSpacing)
+            ) {
+                item {
+                    BalanceCard(
+                        balanceUsd = balanceUsd,
+                        profitUsd = profitUsd,
+                        mlPct = mlPct,
+                        onOpen = onGoToBalance,
+                        onCurrencyClick = {},
+                    )
+                }
+                item {
+                    UnlockPremiumSection(
+                        title = "Smarter investing starts here",
+                        subtitle = "See risk exposure, portfolio health, and actionable insights. All in one place.",
+                        onOpen = {})
+                }
+
+                item {
                     Row(
-                        horizontalArrangement = Arrangement.spacedBy(theme.dimension.mediumSpacing),
-                        verticalAlignment = Alignment.CenterVertically
+                        modifier = Modifier.fillMaxWidth(),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.SpaceBetween
                     ) {
                         Text(
-                            "Add asset",
-                            style = theme.typography.bodyMediumStrong,
-                            color = theme.colors.onSurface
+                            "My portfolio",
+                            style = theme.typography.bodyMediumMedium,
+                            color = theme.colors.greyTextColor
                         )
-                        IconWithContainer(
-                            icon = painterResource(Res.drawable.plus),
-                            onClick = onNewAsset
-                        )
+                        Row(
+                            horizontalArrangement = Arrangement.spacedBy(theme.dimension.mediumSpacing),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Text(
+                                "Add asset",
+                                style = theme.typography.bodyMediumStrong,
+                                color = theme.colors.onSurface
+                            )
+                            IconWithContainer(
+                                icon = painterResource(Res.drawable.plus),
+                                onClick = onNewAsset
+                            )
+                        }
                     }
                 }
-
-                LazyColumn(
-                    modifier = Modifier.clip(
-                        RoundedCornerShape(
-                            topStart = theme.dimension.defaultRadius,
-                            topEnd = theme.dimension.defaultRadius
-                        )
-                    ),
-                    verticalArrangement = Arrangement.spacedBy(theme.dimension.mediumSpacing)
-                ) {
-                    items(state.holdings) { item ->
-                        HoldingRow(
-                            modifier = Modifier, item = item, onClick = {
-                                onGoToAssetDetails(item.symbol)
-                            })
-//                        Spacer(modifier = Modifier.height(theme.dimension.closeSpacing))
-                        ListDivider()
-//                    HorizontalDivider(
-//                        modifier = Modifier.padding(horizontal = theme.dimension.veryLargeSpacing),
-//                        thickness = 1.dp,
-//                        color = theme.colors.border.copy(alpha = 0.5f)
-//                    )
-                    }
-
-
+                items(state.holdings) { item ->
+                    HoldingRow(
+                        modifier = Modifier, item = item, onClick = {
+                            onGoToAssetDetails(item.symbol)
+                        })
+                    ListDivider()
                 }
+
             }
 
         }
@@ -334,7 +328,13 @@ fun CardContainer(
     shape: Shape = RoundedCornerShape(theme.dimension.defaultRadius),
     content: @Composable ColumnScope.() -> Unit
 ) {
-    Box(modifier = modifier.shadow(elevation = 8.dp,shape, spotColor = theme.colors.greenScale.c90, ambientColor = theme.colors.greenScale.c50)
+    Box(
+        modifier = modifier.shadow(
+            elevation = 8.dp,
+            shape,
+            spotColor = theme.colors.greenScale.c90,
+            ambientColor = theme.colors.greenScale.c50
+        )
     ) {
         Box(
             modifier = Modifier.matchParentSize()
@@ -378,8 +378,7 @@ fun BalanceCard(
                     modifier = Modifier
                 ) {
                     IconWithContainerSmall(
-                        onClick = {},
-                        icon = painterResource(Res.drawable.trending_up),
+                        icon = painterResource(Res.drawable.portfolio),
                         contentDescription = "Balance",
                     )
                     Text(
@@ -645,15 +644,6 @@ fun HoldingRow(
                 style = theme.typography.bodyMediumMedium,
                 color = theme.colors.onSurface
             )
-//            AssetCategoryChip(
-//                modifier = Modifier.wrapContentWidth(), assetClass = item.assetClass
-//            )
-
-//                Text(
-//                    text = "Min ${"%.2f".format(item.dayLow)}   Max ${"%.2f".format(item.dayHigh)}",
-//                    style = theme.typography.bodySmall,
-//                    color = theme.colors.onSurface
-//                )
         }
 
 
@@ -668,7 +658,7 @@ fun HoldingRow(
                     theme.colors.onSurface
             )
             val changeText =
-                (if (item.changePct >= 0) "+" else "") + "%.2f".format(item.changePct) + "%"
+                (if (item.changePct >= 0) "▲" else "▼") + " " + "%.2f".format(item.changePct) + "%"
             Text(
                 text = changeText,
                 style = theme.typography.bodyMediumMedium,

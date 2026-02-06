@@ -8,12 +8,10 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.visualmoney.AssetCategory
 import com.example.visualmoney.SearchResultRowUi
-import com.example.visualmoney.core.toSafeDouble
 import com.example.visualmoney.data.local.PortfolioAsset
 import com.example.visualmoney.data.repository.FinancialRepository
 import com.example.visualmoney.exchangeName
-import com.example.visualmoney.newAsset.event.ListedAssetInputEvent
-import com.example.visualmoney.newAsset.event.ManualAssetInputEvent
+import com.example.visualmoney.newAsset.event.AssetInputEvent
 import com.example.visualmoney.newAsset.state.AssetInputState
 import com.example.visualmoney.newAsset.state.isValidForSubmit
 import com.example.visualmoney.util.LogoUtil
@@ -22,7 +20,6 @@ import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.debounce
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.launch
-import kotlin.math.max
 
 // TODO: Add validation and errors
 class NewAssetViewModel(private val repo: FinancialRepository) : ViewModel() {
@@ -68,27 +65,33 @@ class NewAssetViewModel(private val repo: FinancialRepository) : ViewModel() {
 
     }
 
-    fun onListedAssetInputEvent(event: ListedAssetInputEvent) {
+    fun onListedAssetInputEvent(event: AssetInputEvent) {
         when (event) {
-            is ListedAssetInputEvent.NameChanged -> {
+            is AssetInputEvent.NameChanged -> {
                 listedAssetInputStateState = listedAssetInputStateState.copy(
                     assetName = event.value
                 )
             }
 
-            is ListedAssetInputEvent.QueryChanged -> {
+            is AssetInputEvent.CurrentValueChanged -> {
+                listedAssetInputStateState = listedAssetInputStateState.copy(
+                    currentValue = event.price
+                )
+            }
+
+            is AssetInputEvent.QueryChanged -> {
                 listedAssetInputStateState = listedAssetInputStateState.copy(
                     query = event.query
                 )
             }
 
-            is ListedAssetInputEvent.PurchasePriceChanged -> with(event) {
+            is AssetInputEvent.PurchasePriceChanged -> with(event) {
                 listedAssetInputStateState = listedAssetInputStateState.copy(
                     purchasePrice = price
                 )
             }
 
-            is ListedAssetInputEvent.SymbolSelected -> with(event) {
+            is AssetInputEvent.SymbolSelected -> with(event) {
                 val item = listedAssetInputStateState.results.find { it.symbol == symbol }
                 item?.let {
                     viewModelScope.launch {
@@ -102,32 +105,32 @@ class NewAssetViewModel(private val repo: FinancialRepository) : ViewModel() {
                 }
             }
 
-            is ListedAssetInputEvent.SectionSelected -> {
+            is AssetInputEvent.SectionSelected -> {
                 listedAssetInputStateState = listedAssetInputStateState.copy(
                     query = "",
                     currentTab = event.section
                 )
             }
 
-            is ListedAssetInputEvent.NotesChanged -> with(event) {
+            is AssetInputEvent.NotesChanged -> with(event) {
                 listedAssetInputStateState = listedAssetInputStateState.copy(
                     notes = note
                 )
             }
 
-            is ListedAssetInputEvent.PurchaseDateChanged -> with(event) {
+            is AssetInputEvent.PurchaseDateChanged -> with(event) {
                 listedAssetInputStateState = listedAssetInputStateState.copy(
                     purchasedAt = date
                 )
             }
 
-            is ListedAssetInputEvent.QtyChanged -> with(event) {
+            is AssetInputEvent.QtyChanged -> with(event) {
                 listedAssetInputStateState = listedAssetInputStateState.copy(
                     quantity = qty
                 )
             }
 
-            is ListedAssetInputEvent.Submit -> {
+            is AssetInputEvent.Submit -> {
                 if (!listedAssetInputStateState.isValidForSubmit) return
                 val asset = when (listedAssetInputStateState.currentTab) {
                     AssetCategory.OTHER -> with(listedAssetInputStateState) {
@@ -135,12 +138,12 @@ class NewAssetViewModel(private val repo: FinancialRepository) : ViewModel() {
                             name = assetName,
                             symbol = assetName,
                             exchangeName = AssetCategory.OTHER.exchangeName,
-                            qty = quantity,
-                            purchasePrice = purchasePrice,
+                            qty = quantity ?: 0,
+                            purchasePrice = purchasePrice ?: 0.0,
                             purchasedAt = purchasedAt,
                             note = notes,
                             type = AssetCategory.OTHER,
-                            currentPrice = currentValue,
+                            currentPrice = currentValue ?: 0.0,
                         )
                     }
 
@@ -150,10 +153,10 @@ class NewAssetViewModel(private val repo: FinancialRepository) : ViewModel() {
                                 name = it.name,
                                 symbol = it.symbol,
                                 exchangeName = it.exchangeName,
-                                qty = quantity,
-                                purchasePrice = purchasePrice,
+                                qty = quantity ?: 0,
+                                purchasePrice = purchasePrice ?: 0.0,
                                 purchasedAt = purchasedAt,
-                                currentPrice = currentValue,
+                                currentPrice = currentValue ?: 0.0,
                                 note = notes,
                                 type = currentTab,
                             )

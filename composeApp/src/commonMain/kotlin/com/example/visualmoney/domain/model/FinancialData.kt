@@ -76,7 +76,13 @@ data class AssetProfile(
     val isAdr: Boolean? = null,
     val isFund: Boolean? = null
 )
-
+val AssetProfile.logoUrl:String get() {
+    return if (exchange == "CRYPTO") {
+        LogoUtil.getCryptoLogoUrl(symbol)
+    } else {
+        LogoUtil.getLogoUrl(symbol)
+    }
+}
 fun AssetProfile.toAsset(): Asset {
     return Stock(
         symbol = symbol,

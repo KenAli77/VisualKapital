@@ -56,14 +56,12 @@ import com.example.visualmoney.core.InputTextField
 import com.example.visualmoney.core.LargeButton
 import com.example.visualmoney.core.ListDivider
 import com.example.visualmoney.core.TopNavigationBar
-import com.example.visualmoney.core.toSafeDouble
-import com.example.visualmoney.core.toSafeInt
 import com.example.visualmoney.greyTextColor
 import com.example.visualmoney.home.CardContainer
 import com.example.visualmoney.home.IconWithContainer
 import com.example.visualmoney.home.format
 import com.example.visualmoney.home.theme
-import com.example.visualmoney.newAsset.event.ListedAssetInputEvent
+import com.example.visualmoney.newAsset.event.AssetInputEvent
 import com.example.visualmoney.newAsset.event.ManualAssetInputEvent
 import com.example.visualmoney.newAsset.state.AssetInputState
 import com.example.visualmoney.newAsset.state.isValidForSubmit
@@ -135,7 +133,7 @@ fun NewAssetScreen(
                         text = "Add to portfolio",
                         enabled = listedAssetInputStateState.isValidForSubmit,
                         onClick = {
-                            onListedAssetInputEvent(ListedAssetInputEvent.Submit)
+                            onListedAssetInputEvent(AssetInputEvent.Submit)
                         }
                     )
                     Spacer(modifier = Modifier.height(theme.dimension.bottomBarHeight * 2))
@@ -163,12 +161,21 @@ data class ManualAssetInputState(
 fun ListedAssetInputScreen(
     modifier: Modifier = Modifier,
     state: AssetInputState,
-    onEvent: (ListedAssetInputEvent) -> Unit = {}
+    onEvent: (AssetInputEvent) -> Unit = {}
 ) = with(state) {
 
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
     var showSearchSheet by remember { mutableStateOf(false) }
     val scope = rememberCoroutineScope()
+    val focusManager = LocalFocusManager.current
+    val lazyListState = rememberLazyListState()
+    val localController = LocalSoftwareKeyboardController.current
+    LaunchedEffect(lazyListState.isScrollInProgress) {
+        if (lazyListState.isScrollInProgress) {
+            localController?.hide()
+            focusManager.clearFocus(force = true)
+        }
+    }
     Column(
         modifier = modifier,
     ) {
@@ -183,6 +190,7 @@ fun ListedAssetInputScreen(
                 })
         }
         LazyColumn(
+            state = lazyListState,
             verticalArrangement = Arrangement.spacedBy(theme.dimension.veryLargeSpacing),
             contentPadding = PaddingValues(bottom = theme.dimension.bottomBarHeight * 8)
         ) {
@@ -192,7 +200,7 @@ fun ListedAssetInputScreen(
                 ) {
                     Text(
                         modifier = Modifier.padding(bottom = theme.dimension.veryCloseSpacing),
-                        text = "Add security",
+                        text = state.assetFieldTitle,
                         style = theme.typography.bodySmallStrong,
                         color = theme.colors.onSurface
                     )
@@ -207,7 +215,7 @@ fun ListedAssetInputScreen(
                             InputTextField(
                                 readOnly = true,
                                 borderAlwaysVisible = true,
-                                placeholder = "Tracker, Stock, ETF, ...",
+                                placeholder = state.searchBarPlaceHolder,
                                 leadingIcon = {
                                     Icon(
                                         painterResource(Res.drawable.search),
@@ -225,13 +233,16 @@ fun ListedAssetInputScreen(
                 DateInputTextField(
                     label = "Transaction date",
                     value = state.purchasedAt,
-                    onValueChange = { onEvent(ListedAssetInputEvent.PurchaseDateChanged(it)) })
+                    onValueChange = { onEvent(AssetInputEvent.PurchaseDateChanged(it)) })
 
             }
             item {
                 InputTextField(
                     label = "Purchase price",
-                    value = "%.2f".format(state.purchasePrice),
+                    value = state.purchasePrice?.let {
+                        it.toString()
+                    } ?: "",
+                    placeholder = "0.0",
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                     trailingIcon = {
                         Icon(
@@ -242,13 +253,16 @@ fun ListedAssetInputScreen(
                         )
                     },
                     onValueChange = {
-                        onEvent(ListedAssetInputEvent.PurchasePriceChanged(it.toSafeDouble()))
+                        onEvent(AssetInputEvent.PurchasePriceChanged(it.toDoubleOrNull()))
                     })
             }
             item {
                 InputTextField(
                     label = "Current value",
-                    value = "%.2f".format(state.currentValue),
+                    placeholder = "0.0",
+                    value = currentValue?.let {
+                       it.toString()
+                    } ?: "",
                     trailingIcon = {
                         Icon(
                             imageVector = Icons.Rounded.EuroSymbol,
@@ -257,21 +271,24 @@ fun ListedAssetInputScreen(
                             modifier = Modifier.size(theme.dimension.smallIconSize)
                         )
                     },
-                    onValueChange = {})
+                    onValueChange = {
+                        onEvent(AssetInputEvent.CurrentValueChanged(it.toDoubleOrNull()))
+                    })
             }
 
             item {
                 InputTextField(
                     label = "Quantity",
+                    placeholder = "0",
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                    value = state.quantity.toString(),
-                    onValueChange = { onEvent(ListedAssetInputEvent.QtyChanged(it.toSafeInt())) })
+                    value = "${state.quantity ?: ""}",
+                    onValueChange = { onEvent(AssetInputEvent.QtyChanged(it.toIntOrNull())) })
             }
             item {
                 InputTextField(
                     label = "Notes",
                     value = state.notes,
-                    onValueChange = { onEvent(ListedAssetInputEvent.NotesChanged(it)) })
+                    onValueChange = { onEvent(AssetInputEvent.NotesChanged(it)) })
 
             }
         }
@@ -333,7 +350,7 @@ fun ManualAssetInputScreen(
 fun NewAssetInputContent(
     modifier: Modifier = Modifier,
     state: AssetInputState,
-    onEvent: (ListedAssetInputEvent) -> Unit = {},
+    onEvent: (AssetInputEvent) -> Unit = {},
     onAssetClick: (String) -> Unit = {},
 ) = with(state) {
     val scrollState = rememberScrollState(1)
@@ -382,7 +399,7 @@ fun NewAssetInputContent(
                                 topEnd = theme.dimension.defaultRadius
                             )
                         ), selected = currentTab == currentTab, onClick = {
-                            onEvent(ListedAssetInputEvent.SectionSelected(currentTab))
+                            onEvent(AssetInputEvent.SectionSelected(currentTab))
                         }) {
                         Row(
                             modifier = Modifier.padding(vertical = theme.dimension.veryLargeSpacing),
@@ -411,13 +428,12 @@ fun NewAssetInputContent(
 }
 
 
-
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ListedAssetSearchSheet(
     sheetState: SheetState,
     state: AssetInputState,
-    onEvent: (ListedAssetInputEvent) -> Unit = {},
+    onEvent: (AssetInputEvent) -> Unit = {},
     onDismiss: () -> Unit,
     modifier: Modifier = Modifier,
 ) = with(state) {
@@ -434,12 +450,17 @@ fun ListedAssetSearchSheet(
             modifier = Modifier.fillMaxSize().padding(theme.dimension.pagePadding),
             verticalArrangement = Arrangement.spacedBy(theme.dimension.largeSpacing),
         ) {
-            Column(verticalArrangement = Arrangement.spacedBy(theme.dimension.largeSpacing)) {
+            Column( verticalArrangement = Arrangement.spacedBy(theme.dimension.largeSpacing)) {
                 Row(
                     modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.End,
+                    horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.CenterVertically
                 ) {
+                    Text(
+                        "Search asset",
+                        style = theme.typography.titleSmall,
+                        color = theme.colors.onSurface
+                    )
                     IconWithContainer(
                         icon = painterResource(Res.drawable.close), onClick = onDismiss
                     )
@@ -447,7 +468,7 @@ fun ListedAssetSearchSheet(
                 SearchBar(
                     query = state.query,
                     placeholder = state.searchBarPlaceHolder,
-                    onQueryChange = { onEvent(ListedAssetInputEvent.QueryChanged(it)) },
+                    onQueryChange = { onEvent(AssetInputEvent.QueryChanged(it)) },
                 )
                 Text(
                     text = "Showing ${results.size} results",
@@ -463,7 +484,7 @@ fun ListedAssetSearchSheet(
                         itemsIndexed(results) { idx, row ->
                             SearchResultRow(
                                 item = row, onClick = {
-                                    onEvent(ListedAssetInputEvent.SymbolSelected(row.symbol))
+                                    onEvent(AssetInputEvent.SymbolSelected(row.symbol))
                                     onDismiss()
                                 })
                             if (idx != results.lastIndex) {

@@ -14,6 +14,8 @@ plugins {
     alias(libs.plugins.androidx.room)
 }
 
+
+
 kotlin {
     androidTarget {
         compilerOptions {
@@ -23,7 +25,7 @@ kotlin {
     
     listOf(
         iosArm64(),
-      //  iosX64(),
+        iosX64(),
         iosSimulatorArm64(),
     ).forEach { iosTarget ->
         iosTarget.binaries.framework {
@@ -31,12 +33,12 @@ kotlin {
             isStatic = true
         }
     }
-    project.afterEvaluate {
-        tasks.named("kspKotlinIosArm64") {
-            dependsOn(tasks.named("generateResourceAccessorsForIosArm64Main"))
-            enabled = false
-        }
-    }
+//    project.afterEvaluate {
+//        tasks.named("kspKotlinIosArm64") {
+//            dependsOn(tasks.named("generateResourceAccessorsForIosArm64Main"))
+//            enabled = false
+//        }
+//    }
 
 
     sourceSets {
@@ -76,6 +78,7 @@ kotlin {
             implementation(libs.kotlin.test)
         }
     }
+
 }
 
 android {
@@ -109,7 +112,7 @@ dependencies {
     debugImplementation(libs.compose.uiTooling)
     add("kspAndroid", libs.androidx.room.compiler)
     add("kspIosSimulatorArm64", libs.androidx.room.compiler)
-  //  add("kspIosX64", libs.androidx.room.compiler)
+    add("kspIosX64", libs.androidx.room.compiler)
     add("kspIosArm64", libs.androidx.room.compiler)
 }
 

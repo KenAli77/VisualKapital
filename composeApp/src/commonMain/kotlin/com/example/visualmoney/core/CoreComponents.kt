@@ -543,6 +543,7 @@ fun DateInputTextField(
         placeholder = placeholder,
         onValueChange = {},
         readOnly = true,
+        borderAlwaysVisible = true,
         error = error,
         trailingIcon = {
             Icon(

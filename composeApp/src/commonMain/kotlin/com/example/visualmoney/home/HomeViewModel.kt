@@ -30,11 +30,17 @@ class HomeViewModel(
 
                     val assetClass = AssetClass.STOCK
                     val quote = repository.getQuote(asset.symbol)
+                    val changePercentage = if (asset.purchasePrice != 0.0) {
+                        ((quote.price - asset.purchasePrice) / asset.purchasePrice) * 100
+                    } else {
+                        0.0
+                    }
+
                     HoldingRowUi(
-                        symbol = quote.symbol,
-                        name = quote.name ?: quote.symbol,
+                        symbol = asset.symbol,
+                        name = asset.name,
                         assetClass = assetClass,
-                        changePct = quote.changesPercentage,
+                        changePct = changePercentage,
                         price = quote.price,
                         dayLow = quote.dayLow ?: quote.price,
                         dayHigh = quote.dayHigh ?: quote.price,

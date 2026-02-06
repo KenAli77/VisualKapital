@@ -204,7 +204,8 @@ fun SearchBar(
                 Icon(
                     painterResource(Res.drawable.search),
                     modifier = Modifier.size(theme.dimension.smallIconSize),
-                    contentDescription = null
+                    contentDescription = null,
+                    tint = theme.colors.onSurface
                 )
             },
             colors = TextFieldDefaults.colors(
