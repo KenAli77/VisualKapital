@@ -1,5 +1,7 @@
 package com.example.visualmoney.calendar
 
+import com.example.visualmoney.domain.model.EventType
+
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
@@ -86,7 +88,8 @@ data class ReminderUi(
     val date: LocalDate,
     val timeLabel: String, // e.g. "09:30"
     val amountLabel: String? = null, // e.g. "$120.00"
-    val status: ReminderStatus = ReminderStatus.UPCOMING
+    val status: ReminderStatus = ReminderStatus.UPCOMING,
+    val eventType: EventType? = null // null for user-created reminders
 )
 
 enum class ReminderStatus { UPCOMING, PAID, MISSED }

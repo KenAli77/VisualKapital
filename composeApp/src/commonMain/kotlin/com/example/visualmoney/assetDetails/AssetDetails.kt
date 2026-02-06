@@ -351,7 +351,7 @@ private fun PriceAndChartCard(
                                 color = theme.colors.greyScale.c50
                             )
                         }
-                        val pct = quote.changesPercentage
+                        val pct = quote.changePercentage
                         val absChange = quote.change
                         val pctChange = if (absChange >= 0) "+" else ""
                         val pctText = (if (pct >= 0) "+" else "") + "%.2f".format(pct) + "%"

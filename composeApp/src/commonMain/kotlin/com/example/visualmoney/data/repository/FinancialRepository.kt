@@ -60,7 +60,7 @@ class FinancialRepositoryImpl(
         val entity = CachedQuoteEntity(
             symbol = remote.symbol,
             price = remote.price,
-            changePct = remote.changesPercentage,
+            changePct = remote.changePercentage,
             change = remote.change,
             dayLow = remote.dayLow,
             dayHigh = remote.dayHigh,
@@ -171,7 +171,7 @@ class FinancialRepositoryImpl(
             CachedQuoteEntity(
                 symbol = q.symbol,
                 price = q.price,
-                changePct = q.changesPercentage,
+                changePct = q.changePercentage,
                 change = q.change,
                 dayLow = q.dayLow,
                 dayHigh = q.dayHigh,
@@ -192,7 +192,7 @@ private fun AssetQuote.toCachedQuoteEntity(updatedAt: Long): CachedQuoteEntity {
     return CachedQuoteEntity(
         symbol = symbol,
         price = price,
-        changePct = changesPercentage,
+        changePct = changePercentage,
         change = change,
         dayLow = dayLow,
         dayHigh = dayHigh,

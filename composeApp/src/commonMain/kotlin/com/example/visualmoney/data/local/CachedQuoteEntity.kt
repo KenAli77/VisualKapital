@@ -37,7 +37,7 @@ data class CachedQuoteEntity(
 fun CachedQuoteEntity.toAsset():AssetQuote = AssetQuote(
     symbol = symbol,
     price = price,
-    changesPercentage = changePct ?: 0.0,
+    changePercentage = changePct ?: 0.0,
     change = change ?: 0.0,
     dayLow = dayLow,
     dayHigh = dayHigh,

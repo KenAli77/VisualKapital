@@ -22,27 +22,47 @@ class FmpDataSource(private val client: HttpClient) {
 
     suspend fun getQuote(symbol: String): AssetQuote {
         return try {
-            val response: List<AssetQuote> = client.get("$baseUrl/stable/quote?symbol=$symbol") {
+            val url = "$baseUrl/stable/quote?symbol=$symbol"
+            val response: HttpResponse = client.get(url) {
                 parameter("apikey", apiKey)
-            }.body()
-            response.firstOrNull() ?: AssetQuote()
-
+            }
+            val responseText = response.bodyAsText()
+            println("FmpDataSource.getQuote($symbol): Raw response = ${responseText.take(500)}")
+            
+            val json = Json { ignoreUnknownKeys = true }
+            val quotes = json.decodeFromString<List<AssetQuote>>(responseText)
+            val quote = quotes.firstOrNull() ?: AssetQuote()
+            println("FmpDataSource.getQuote($symbol): Parsed - price=${quote.price}, changesPercentage=${quote.changePercentage}")
+            quote
         } catch (e: Exception) {
+            println("FmpDataSource.getQuote($symbol): ERROR - ${e.message}")
             AssetQuote()
         }
     }
 
     suspend fun getQuotes(symbols: List<String>): List<AssetQuote> {
-        return try {
-            if (symbols.isEmpty()) return emptyList()
-            val symbolsParam = symbols.joinToString(",")
-             client.get("$baseUrl/stable/quote?symbol=$symbolsParam") {
-                parameter("apikey", apiKey)
-            }.body()
-
-        } catch (e: Exception) {
-            emptyList()
+        if (symbols.isEmpty()) return emptyList()
+        
+        println("FmpDataSource.getQuotes: Fetching ${symbols.size} symbols individually (batch endpoint requires premium)")
+        
+        // Make individual API calls for each symbol since batch endpoint requires premium subscription
+        val results = mutableListOf<AssetQuote>()
+        for (symbol in symbols) {
+            try {
+                val quote = getQuote(symbol)
+                if (quote.symbol.isNotEmpty()) {
+                    println("FmpDataSource.getQuotes: Got $symbol -> price=${quote.price}, changePct=${quote.changePercentage}")
+                    results.add(quote)
+                } else {
+                    println("FmpDataSource.getQuotes: No data for $symbol")
+                }
+            } catch (e: Exception) {
+                println("FmpDataSource.getQuotes: Error fetching $symbol: ${e.message}")
+            }
         }
+        
+        println("FmpDataSource.getQuotes: Successfully fetched ${results.size}/${symbols.size} quotes")
+        return results
     }
 
     suspend fun getProfile(symbol: String): AssetProfile {
@@ -155,5 +175,76 @@ class FmpDataSource(private val client: HttpClient) {
         return client.get("$baseUrl/stable/cryptocurrency-list") {
             parameter("apikey", apiKey)
         }.body()
+    }
+
+    // -------- Calendar Endpoints --------
+
+    suspend fun getEarningsCalendar(from: String, to: String): List<EarningsCalendarDto> {
+        return try {
+            val response: HttpResponse = client.get("$baseUrl/api/v3/earning_calendar") {
+                parameter("from", from)
+                parameter("to", to)
+                parameter("apikey", apiKey)
+            }
+            val responseText = response.bodyAsText()
+            println("FmpDataSource.getEarningsCalendar: Response = ${responseText.take(200)}...")
+
+            if (responseText.trim().startsWith("{")) {
+                println("FmpDataSource.getEarningsCalendar: Received error object")
+                return emptyList()
+            }
+
+            val json = Json { ignoreUnknownKeys = true }
+            json.decodeFromString<List<EarningsCalendarDto>>(responseText)
+        } catch (e: Exception) {
+            println("FmpDataSource.getEarningsCalendar: ERROR - ${e.message}")
+            emptyList()
+        }
+    }
+
+    suspend fun getDividendCalendar(from: String, to: String): List<DividendCalendarDto> {
+        return try {
+            val response: HttpResponse = client.get("$baseUrl/api/v3/stock_dividend_calendar") {
+                parameter("from", from)
+                parameter("to", to)
+                parameter("apikey", apiKey)
+            }
+            val responseText = response.bodyAsText()
+            println("FmpDataSource.getDividendCalendar: Response = ${responseText.take(200)}...")
+
+            if (responseText.trim().startsWith("{")) {
+                println("FmpDataSource.getDividendCalendar: Received error object")
+                return emptyList()
+            }
+
+            val json = Json { ignoreUnknownKeys = true }
+            json.decodeFromString<List<DividendCalendarDto>>(responseText)
+        } catch (e: Exception) {
+            println("FmpDataSource.getDividendCalendar: ERROR - ${e.message}")
+            emptyList()
+        }
+    }
+
+    suspend fun getStockSplitCalendar(from: String, to: String): List<StockSplitCalendarDto> {
+        return try {
+            val response: HttpResponse = client.get("$baseUrl/api/v3/stock_split_calendar") {
+                parameter("from", from)
+                parameter("to", to)
+                parameter("apikey", apiKey)
+            }
+            val responseText = response.bodyAsText()
+            println("FmpDataSource.getStockSplitCalendar: Response = ${responseText.take(200)}...")
+
+            if (responseText.trim().startsWith("{")) {
+                println("FmpDataSource.getStockSplitCalendar: Received error object")
+                return emptyList()
+            }
+
+            val json = Json { ignoreUnknownKeys = true }
+            json.decodeFromString<List<StockSplitCalendarDto>>(responseText)
+        } catch (e: Exception) {
+            println("FmpDataSource.getStockSplitCalendar: ERROR - ${e.message}")
+            emptyList()
+        }
     }
 }

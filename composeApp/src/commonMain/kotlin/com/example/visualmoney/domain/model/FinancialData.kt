@@ -96,7 +96,7 @@ data class AssetQuote(
     val symbol: String = "",
     val name: String? = null,
     val price: Double = 0.0,
-    val changesPercentage: Double = 0.0,
+    val changePercentage: Double = 0.0,
     val change: Double = 0.0,
     val dayLow: Double? = null,
     val dayHigh: Double? = null,
