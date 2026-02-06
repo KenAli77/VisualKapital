@@ -9,7 +9,6 @@ import kotlinx.datetime.LocalDate
 @Entity(
     tableName = "portfolio_assets",
 )
-
 data class PortfolioAsset(
     @PrimaryKey val symbol: String,
     val name: String,

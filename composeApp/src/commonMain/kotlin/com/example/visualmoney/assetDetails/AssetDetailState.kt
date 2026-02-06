@@ -8,7 +8,7 @@ import com.example.visualmoney.domain.model.ChartPoint
 data class AssetDetailState(
     val asset: PortfolioAsset? = null,
     val selectedChartRange: ChartRange = ChartRange.ONE_DAY,
-    val quote: AssetQuote? = null,
-    val profile: AssetProfile? = null,
+    val quote: AssetQuote? = AssetQuote(),
+    val profile: AssetProfile? = AssetProfile(),
     val chart: List<ChartPoint> = emptyList(),
 )

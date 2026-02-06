@@ -78,11 +78,7 @@ fun VisualKapitalApp(navController: NavHostController = rememberNavController())
                     viewModel.loadSymbolData(symbol)
                     AssetDetailsScreen(
                         modifier = Modifier.padding(top = paddingValues.calculateTopPadding()),
-
-                        asset = viewModel.asset.toAsset(),
-                        profile = viewModel.asset,
-                        quote = viewModel.assetQuote,
-                        chart = viewModel.chartPoints,
+                        viewModel = viewModel,
                         onBack = {
                             navController.popBackStack()
                             symbol = ""
