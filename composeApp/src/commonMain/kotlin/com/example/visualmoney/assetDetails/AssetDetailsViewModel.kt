@@ -18,14 +18,43 @@ class AssetDetailsViewModel(private val repository: FinancialRepository) : ViewM
         viewModelScope.launch {
             val profile = repository.getProfile(symbol)
             val quote = repository.getQuote(symbol)
-            val chartPeriod = state.selectedChartRange.apiPeriod
-            val chart = repository.getChart(symbol, chartPeriod.start, chartPeriod.end)
+            val chart1W = repository.getChart(
+                symbol,
+                ChartRange.ONE_WEEK.apiPeriod.start,
+                ChartRange.ONE_WEEK.apiPeriod.end
+            )
+            val chart1M = repository.getChart(
+                symbol,
+                ChartRange.ONE_MONTH.apiPeriod.start,
+                ChartRange.ONE_MONTH.apiPeriod.end
+            )
+            val chart3M = repository.getChart(
+                symbol,
+                ChartRange.THREE_MONTHS.apiPeriod.start,
+                ChartRange.THREE_MONTHS.apiPeriod.end
+            )
+            val chart1Y = repository.getChart(
+                symbol,
+                ChartRange.ONE_YEAR.apiPeriod.start,
+                ChartRange.ONE_YEAR.apiPeriod.end
+            )
             state = state.copy(
                 profile = profile,
                 quote = quote,
-                chart = chart
+                selectedChartRange = ChartRange.ONE_YEAR,
+                chart1W = chart1W,
+                chart1Y = chart1Y,
+                chart1M = chart1M,
+                chart3M = chart3M,
             )
 
+        }
+        viewModelScope.launch {
+            repository.getPortfolioAsset(symbol).collect {
+                state = state.copy(
+                    asset = it
+                )
+            }
         }
     }
 
@@ -35,19 +64,12 @@ class AssetDetailsViewModel(private val repository: FinancialRepository) : ViewM
                 is AssetDetailEvent.AddToPortfolio -> {
 
                 }
+
                 is AssetDetailEvent.ChartPeriodChanged -> {
                     state = state.copy(
                         selectedChartRange = event.period
                     )
-                    val period = event.period.apiPeriod
-                    state.profile?.let { prof ->
-                        val chart = repository.getChart(prof.symbol, period.start, period.end)
 
-                        state = state.copy(
-                            chart = chart
-                        )
-
-                    }
                 }
 
                 is AssetDetailEvent.RemoveFromPortfolio -> {

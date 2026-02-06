@@ -36,6 +36,7 @@ interface FinancialRepository {
     suspend fun addAssetToPortfolio(asset: PortfolioAsset)
 
     suspend fun getPortfolioAssets(): Flow<List<PortfolioAsset>>
+    suspend fun getPortfolioAsset(symbol:String): Flow<PortfolioAsset?>
 
 }
 
@@ -51,6 +52,10 @@ class FinancialRepositoryImpl(
 
     override suspend fun getPortfolioAssets(): Flow<List<PortfolioAsset>> {
        return portfolioDao.observeAllAssets()
+    }
+
+    override suspend fun getPortfolioAsset(symbol: String): Flow<PortfolioAsset?> {
+        return portfolioDao.observeAsset(symbol)
     }
 
 
@@ -127,7 +132,6 @@ class FinancialRepositoryImpl(
     override suspend fun getChart(symbol: String, from: String, to: String): List<ChartPoint> = remoteSource.getChart(symbol, from = from, to = to)
     override suspend fun searchAsset(name: String, exchange:String): List<SearchResult> {
         val remote =  remoteSource.searchCompanyByName(name,exchange)
-        println("Search result: $remote")
         return remote
     }
 

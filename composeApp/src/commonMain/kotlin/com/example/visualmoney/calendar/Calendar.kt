@@ -19,8 +19,11 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.itemsIndexed
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.KeyboardArrowLeft
 import androidx.compose.material.icons.outlined.KeyboardArrowRight
@@ -28,15 +31,20 @@ import androidx.compose.material.icons.rounded.Add
 import androidx.compose.material.icons.rounded.Alarm
 import androidx.compose.material.icons.rounded.ArrowBack
 import androidx.compose.material.icons.rounded.CalendarToday
+import androidx.compose.material.icons.rounded.EuroSymbol
 import androidx.compose.material.icons.rounded.NorthEast
 import androidx.compose.material.icons.rounded.Search
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ElevatedCard
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
+import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.SheetState
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -46,13 +54,31 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.example.visualmoney.LocalAppTheme
+import com.example.visualmoney.SearchBar
+import com.example.visualmoney.SearchResultRow
+import com.example.visualmoney.SearchResultRowUi
+import com.example.visualmoney.assetDetails.AssetLogoContainer
+import com.example.visualmoney.core.DateInputTextField
+import com.example.visualmoney.core.InputTextField
+import com.example.visualmoney.core.ListDivider
+import com.example.visualmoney.core.TopNavigationBar
+import com.example.visualmoney.data.local.PortfolioAsset
+import com.example.visualmoney.data.local.logoUrl
 import com.example.visualmoney.greyTextColor
+import com.example.visualmoney.home.CardContainer
 import com.example.visualmoney.home.IconWithContainer
 import com.example.visualmoney.home.IconWithContainerSmall
+import com.example.visualmoney.home.borderStroke
+import com.example.visualmoney.home.format
 import com.example.visualmoney.home.primaryGradient
+import com.example.visualmoney.home.theme
+import com.example.visualmoney.newAsset.event.AssetInputEvent
+import com.example.visualmoney.newAsset.event.ManualAssetInputEvent
+import com.example.visualmoney.newAsset.state.AssetInputState
 import kotlinx.datetime.DateTimePeriod
 import kotlinx.datetime.DateTimeUnit
 import kotlinx.datetime.DayOfWeek
@@ -71,6 +97,10 @@ import org.jetbrains.compose.resources.painterResource
 import visualmoney.composeapp.generated.resources.Res
 import visualmoney.composeapp.generated.resources.arrow_back
 import visualmoney.composeapp.generated.resources.calendar
+import visualmoney.composeapp.generated.resources.chevron_left
+import visualmoney.composeapp.generated.resources.chevron_right
+import visualmoney.composeapp.generated.resources.close
+import visualmoney.composeapp.generated.resources.edit_variant
 import visualmoney.composeapp.generated.resources.plus
 import visualmoney.composeapp.generated.resources.search
 import kotlin.math.min
@@ -91,33 +121,36 @@ data class ReminderUi(
 
 enum class ReminderStatus { UPCOMING, PAID, MISSED }
 
-fun LocalDate.Companion.now(): LocalDate = Clock.System.now().toLocalDateTime(TimeZone.currentSystemDefault()).date
-fun YearMonth.Companion.now(): YearMonth  = YearMonth(LocalDate.now().year, LocalDate.now().month)
+fun LocalDate.Companion.now(): LocalDate =
+    Clock.System.now().toLocalDateTime(TimeZone.currentSystemDefault()).date
+
+fun YearMonth.Companion.now(): YearMonth = YearMonth(LocalDate.now().year, LocalDate.now().month)
 
 /**
  * Returns a new [YearMonth] with the given number of months added or subtracted.
  * It has to be adjusted, to account for month 1 and 12
  */
-fun YearMonth.minusMonths(months:Int) : YearMonth = this.minus( months, DateTimeUnit.MONTH,)
-fun YearMonth.plusMonths(months:Int) : YearMonth = this.plus( months, DateTimeUnit.MONTH,)
-fun YearMonth.atDay(day:Int) : LocalDate = LocalDate(
+fun YearMonth.minusMonths(months: Int): YearMonth = this.minus(months, DateTimeUnit.MONTH)
+fun YearMonth.plusMonths(months: Int): YearMonth = this.plus(months, DateTimeUnit.MONTH)
+fun YearMonth.atDay(day: Int): LocalDate = LocalDate(
     month = month.number,
     day = day,
     year = year
 )
 
-fun YearMonth.lengthOfMonth() : Int = this.numberOfDays
-fun LocalDate.plusDays(days:Int) : LocalDate = this.plus( days, DateTimeUnit.DAY,)
-fun LocalDate.minusDays(days: Int) : LocalDate = this.minus( days, DateTimeUnit.DAY,)
+fun YearMonth.lengthOfMonth(): Int = this.numberOfDays
+fun LocalDate.plusDays(days: Int): LocalDate = this.plus(days, DateTimeUnit.DAY)
+fun LocalDate.minusDays(days: Int): LocalDate = this.minus(days, DateTimeUnit.DAY)
 
 // ---------- Screen ----------
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun CalendarScreen(
     modifier: Modifier = Modifier,
+    viewModel: CalendarScreenViewModel,
     initialMonth: YearMonth = YearMonth.now(),
     reminders: List<ReminderUi> = sampleReminders(),
     onBack: () -> Unit = {},
-    onAddReminder: (LocalDate) -> Unit = {},
     onOpenReminder: (ReminderUi) -> Unit = {},
 ) {
     var month by remember { mutableStateOf(initialMonth) }
@@ -128,40 +161,48 @@ fun CalendarScreen(
     val remindersForSelected = remember(reminders, selectedDate) {
         reminders.filter { it.date == selectedDate }.sortedBy { it.timeLabel }
     }
+    val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
+    var showNewReminderSheet by remember { mutableStateOf(false) }
+
     Box(
         modifier = modifier.fillMaxSize(),
     ) {
-        LazyColumn(
+        Column(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(horizontal = theme.dimension.pagePadding),
-            verticalArrangement = Arrangement.spacedBy(theme.dimension.largeSpacing),
-            contentPadding = PaddingValues(
-                top = theme.dimension.pagePadding,
-                bottom = theme.dimension.pagePadding
-            )
+            verticalArrangement = Arrangement.spacedBy(theme.dimension.veryLargeSpacing)
         ) {
-            item {
-                CalendarTopHeader(
-                    title = "Calendar",
-                    onBack = onBack,
-                    onSearch = {},
-                    onAdd = { onAddReminder(selectedDate) }
-                )
+            TopNavigationBar(
+                title = "Calendar",
+                subtitle = "Your reminders & events",
+                onBack = onBack
+            )
+
+            if (showNewReminderSheet) {
+                NewReminderSheet(sheetState, state = viewModel)
             }
 
-            item {
-                CalendarCard(
-                    month = month,
-                    monthDays = monthDays,
-                    selectedDate = selectedDate,
-                    today = today,
-                    reminders = reminders,
-                    onPrevMonth = { month = month.minusMonths(1) },
-                    onNextMonth = { month = month.plusMonths(1) },
-                    onSelectDate = { selectedDate = it }
+            LazyColumn(
+                verticalArrangement = Arrangement.spacedBy(theme.dimension.largeSpacing),
+                contentPadding = PaddingValues(
+                    top = theme.dimension.pagePadding,
+                    bottom = theme.dimension.pagePadding
                 )
-            }
+            ) {
+
+                item {
+                    CalendarCard(
+                        month = month,
+                        monthDays = monthDays,
+                        selectedDate = selectedDate,
+                        today = today,
+                        reminders = reminders,
+                        onPrevMonth = { month = month.minusMonths(1) },
+                        onNextMonth = { month = month.plusMonths(1) },
+                        onSelectDate = { selectedDate = it }
+                    )
+                }
 
 //            item {
 //                AddReminderCta(
@@ -171,21 +212,22 @@ fun CalendarScreen(
 //                )
 //            }
 
-            item {
-                SelectedDateHeader(
-                    selectedDate = selectedDate,
-                    count = remindersForSelected.size
-                )
-            }
-
-            if (remindersForSelected.isEmpty()) {
-                item { EmptyStateCard(selectedDate = selectedDate) }
-            } else {
-                items(remindersForSelected, key = { it.id }) { r ->
-                    ReminderRow(
-                        item = r,
-                        onClick = { onOpenReminder(r) }
+                item {
+                    SelectedDateHeader(
+                        selectedDate = selectedDate,
+                        count = remindersForSelected.size
                     )
+                }
+
+                if (remindersForSelected.isEmpty()) {
+                    item { EmptyStateCard(selectedDate = selectedDate) }
+                } else {
+                    items(remindersForSelected, key = { it.id }) { r ->
+                        ReminderRow(
+                            item = r,
+                            onClick = { onOpenReminder(r) }
+                        )
+                    }
                 }
             }
         }
@@ -197,7 +239,6 @@ fun CalendarScreen(
 private fun CalendarTopHeader(
     title: String,
     onBack: () -> Unit,
-    onSearch: () -> Unit,
     onAdd: () -> Unit,
     modifier: Modifier = Modifier
 ) {
@@ -224,25 +265,20 @@ private fun CalendarTopHeader(
                 Text(
                     text = "Your reminders & events",
                     style = theme.typography.bodySmall,
-                    color = theme.colors.greyScale.c60
+                    color = theme.colors.greyTextColor
                 )
             }
         }
 
         Row(horizontalArrangement = Arrangement.spacedBy(theme.dimension.mediumSpacing)) {
             IconWithContainer(
-                onClick = onSearch,
-                icon = painterResource(Res.drawable.search),
-                containerColor = theme.colors.container
-            )
-            IconWithContainer(
                 onClick = onAdd,
                 icon = painterResource(Res.drawable.plus),
-                containerColor = theme.colors.primary.c50
             )
         }
     }
 }
+
 fun LocalDate.format(): String {
     val format = LocalDate.Format {
         year()
@@ -273,11 +309,7 @@ private fun CalendarCard(
         month.atDay(1).format()
     }
 
-    ElevatedCard(
-        modifier = modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(theme.dimension.defaultRadius),
-        elevation = CardDefaults.cardElevation(0.dp),
-        colors = CardDefaults.elevatedCardColors(containerColor = theme.colors.container)
+    CardContainer(
     ) {
         Column(
             modifier = Modifier.padding(theme.dimension.largeSpacing),
@@ -288,19 +320,25 @@ private fun CalendarCard(
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 IconWithContainerSmall(
-                    onClick = {},
                     icon = painterResource(Res.drawable.calendar),
                     contentDescription = "Calendar"
                 )
                 Text(
                     text = monthLabel,
                     style = theme.typography.titleSmallMedium,
+                    color = theme.colors.onSurface,
                     modifier = Modifier.padding(start = theme.dimension.mediumSpacing)
                 )
                 Spacer(Modifier.weight(1f))
-                MonthNavButton(icon = Icons.Outlined.KeyboardArrowLeft, onClick = onPrevMonth)
+                IconWithContainer(
+                    onClick = onPrevMonth,
+                    icon = painterResource(Res.drawable.chevron_left)
+                )
                 Spacer(Modifier.size(theme.dimension.closeSpacing))
-                MonthNavButton(icon = Icons.Outlined.KeyboardArrowRight, onClick = onNextMonth)
+                IconWithContainer(
+                    onClick = onPrevMonth,
+                    icon = painterResource(Res.drawable.chevron_right)
+                )
             }
 
             WeekdayRow(startOfWeek = DayOfWeek.MONDAY)
@@ -333,26 +371,6 @@ private fun CalendarCard(
     }
 }
 
-@Composable
-private fun MonthNavButton(
-    icon: androidx.compose.ui.graphics.vector.ImageVector,
-    onClick: () -> Unit
-) {
-    Surface(
-        onClick = onClick,
-        shape = CircleShape,
-        color = theme.colors.surface
-    ) {
-        Box(
-            modifier = Modifier
-                .padding(6.dp)
-                .size(theme.dimension.smallIconSize + 8.dp),
-            contentAlignment = Alignment.Center
-        ) {
-            Icon(icon, contentDescription = null, tint = theme.colors.onSurface)
-        }
-    }
-}
 
 @Composable
 private fun WeekdayRow(
@@ -383,8 +401,9 @@ private fun WeekdayRow(
         }
     }
 }
-fun DayOfWeek.getDisplayName(): String{
-    return when(this){
+
+fun DayOfWeek.getDisplayName(): String {
+    return when (this) {
         DayOfWeek.MONDAY -> "Mon"
         DayOfWeek.TUESDAY -> "Tue"
         DayOfWeek.WEDNESDAY -> "Wed"
@@ -394,6 +413,7 @@ fun DayOfWeek.getDisplayName(): String{
         DayOfWeek.SUNDAY -> "Sun"
     }
 }
+
 @Composable
 private fun DayCell(
     date: LocalDate?,
@@ -736,4 +756,138 @@ private fun sampleReminders(): List<ReminderUi> {
             status = ReminderStatus.MISSED
         )
     )
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun NewReminderSheet(
+    sheetState: SheetState,
+    state: ReminderInputState,
+    onEvent: (ReminderInputEvent) -> Unit = {},
+    onDismiss: () -> Unit,
+    modifier: Modifier = Modifier,
+) = with(state) {
+    val lazyListState = rememberLazyListState()
+
+    ModalBottomSheet(
+        modifier = modifier,
+        sheetState = sheetState,
+        onDismissRequest = { onDismiss() },
+        dragHandle = {},
+        containerColor = theme.colors.container,
+    ) {
+        Column(
+            modifier = Modifier.fillMaxSize().padding(theme.dimension.pagePadding),
+            verticalArrangement = Arrangement.spacedBy(theme.dimension.largeSpacing),
+        ) {
+            Column(verticalArrangement = Arrangement.spacedBy(theme.dimension.largeSpacing)) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        "Add a new reminder",
+                        style = theme.typography.titleSmall,
+                        color = theme.colors.onSurface
+                    )
+                    IconWithContainer(
+                        icon = painterResource(Res.drawable.close), onClick = onDismiss
+                    )
+                }
+
+                state.selectedAsset?.let {
+                    SelectedAssetReminderField(asset = it)
+                } ?: InputTextField(
+                    readOnly = true,
+                    borderAlwaysVisible = true,
+                    placeholder = "Select an asset from your portfolio",
+                    leadingIcon = {
+                        Icon(
+                            painterResource(Res.drawable.search),
+                            null,
+                            modifier = Modifier.size(theme.dimension.smallIconSize),
+                            tint = theme.colors.greyTextColor
+                        )
+                    })
+
+                InputTextField(
+                    label = "Note",
+                    value = state.notes,
+                    onValueChange = {
+                        onEvent(ReminderInputEvent.NoteChanged(it))
+                    })
+
+                DateInputTextField(
+                    label = "Transaction date",
+                    value = state.date,
+                    onValueChange = { onEvent(ReminderInputEvent.DateChanged(it)) })
+
+            }
+        }
+    }
+}
+
+@Composable
+fun SelectedAssetReminderField(modifier: Modifier = Modifier, asset: PortfolioAsset) {
+    val boxModifier = Modifier
+        .fillMaxWidth()
+        .clip(RoundedCornerShape(theme.dimension.defaultRadius))
+        .background(theme.colors.surface)
+        .border(
+            border = borderStroke,
+            shape = RoundedCornerShape(theme.dimension.defaultRadius)
+        )
+        .padding(horizontal = 12.dp, vertical = 10.dp)
+
+    Column(
+        modifier =
+            modifier
+                .fillMaxWidth().padding(bottom = theme.dimension.veryCloseSpacing),
+        verticalArrangement = Arrangement.spacedBy(theme.dimension.veryCloseSpacing)
+    ) {
+        CardContainer {
+            Box(contentAlignment = Alignment.CenterStart, modifier = boxModifier) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(theme.dimension.mediumSpacing)
+                ) {
+                    AssetLogoContainer(
+                        asset.logoUrl,
+                        symbol = asset.symbol,
+                        size = theme.dimension.smallIconSize
+                    )
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(theme.dimension.closeSpacing)
+                    ) {
+                        Text(
+                            asset.name,
+                            style = theme.typography.bodyMediumStrong,
+                            color = theme.colors.onSurface
+                        )
+                        Text(
+                            asset.symbol,
+                            style = theme.typography.bodyMedium,
+                            color = theme.colors.greyTextColor
+                        )
+                    }
+                    Spacer(Modifier.weight(1f))
+
+                    Icon(
+                        painterResource(Res.drawable.edit_variant),
+                        null,
+                        tint = theme.colors.greyTextColor,
+                        modifier = Modifier.size(theme.dimension.smallIconSize),
+
+                        )
+
+
+                }
+
+            }
+        }
+
+    }
 }

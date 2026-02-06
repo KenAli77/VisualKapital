@@ -105,7 +105,7 @@ fun NewAssetScreen(
                     modifier = Modifier.padding(horizontal = theme.dimension.pagePadding),
                     state = viewModel.listedAssetInputStateState,
                     onEvent = { viewModel.onListedAssetInputEvent(it) },
-                    onAssetClick = { onNavigateToAssetDetails(it) })
+                )
                 Column(
                     modifier = Modifier.fillMaxWidth().background(theme.colors.surface)
                 ) {
@@ -351,7 +351,6 @@ fun NewAssetInputContent(
     modifier: Modifier = Modifier,
     state: AssetInputState,
     onEvent: (AssetInputEvent) -> Unit = {},
-    onAssetClick: (String) -> Unit = {},
 ) = with(state) {
     val scrollState = rememberScrollState(1)
     val lazyListState = rememberLazyListState()

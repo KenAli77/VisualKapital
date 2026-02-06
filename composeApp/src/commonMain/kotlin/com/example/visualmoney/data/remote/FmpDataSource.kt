@@ -47,7 +47,6 @@ class FmpDataSource(private val client: HttpClient) {
 
     suspend fun getProfile(symbol: String): AssetProfile {
         return try {
-            println("Getting profile for $baseUrl/stable/profile?symbol=$symbol ")
             val response: List<AssetProfile> = client.get("$baseUrl/stable/profile?symbol=$symbol") {
                 parameter("apikey", apiKey)
             }.body()
@@ -61,11 +60,18 @@ class FmpDataSource(private val client: HttpClient) {
 
     suspend fun getChart(symbol: String, from:String, to: String): List<ChartPoint> {
         return try {
+            println("Getting chart from $from to $to")
             val response: List<ChartPointDTO> =
                 client.get("$baseUrl/stable/historical-price-eod/light?symbol=$symbol") {
                     parameter("apikey", apiKey)
+                    if (!from.equals(to, ignoreCase = true)) {
+                        parameter("from",from)
+                        parameter("to",to)
+                    }
                 }.body()
-            response.map { it.toChartPoint() }.takeLast(100)
+            val result = response.map { it.toChartPoint() }
+            println("Returning chart with ${result.size} points")
+            result
 
         } catch (e: Exception) {
             println("Exception getting char: $e")
@@ -82,8 +88,6 @@ class FmpDataSource(private val client: HttpClient) {
                     parameter("exchange", it)
                 }
             }.body<List<SearchResult>>()
-            println("Result from search: $response")
-
             response
         } catch (e: Exception) {
             println("Exception getting search: $e")
@@ -92,20 +96,16 @@ class FmpDataSource(private val client: HttpClient) {
     }
     suspend fun getTopGainers(): List<AssetQuote> {
         val url = "$baseUrl/stable/most-actives"
-        println("FMPDataSource: Request URL = $url?apikey=$apiKey")
-
         val response: HttpResponse = client.get(url) {
             parameter("apikey", apiKey)
         }
 
         val responseText = response.bodyAsText()
-        println("FMPDataSource: Response = ${responseText.take(200)}...") // Log first 200 chars
 
         if (responseText.trim().startsWith("{")) {
             try {
                 val json = Json { ignoreUnknownKeys = true }
                 val errorResponse = json.decodeFromString<FmpErrorResponse>(responseText)
-                println("FMP API Error: ${errorResponse.errorMessage}")
                 throw Exception("FMP API Error: ${errorResponse.errorMessage}")
             } catch (e: Exception) {
                 println("FMPDataSource: Failed to parse error response: ${e}")
@@ -134,8 +134,6 @@ class FmpDataSource(private val client: HttpClient) {
                 throw Exception("FMP API Error: $fmpError")
             }
         }
-
-        println("FMP API Error (unparsed): $errorMessage")
     }
 
     suspend fun getTopLosers(): List<AssetQuote> {

@@ -23,22 +23,15 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.KeyboardArrowDown
-import androidx.compose.material.icons.rounded.Add
-import androidx.compose.material.icons.rounded.DeleteOutline
-import androidx.compose.material.icons.rounded.Edit
 import androidx.compose.material.icons.rounded.WorkspacePremium
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextField
-import androidx.compose.material3.TextFieldDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -59,22 +52,19 @@ import androidx.compose.ui.unit.dp
 import coil3.compose.AsyncImage
 import com.example.visualmoney.DefaultAppColors
 import com.example.visualmoney.LocalAppTheme
-import com.example.visualmoney.core.IconPosition
-import com.example.visualmoney.core.LargeButton
-import com.example.visualmoney.core.ListDivider
 import com.example.visualmoney.core.TopNavigationBar
 import com.example.visualmoney.core.toApiDateString
-import com.example.visualmoney.core.toSafeDouble
-import com.example.visualmoney.domain.model.Asset
+import com.example.visualmoney.data.local.PortfolioAsset
+import com.example.visualmoney.data.local.logoUrl
 import com.example.visualmoney.domain.model.AssetProfile
 import com.example.visualmoney.domain.model.AssetQuote
 import com.example.visualmoney.domain.model.ChartPoint
-import com.example.visualmoney.domain.model.iconUrl
 import com.example.visualmoney.domain.model.logoUrl
 import com.example.visualmoney.greyTextColor
 import com.example.visualmoney.home.CardContainer
 import com.example.visualmoney.home.IconWithContainer
 import com.example.visualmoney.home.borderGradient
+import com.example.visualmoney.home.borderStroke
 import com.example.visualmoney.home.format
 import com.example.visualmoney.home.theme
 import kotlinx.datetime.DatePeriod
@@ -93,7 +83,8 @@ private val theme @Composable get() = LocalAppTheme.current
 
 // ---------- UI Models ----------
 enum class ChartRange(val label: String) {
-    ONE_DAY("1D"), ONE_WEEK("1W"), ONE_MONTH("1M"), THREE_MONTHS("3M"), ONE_YEAR("1Y")
+    //    ONE_DAY("1D"),
+    ONE_WEEK("1W"), ONE_MONTH("1M"), THREE_MONTHS("3M"), ONE_YEAR("1Y")
 }
 
 data class ChartPeriod(
@@ -104,9 +95,9 @@ val ChartRange.apiPeriod: ChartPeriod
     get() {
         val today = Clock.System.now().toLocalDateTime(TimeZone.currentSystemDefault()).date
         return when (this) {
-            ChartRange.ONE_DAY -> {
-                ChartPeriod(today.toApiDateString(), today.toApiDateString())
-            }
+//            ChartRange.ONE_DAY -> {
+//                ChartPeriod(today.minus(DatePeriod(days = 1)).toApiDateString(), today.toApiDateString())
+//            }
 
             ChartRange.ONE_WEEK -> {
                 val periodStart = today.minus(DatePeriod(days = 7))
@@ -145,18 +136,6 @@ fun AssetDetailsScreen(
     onBack: () -> Unit = {},
     onOpenWebsite: (String) -> Unit = {},
 ) = with(viewModel) {
-//    var selectedRange by remember { mutableStateOf(ChartRange.ONE_MONTH) }
-//    var qtyText by remember(position) {
-//        mutableStateOf(
-//            position?.quantity?.toString() ?: ""
-//        )
-//    }
-//    var avgText by remember(position) {
-//        mutableStateOf(
-//            position?.avgCost?.toString() ?: ""
-//        )
-//    }
-
     Box(
         modifier = modifier.fillMaxSize(),
     ) {
@@ -165,66 +144,59 @@ fun AssetDetailsScreen(
             verticalArrangement = Arrangement.spacedBy(theme.dimension.largeSpacing)
         ) {
             LazyColumn(
-                verticalArrangement = Arrangement.spacedBy(theme.dimension.largeSpacing),
+                verticalArrangement = Arrangement.spacedBy(theme.dimension.veryLargeSpacing),
                 contentPadding = PaddingValues(
                     bottom = theme.dimension.veryLargeSpacing,
 
                     )
             ) {
-                item() {
+                item {
                     TopNavigationBar(title = "Asset details", onBack = onBack)
                 }
 
-                item() {
+                item {
                     state.profile?.let { profile ->
-                        state.quote?.let { quote ->
-                            PriceAndChartCard(
-                                quote = quote,
-                                profile = profile,
-                                chart = state.chart,
-                                selectedRange = state.selectedChartRange,
-                                onSelectRange = { onEvent(AssetDetailEvent.ChartPeriodChanged(it)) }
-                            )
+                        state.asset?.let { asset ->
+                            state.quote?.let { quote ->
+                                PriceAndChartCard(
+                                    asset = asset,
+                                    quote = quote,
+                                    profile = profile,
+                                    chart = state.chart,
+                                    selectedRange = state.selectedChartRange,
+                                    onSelectRange = { onEvent(AssetDetailEvent.ChartPeriodChanged(it)) }
+                                )
+                            }
                         }
                     }
                 }
 
-//                item {
-//                    PortfolioCard(
-//                        inPortfolio = inPortfolio,
-//                        currency = profile?.currency ?: "USD",
-//                        qtyText = qtyText,
-//                        avgText = avgText,
-//                        onQtyChange = { qtyText = it },
-//                        onAvgChange = { avgText = it },
-//                        onAdd = onAddToPortfolio,
-//                        onRemove = onRemoveFromPortfolio,
-//                        onSave = {
-//                            val q = qtyText.toSafeDouble()
-//                            val a = avgText.toSafeDouble()
-//                            onEditPosition(q, a)
-//                        })
-//                }
+                item {
+                    PortfolioCard(
+                        state = state
+                    )
+                }
                 state.quote?.let {
                     item {
                         KeyStatsCard(quote = it, profile = state.profile ?: AssetProfile())
                     }
 
                 }
-                state.profile?.let {
-                    item {
-                        AboutCard(
-                            companyName = it.companyName ?: "",
-                            industry = it.industry,
-                            sector = it.sector,
-                            country = it.country,
-                            description = it.description,
-                            website = it.website,
-                            onOpenWebsite = onOpenWebsite
-                        )
+                if (!state.profile?.description.isNullOrBlank()) {
+                    state.profile?.let {
+                        item {
+                            AboutCard(
+                                companyName = it.companyName ?: "",
+                                industry = it.industry,
+                                sector = it.sector,
+                                country = it.country,
+                                description = it.description,
+                                website = it.website,
+                                onOpenWebsite = onOpenWebsite
+                            )
+                        }
                     }
                 }
-
             }
         }
     }
@@ -281,11 +253,13 @@ private fun AssetTopBar(
 @Composable
 private fun PriceAndChartCard(
     profile: AssetProfile,
+    asset: PortfolioAsset,
     quote: AssetQuote,
     chart: List<ChartPoint>,
     selectedRange: ChartRange,
     onSelectRange: (ChartRange) -> Unit
 ) {
+    println("Profile is: $profile")
     Column(verticalArrangement = Arrangement.spacedBy(theme.dimension.veryLargeSpacing)) {
         Row(
             modifier = Modifier.fillMaxWidth(),
@@ -303,14 +277,14 @@ private fun PriceAndChartCard(
                         horizontalAlignment = Alignment.Start
                     ) {
                         Text(
-                            text = profile.symbol,
+                            text = asset.symbol,
                             style = theme.typography.bodyLargeStrong,
                             color = theme.colors.onSurface,
                             maxLines = 1,
                             overflow = TextOverflow.Ellipsis
                         )
                         Text(
-                            text = profile.companyName ?: "",
+                            text = asset.name,
                             style = theme.typography.bodySmallStrong,
                             color = theme.colors.greyTextColor,
                             maxLines = 1,
@@ -322,7 +296,7 @@ private fun PriceAndChartCard(
                         color = theme.colors.greyScale.c10
                     ) {
                         Text(
-                            text = "NASDAQ",
+                            text = asset.exchangeName,
                             style = theme.typography.bodySmallMedium,
                             color = theme.colors.greyScale.c60,
                             modifier = Modifier.padding(
@@ -368,10 +342,9 @@ private fun PriceAndChartCard(
                                 style = theme.typography.bodySmall,
                                 color = theme.colors.greyTextColor
                             )
-
                         }
                     }
-                    AssetLogoContainer(profile.logoUrl, profile.symbol, size = 60.dp)
+                    AssetLogoContainer(asset.logoUrl, profile.symbol, size = 60.dp)
                 }
             }
         }
@@ -399,18 +372,17 @@ private fun ChartRangeTabs(
                 if (isSelected) theme.colors.primary.c50 else theme.colors.surface,
                 label = "tabBg"
             )
-            val border = if (isSelected) Color.Transparent else theme.colors.border
             val text = if (isSelected) theme.colors.onPrimary else theme.colors.greyTextColor
 
             Surface(
                 modifier = Modifier.weight(1f),
-                shape = RoundedCornerShape(theme.dimension.smallRadius),
+                shape = RoundedCornerShape(theme.dimension.defaultRadius),
                 color = bg,
-                border = BorderStroke(1.dp, border),
+                border = borderStroke,
                 onClick = { onSelect(r) }) {
                 Box(
                     contentAlignment = Alignment.Center,
-                    modifier = Modifier.padding(vertical = 10.dp)
+                    modifier = Modifier.padding(vertical = theme.dimension.mediumSpacing)
                 ) {
                     Text(r.label, style = theme.typography.bodySmallMedium, color = text)
                 }
@@ -493,38 +465,38 @@ private fun Sparkline(
             )
 
         }
-        ListDivider()
-        Row(
-            modifier = Modifier.padding(vertical = theme.dimension.veryCloseSpacing)
-                .fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceBetween
-        ) {
-            Text(
-                "09AM",
-                style = theme.typography.bodySmallMedium,
-                color = theme.colors.greyTextColor
-            )
-            Text(
-                "10AM",
-                style = theme.typography.bodySmallMedium,
-                color = theme.colors.greyTextColor
-            )
-            Text(
-                "11AM",
-                style = theme.typography.bodySmallMedium,
-                color = theme.colors.greyTextColor
-            )
-            Text(
-                "12AM",
-                style = theme.typography.bodySmallMedium,
-                color = theme.colors.greyTextColor
-            )
-            Text(
-                "1PM",
-                style = theme.typography.bodySmallMedium,
-                color = theme.colors.greyTextColor
-            )
-        }
+//        ListDivider()
+//        Row(
+//            modifier = Modifier.padding(vertical = theme.dimension.veryCloseSpacing)
+//                .fillMaxWidth(),
+//            horizontalArrangement = Arrangement.SpaceBetween
+//        ) {
+//            Text(
+//                "09AM",
+//                style = theme.typography.bodySmallMedium,
+//                color = theme.colors.greyTextColor
+//            )
+//            Text(
+//                "10AM",
+//                style = theme.typography.bodySmallMedium,
+//                color = theme.colors.greyTextColor
+//            )
+//            Text(
+//                "11AM",
+//                style = theme.typography.bodySmallMedium,
+//                color = theme.colors.greyTextColor
+//            )
+//            Text(
+//                "12AM",
+//                style = theme.typography.bodySmallMedium,
+//                color = theme.colors.greyTextColor
+//            )
+//            Text(
+//                "1PM",
+//                style = theme.typography.bodySmallMedium,
+//                color = theme.colors.greyTextColor
+//            )
+//        }
     }
 
 }
@@ -537,182 +509,72 @@ private val primaryGradient = Brush.linearGradient(
 )
 
 @Composable
-private fun PortfolioCard(
-    inPortfolio: Boolean,
-    currency: String,
-    qtyText: String,
-    avgText: String,
-    onQtyChange: (String) -> Unit,
-    onAvgChange: (String) -> Unit,
-    onAdd: () -> Unit,
-    onRemove: () -> Unit,
-    onSave: () -> Unit,
-) {
-    CardContainer(
-        modifier = Modifier.fillMaxWidth()
-    ) {
-        Column(
-            modifier = Modifier.padding(theme.dimension.largeSpacing),
-            verticalArrangement = Arrangement.spacedBy(theme.dimension.largeSpacing)
+private fun PortfolioCard(state: AssetDetailState) {
+    Column(verticalArrangement = Arrangement.spacedBy(theme.dimension.mediumSpacing)) {
+        Text(
+            "In my portfolio",
+            style = theme.typography.bodyLargeMedium,
+            color = theme.colors.greyTextColor
+        )
+        CardContainer(
+            modifier = Modifier.fillMaxWidth(),
+            containerColor = theme.colors.surface
         ) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Text(
-                    "Portfolio",
-                    style = theme.typography.titleSmallMedium,
-                    color = theme.colors.onSurface
-                )
-                Spacer(Modifier.weight(1f))
-                Surface(
-                    shape = RoundedCornerShape(theme.dimension.verySmallRadius),
-                    color = theme.colors.greyScale.c10
+            Column(
+                modifier = Modifier.padding(theme.dimension.largeSpacing),
+                verticalArrangement = Arrangement.spacedBy(theme.dimension.largeSpacing)
+            ) {
+                Row(
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    modifier = Modifier.fillMaxWidth()
                 ) {
                     Text(
-                        text = if (inPortfolio) "In portfolio" else "Not added",
-                        style = theme.typography.bodySmallMedium,
+                        text = "Current value",
+                        style = theme.typography.bodyMediumMedium,
+                        color = theme.colors.greyTextColor,
+                    )
+                    Text(
+                        text = "${state.quote?.price}",
+                        style = theme.typography.bodyMediumStrong,
                         color = theme.colors.onSurface,
-                        modifier = Modifier.padding(
-                            horizontal = theme.dimension.closeSpacing,
-                            vertical = theme.dimension.veryCloseSpacing
-                        )
                     )
                 }
-            }
-
-            // Inputs (edit allowed, but no trading)
-            Row(horizontalArrangement = Arrangement.spacedBy(theme.dimension.mediumSpacing)) {
-                CompactTextField(
-                    label = "Quantity",
-                    value = qtyText,
-                    onValueChange = onQtyChange,
-                    modifier = Modifier.weight(1f)
-                )
-                CompactTextField(
-                    label = "Avg cost ($currency)",
-                    value = avgText,
-                    onValueChange = onAvgChange,
-                    modifier = Modifier.weight(1f)
-                )
-            }
-
-            Row(horizontalArrangement = Arrangement.spacedBy(theme.dimension.mediumSpacing)) {
-                if (!inPortfolio) {
-                    LargeButton(
-                        text = "Add to portfolio",
-                        iconVector = Icons.Rounded.Add,
-                        iconPosition = IconPosition.LEADING,
-                        onClick = onAdd,
-                        modifier = Modifier.weight(1f)
+                Row(
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Text(
+                        text = "Amount",
+                        style = theme.typography.bodyMediumMedium,
+                        color = theme.colors.greyTextColor,
                     )
-                } else {
-                    Surface(
-                        modifier = Modifier.weight(1f),
-                        shape = RoundedCornerShape(theme.dimension.defaultRadius),
-                        color = theme.colors.container,
-                        onClick = onSave
-                    ) {
-                        Row(
-                            modifier = Modifier.padding(
-                                vertical = 14.dp, horizontal = 14.dp
-                            ),
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.Center
-                        ) {
-                            Icon(
-                                Icons.Rounded.Edit,
-                                contentDescription = null,
-                                modifier = Modifier.size(theme.dimension.smallIconSize)
-                            )
-                            Spacer(Modifier.width(8.dp))
-                            Text("Save changes", style = theme.typography.bodySmallMedium)
-                        }
-                    }
-
-                    Surface(
-                        modifier = Modifier.weight(1f),
-                        shape = RoundedCornerShape(theme.dimension.defaultRadius),
-                        color = theme.colors.surface,
-                        border = BorderStroke(1.dp, theme.colors.border),
-                        onClick = onRemove
-                    ) {
-                        Row(
-                            modifier = Modifier.padding(
-                                vertical = 14.dp, horizontal = 14.dp
-                            ),
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.Center
-                        ) {
-                            Icon(
-                                Icons.Rounded.DeleteOutline,
-                                contentDescription = null,
-                                modifier = Modifier.size(theme.dimension.smallIconSize)
-                            )
-                            Spacer(Modifier.width(8.dp))
-                            Text("Remove", style = theme.typography.bodySmallMedium)
-                        }
-                    }
+                    Text(
+                        text = "${state.asset?.qty}",
+                        style = theme.typography.bodyMediumStrong,
+                        color = theme.colors.onSurface,
+                    )
                 }
+                Row(
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Text(
+                        text = "Total return",
+                        style = theme.typography.bodyMediumMedium,
+                        color = theme.colors.greyTextColor,
+                    )
+                    Text(
+                        text = state.roiText,
+                        style = theme.typography.bodyMediumStrong,
+                        color = theme.colors.onSurface,
+                    )
+                }
+
             }
         }
     }
 }
 
-@Composable
-private fun CompactTextField(
-    label: String, value: String, onValueChange: (String) -> Unit, modifier: Modifier = Modifier
-) {
-    TextField(
-        value = value,
-        onValueChange = onValueChange,
-        modifier = modifier.clip(RoundedCornerShape(theme.dimension.defaultRadius)).border(
-            1.dp, theme.colors.border, RoundedCornerShape(theme.dimension.defaultRadius)
-        ),
-        singleLine = true,
-        placeholder = {
-            Text(
-                label, style = theme.typography.bodySmall, color = theme.colors.greyTextColor
-            )
-        },
-        textStyle = theme.typography.bodySmallMedium,
-        colors = TextFieldDefaults.colors(
-            focusedContainerColor = theme.colors.surface,
-            unfocusedContainerColor = theme.colors.surface,
-            disabledContainerColor = theme.colors.surface,
-            focusedIndicatorColor = Color.Transparent,
-            unfocusedIndicatorColor = Color.Transparent,
-            disabledIndicatorColor = Color.Transparent
-        )
-    )
-}
-
-@Composable
-private fun GradientButton(
-    title: String,
-    icon: androidx.compose.ui.graphics.vector.ImageVector,
-    onClick: () -> Unit,
-    modifier: Modifier = Modifier
-) {
-    Surface(
-        modifier = modifier.clip(RoundedCornerShape(theme.dimension.defaultRadius))
-            .background(primaryGradient),
-        shape = RoundedCornerShape(theme.dimension.defaultRadius),
-        color = Color.Transparent,
-        onClick = onClick
-    ) {
-        Row(
-            modifier = Modifier.padding(vertical = 14.dp, horizontal = 14.dp),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.Center
-        ) {
-            Icon(
-                icon,
-                contentDescription = null,
-                modifier = Modifier.size(theme.dimension.smallIconSize)
-            )
-            Spacer(Modifier.width(8.dp))
-            Text(title, style = theme.typography.bodySmallMedium)
-        }
-    }
-}
 
 // ---------- Key stats ----------
 @Composable
@@ -726,11 +588,12 @@ private fun KeyStatsCard(
     ) {
         Text(
             "Key stats",
-            style = theme.typography.titleSmallMedium,
-            color = theme.colors.onSurface
+            style = theme.typography.bodyLargeMedium,
+            color = theme.colors.greyTextColor
         )
         CardContainer(
-            modifier = Modifier.fillMaxWidth()
+            modifier = Modifier.fillMaxWidth(),
+            containerColor = theme.colors.surface
         ) {
             Box(modifier = Modifier.padding(theme.dimension.largeSpacing)) {
                 StatGrid(
@@ -801,83 +664,87 @@ private fun AboutCard(
     website: String?,
     onOpenWebsite: (String) -> Unit
 ) {
-    Card(
-        modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(theme.dimension.defaultRadius),
-        border = BorderStroke(1.dp, theme.colors.border),
-        elevation = CardDefaults.cardElevation(0.dp),
-        colors = CardDefaults.elevatedCardColors(containerColor = theme.colors.surface)
-    ) {
-        Column(
-            modifier = Modifier.padding(theme.dimension.largeSpacing),
-            verticalArrangement = Arrangement.spacedBy(theme.dimension.largeSpacing)
+    Column(verticalArrangement = Arrangement.spacedBy(theme.dimension.mediumSpacing)) {
+        Text(
+            "About",
+            style = theme.typography.bodyLargeMedium,
+            color = theme.colors.greyTextColor
+        )
+
+        CardContainer(
+            containerColor = theme.colors.surface
         ) {
-            Text(
-                companyName ?: "About",
-                style = theme.typography.titleSmallMedium,
-                color = theme.colors.onSurface
-            )
-
-            if (!description.isNullOrBlank()) {
+            Column(
+                modifier = Modifier.padding(theme.dimension.largeSpacing),
+                verticalArrangement = Arrangement.spacedBy(theme.dimension.largeSpacing)
+            ) {
                 Text(
-                    text = description,
-                    style = theme.typography.bodySmall,
-                    color = theme.colors.greyTextColor,
-                    maxLines = 6,
-                    overflow = TextOverflow.Ellipsis
-                )
-            } else {
-                Text(
-                    text = "No description available.",
-                    style = theme.typography.bodySmall,
-                    color = theme.colors.greyTextColor
-                )
-            }
-
-            // Meta line
-            val meta = listOfNotNull(
-                industry?.takeIf { it.isNotBlank() },
-                sector?.takeIf { it.isNotBlank() },
-                country?.takeIf { it.isNotBlank() }).joinToString(" • ")
-            if (meta.isNotBlank()) {
-                Text(
-                    meta,
-                    style = theme.typography.bodySmallMedium,
+                    companyName ?: "About",
+                    style = theme.typography.titleSmallMedium,
                     color = theme.colors.onSurface
                 )
-            }
 
-            if (!website.isNullOrBlank()) {
-                Surface(
-                    shape = RoundedCornerShape(theme.dimension.defaultRadius),
-                    color = theme.colors.container,
-                    onClick = { onOpenWebsite(website) }) {
-                    Row(
-                        modifier = Modifier.padding(theme.dimension.mediumSpacing),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Icon(
-                            Icons.Rounded.WorkspacePremium,
-                            contentDescription = null,
-                            modifier = Modifier.size(theme.dimension.smallIconSize),
-                            tint = theme.colors.onSurface
-                        )
-                        Spacer(Modifier.width(8.dp))
-                        Text(
-                            text = website,
-                            style = theme.typography.bodySmallMedium,
-                            maxLines = 1,
-                            overflow = TextOverflow.Ellipsis,
-                            color = theme.colors.onSurface
-                        )
-                        Spacer(Modifier.weight(1f))
-                        Icon(
-                            Icons.Outlined.KeyboardArrowDown,
-                            contentDescription = null,
-                            modifier = Modifier.size(theme.dimension.smallIconSize),
-                            tint = theme.colors.onSurface
+                if (!description.isNullOrBlank()) {
+                    Text(
+                        text = description,
+                        style = theme.typography.bodySmall,
+                        color = theme.colors.greyTextColor,
+                        maxLines = 6,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                } else {
+                    Text(
+                        text = "No description available.",
+                        style = theme.typography.bodySmall,
+                        color = theme.colors.greyTextColor
+                    )
+                }
 
-                        )
+                // Meta line
+                val meta = listOfNotNull(
+                    industry?.takeIf { it.isNotBlank() },
+                    sector?.takeIf { it.isNotBlank() },
+                    country?.takeIf { it.isNotBlank() }).joinToString(" • ")
+                if (meta.isNotBlank()) {
+                    Text(
+                        meta,
+                        style = theme.typography.bodySmallMedium,
+                        color = theme.colors.onSurface
+                    )
+                }
+
+                if (!website.isNullOrBlank()) {
+                    Surface(
+                        shape = RoundedCornerShape(theme.dimension.defaultRadius),
+                        color = theme.colors.container,
+                        onClick = { onOpenWebsite(website) }) {
+                        Row(
+                            modifier = Modifier.padding(theme.dimension.mediumSpacing),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Icon(
+                                Icons.Rounded.WorkspacePremium,
+                                contentDescription = null,
+                                modifier = Modifier.size(theme.dimension.smallIconSize),
+                                tint = theme.colors.onSurface
+                            )
+                            Spacer(Modifier.width(8.dp))
+                            Text(
+                                text = website,
+                                style = theme.typography.bodySmallMedium,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis,
+                                color = theme.colors.onSurface
+                            )
+                            Spacer(Modifier.weight(1f))
+                            Icon(
+                                Icons.Outlined.KeyboardArrowDown,
+                                contentDescription = null,
+                                modifier = Modifier.size(theme.dimension.smallIconSize),
+                                tint = theme.colors.onSurface
+
+                            )
+                        }
                     }
                 }
             }

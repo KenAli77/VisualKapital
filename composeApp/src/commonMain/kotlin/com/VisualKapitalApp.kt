@@ -28,6 +28,7 @@ import com.example.visualmoney.home.HomeViewModel
 import com.example.visualmoney.navigation.Routes
 import com.example.visualmoney.newAsset.NewAssetScreen
 import com.example.visualmoney.newAsset.NewAssetViewModel
+import com.example.visualmoney.portfolioOverview.PortfolioOverviewScreen
 import org.koin.compose.viewmodel.koinViewModel
 
 @Composable
@@ -38,20 +39,28 @@ fun VisualKapitalApp(navController: NavHostController = rememberNavController())
             modifier = Modifier.fillMaxSize(),
             containerColor = Color.Transparent,
         ) { paddingValues ->
+            val homeViewModel = koinViewModel<HomeViewModel>()
             NavHost(navController, startDestination = Routes.HOME) {
                 composable(route = Routes.HOME) {
-                    val viewModel = koinViewModel<HomeViewModel>()
+
                     HomeScreen(
                         modifier = Modifier.padding(top = paddingValues.calculateTopPadding()),
-                        viewModel = viewModel, onGoToAssetDetails = {
+                        viewModel = homeViewModel, onGoToAssetDetails = {
                             symbol = it
                             navController.navigate(Routes.details(it))
+                        },
+                        onGoToBalance = {
+                            navController.navigate(Routes.PORTFOLIO_OVERVIEW)
                         },
                         onGoToCalendar = { navController.navigate(Routes.CALENDAR) },
                         onNewAsset = { navController.navigate(Routes.NEW_ASSET) }
                     )
                 }
-                composable(route = Routes.CALENDAR) { CalendarScreen(onBack = { navController.popBackStack() }) }
+                composable(route = Routes.CALENDAR) {
+                    CalendarScreen(
+                        modifier = Modifier.padding(top = paddingValues.calculateTopPadding()),
+                        onBack = { navController.popBackStack() })
+                }
                 composable(route = Routes.NEW_ASSET) {
                     val viewModel = koinViewModel<NewAssetViewModel>()
 
@@ -66,6 +75,12 @@ fun VisualKapitalApp(navController: NavHostController = rememberNavController())
 
                         },
                     )
+                }
+                composable(route = Routes.PORTFOLIO_OVERVIEW) { backStackEntry ->
+                    PortfolioOverviewScreen(
+                        modifier = Modifier.padding(top = paddingValues.calculateTopPadding()),
+                        viewModel = homeViewModel,
+                        onBackPressed = { navController.popBackStack() })
                 }
                 composable(
                     route = Routes.DETAILS_ROUTE,

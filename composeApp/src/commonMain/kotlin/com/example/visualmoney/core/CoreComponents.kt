@@ -76,6 +76,7 @@ import kotlinx.datetime.toLocalDateTime
 import org.jetbrains.compose.resources.painterResource
 import visualmoney.composeapp.generated.resources.Res
 import visualmoney.composeapp.generated.resources.arrow_back
+import visualmoney.composeapp.generated.resources.plus
 import kotlin.time.Clock
 import kotlin.time.Instant
 
@@ -86,7 +87,9 @@ fun TopNavigationBar(
     modifier: Modifier = Modifier,
     title: String,
     subtitle: String = "",
-    onBack: () -> Unit
+    hasAddAction: Boolean = false,
+    onBack: () -> Unit,
+    onAdd: () -> Unit = {},
 ) {
     Column(
         modifier = modifier.fillMaxWidth().heightIn(min = theme.dimension.topBarHeight)
@@ -116,9 +119,13 @@ fun TopNavigationBar(
                         style = theme.typography.bodyMedium,
                         color = theme.colors.greyTextColor
                     )
-
                 }
-
+            }
+            if (hasAddAction) {
+                IconWithContainer(
+                    onClick = onAdd,
+                    icon = painterResource(Res.drawable.plus),
+                )
             }
         }
     }
@@ -655,9 +662,9 @@ fun LocalDate.toApiDateString(): String {
     val formatter = LocalDate.Format {
         year()
         char('-')
-        day()
-        char('/')
         monthNumber()
+        char('-')
+        day()
     }
     return this.format(formatter)
 }
