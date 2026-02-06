@@ -4,6 +4,7 @@ import androidx.room.TypeConverter
 import com.example.visualmoney.calendar.now
 import kotlinx.datetime.LocalDate
 import kotlinx.datetime.toLocalDate
+import com.example.visualmoney.domain.model.EventType
 
 class RoomConverters {
 
@@ -31,4 +32,11 @@ class RoomConverters {
     @TypeConverter
     fun stringToManualType(value: String?): ManualInvestmentType? =
         value?.let { ManualInvestmentType.valueOf(it) }
+
+    @TypeConverter
+    fun eventTypeToString(value: EventType?): String? = value?.name
+
+    @TypeConverter
+    fun stringToEventType(value: String?): EventType? =
+        value?.let { EventType.valueOf(it) }
 }

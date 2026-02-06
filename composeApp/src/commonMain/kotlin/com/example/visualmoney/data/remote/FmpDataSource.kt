@@ -176,4 +176,75 @@ class FmpDataSource(private val client: HttpClient) {
             parameter("apikey", apiKey)
         }.body()
     }
+
+    // -------- Calendar Endpoints --------
+
+    suspend fun getEarningsCalendar(from: String, to: String): List<EarningsCalendarDto> {
+        return try {
+            val response: HttpResponse = client.get("$baseUrl/api/v3/earning_calendar") {
+                parameter("from", from)
+                parameter("to", to)
+                parameter("apikey", apiKey)
+            }
+            val responseText = response.bodyAsText()
+            println("FmpDataSource.getEarningsCalendar: Response = ${responseText.take(200)}...")
+
+            if (responseText.trim().startsWith("{")) {
+                println("FmpDataSource.getEarningsCalendar: Received error object")
+                return emptyList()
+            }
+
+            val json = Json { ignoreUnknownKeys = true }
+            json.decodeFromString<List<EarningsCalendarDto>>(responseText)
+        } catch (e: Exception) {
+            println("FmpDataSource.getEarningsCalendar: ERROR - ${e.message}")
+            emptyList()
+        }
+    }
+
+    suspend fun getDividendCalendar(from: String, to: String): List<DividendCalendarDto> {
+        return try {
+            val response: HttpResponse = client.get("$baseUrl/api/v3/stock_dividend_calendar") {
+                parameter("from", from)
+                parameter("to", to)
+                parameter("apikey", apiKey)
+            }
+            val responseText = response.bodyAsText()
+            println("FmpDataSource.getDividendCalendar: Response = ${responseText.take(200)}...")
+
+            if (responseText.trim().startsWith("{")) {
+                println("FmpDataSource.getDividendCalendar: Received error object")
+                return emptyList()
+            }
+
+            val json = Json { ignoreUnknownKeys = true }
+            json.decodeFromString<List<DividendCalendarDto>>(responseText)
+        } catch (e: Exception) {
+            println("FmpDataSource.getDividendCalendar: ERROR - ${e.message}")
+            emptyList()
+        }
+    }
+
+    suspend fun getStockSplitCalendar(from: String, to: String): List<StockSplitCalendarDto> {
+        return try {
+            val response: HttpResponse = client.get("$baseUrl/api/v3/stock_split_calendar") {
+                parameter("from", from)
+                parameter("to", to)
+                parameter("apikey", apiKey)
+            }
+            val responseText = response.bodyAsText()
+            println("FmpDataSource.getStockSplitCalendar: Response = ${responseText.take(200)}...")
+
+            if (responseText.trim().startsWith("{")) {
+                println("FmpDataSource.getStockSplitCalendar: Received error object")
+                return emptyList()
+            }
+
+            val json = Json { ignoreUnknownKeys = true }
+            json.decodeFromString<List<StockSplitCalendarDto>>(responseText)
+        } catch (e: Exception) {
+            println("FmpDataSource.getStockSplitCalendar: ERROR - ${e.message}")
+            emptyList()
+        }
+    }
 }

@@ -1,0 +1,530 @@
+{
+  "formatVersion": 1,
+  "database": {
+    "version": 1,
+    "identityHash": "c4898acebe99ad7dc307bcc8aaf7d3e3",
+    "entities": [
+      {
+        "tableName": "tracked_assets",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`symbol` TEXT NOT NULL, `type` TEXT NOT NULL, `name` TEXT, `exchange` TEXT, `currency` TEXT, `sector` TEXT, `country` TEXT, `updatedAtEpochMs` INTEGER NOT NULL, PRIMARY KEY(`symbol`))",
+        "fields": [
+          {
+            "fieldPath": "symbol",
+            "columnName": "symbol",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "type",
+            "columnName": "type",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "name",
+            "columnName": "name",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "exchange",
+            "columnName": "exchange",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "currency",
+            "columnName": "currency",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "sector",
+            "columnName": "sector",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "country",
+            "columnName": "country",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "updatedAtEpochMs",
+            "columnName": "updatedAtEpochMs",
+            "affinity": "INTEGER",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "symbol"
+          ]
+        },
+        "indices": [
+          {
+            "name": "index_tracked_assets_symbol",
+            "unique": true,
+            "columnNames": [
+              "symbol"
+            ],
+            "orders": [],
+            "createSql": "CREATE UNIQUE INDEX IF NOT EXISTS `index_tracked_assets_symbol` ON `${TABLE_NAME}` (`symbol`)"
+          },
+          {
+            "name": "index_tracked_assets_type",
+            "unique": false,
+            "columnNames": [
+              "type"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_tracked_assets_type` ON `${TABLE_NAME}` (`type`)"
+          }
+        ]
+      },
+      {
+        "tableName": "portfolio_buys",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` TEXT NOT NULL, `symbol` TEXT NOT NULL, `type` TEXT NOT NULL, `quantity` REAL NOT NULL, `pricePerUnit` REAL NOT NULL, `currency` TEXT NOT NULL, `fee` REAL NOT NULL, `executedAtEpochMs` INTEGER NOT NULL, PRIMARY KEY(`id`))",
+        "fields": [
+          {
+            "fieldPath": "id",
+            "columnName": "id",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "symbol",
+            "columnName": "symbol",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "type",
+            "columnName": "type",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "quantity",
+            "columnName": "quantity",
+            "affinity": "REAL",
+            "notNull": true
+          },
+          {
+            "fieldPath": "pricePerUnit",
+            "columnName": "pricePerUnit",
+            "affinity": "REAL",
+            "notNull": true
+          },
+          {
+            "fieldPath": "currency",
+            "columnName": "currency",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "fee",
+            "columnName": "fee",
+            "affinity": "REAL",
+            "notNull": true
+          },
+          {
+            "fieldPath": "executedAtEpochMs",
+            "columnName": "executedAtEpochMs",
+            "affinity": "INTEGER",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "id"
+          ]
+        },
+        "indices": [
+          {
+            "name": "index_portfolio_buys_symbol",
+            "unique": false,
+            "columnNames": [
+              "symbol"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_portfolio_buys_symbol` ON `${TABLE_NAME}` (`symbol`)"
+          },
+          {
+            "name": "index_portfolio_buys_executedAtEpochMs",
+            "unique": false,
+            "columnNames": [
+              "executedAtEpochMs"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_portfolio_buys_executedAtEpochMs` ON `${TABLE_NAME}` (`executedAtEpochMs`)"
+          }
+        ]
+      },
+      {
+        "tableName": "manual_investments",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` TEXT NOT NULL, `name` TEXT NOT NULL, `type` TEXT NOT NULL, `currentValue` REAL NOT NULL, `currency` TEXT NOT NULL, `notes` TEXT, `sector` TEXT, `country` TEXT, `createdAtEpochMs` INTEGER NOT NULL, `updatedAtEpochMs` INTEGER NOT NULL, PRIMARY KEY(`id`))",
+        "fields": [
+          {
+            "fieldPath": "id",
+            "columnName": "id",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "name",
+            "columnName": "name",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "type",
+            "columnName": "type",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "currentValue",
+            "columnName": "currentValue",
+            "affinity": "REAL",
+            "notNull": true
+          },
+          {
+            "fieldPath": "currency",
+            "columnName": "currency",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "notes",
+            "columnName": "notes",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "sector",
+            "columnName": "sector",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "country",
+            "columnName": "country",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "createdAtEpochMs",
+            "columnName": "createdAtEpochMs",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "updatedAtEpochMs",
+            "columnName": "updatedAtEpochMs",
+            "affinity": "INTEGER",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "id"
+          ]
+        },
+        "indices": [
+          {
+            "name": "index_manual_investments_type",
+            "unique": false,
+            "columnNames": [
+              "type"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_manual_investments_type` ON `${TABLE_NAME}` (`type`)"
+          }
+        ]
+      },
+      {
+        "tableName": "investment_reminders",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` TEXT NOT NULL, `investmentId` TEXT NOT NULL, `title` TEXT NOT NULL, `dueDateEpochMs` INTEGER NOT NULL, `amount` REAL, `currency` TEXT, `isDone` INTEGER NOT NULL, `createdAtEpochMs` INTEGER NOT NULL, PRIMARY KEY(`id`), FOREIGN KEY(`investmentId`) REFERENCES `manual_investments`(`id`) ON UPDATE NO ACTION ON DELETE CASCADE )",
+        "fields": [
+          {
+            "fieldPath": "id",
+            "columnName": "id",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "investmentId",
+            "columnName": "investmentId",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "title",
+            "columnName": "title",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "dueDateEpochMs",
+            "columnName": "dueDateEpochMs",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "amount",
+            "columnName": "amount",
+            "affinity": "REAL"
+          },
+          {
+            "fieldPath": "currency",
+            "columnName": "currency",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "isDone",
+            "columnName": "isDone",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "createdAtEpochMs",
+            "columnName": "createdAtEpochMs",
+            "affinity": "INTEGER",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "id"
+          ]
+        },
+        "indices": [
+          {
+            "name": "index_investment_reminders_investmentId",
+            "unique": false,
+            "columnNames": [
+              "investmentId"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_investment_reminders_investmentId` ON `${TABLE_NAME}` (`investmentId`)"
+          },
+          {
+            "name": "index_investment_reminders_dueDateEpochMs",
+            "unique": false,
+            "columnNames": [
+              "dueDateEpochMs"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_investment_reminders_dueDateEpochMs` ON `${TABLE_NAME}` (`dueDateEpochMs`)"
+          }
+        ],
+        "foreignKeys": [
+          {
+            "table": "manual_investments",
+            "onDelete": "CASCADE",
+            "onUpdate": "NO ACTION",
+            "columns": [
+              "investmentId"
+            ],
+            "referencedColumns": [
+              "id"
+            ]
+          }
+        ]
+      },
+      {
+        "tableName": "cached_quotes",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`symbol` TEXT NOT NULL, `price` REAL NOT NULL, `changePct` REAL, `change` REAL, `dayLow` REAL, `dayHigh` REAL, `yearLow` REAL, `yearHigh` REAL, `volume` INTEGER, `marketCap` REAL, `currency` TEXT, `updatedAtEpochMs` INTEGER NOT NULL, `exchange` TEXT, `eps` REAL, `pe` REAL, `earningsAnnouncement` TEXT, `sharesOutstanding` INTEGER, PRIMARY KEY(`symbol`))",
+        "fields": [
+          {
+            "fieldPath": "symbol",
+            "columnName": "symbol",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "price",
+            "columnName": "price",
+            "affinity": "REAL",
+            "notNull": true
+          },
+          {
+            "fieldPath": "changePct",
+            "columnName": "changePct",
+            "affinity": "REAL"
+          },
+          {
+            "fieldPath": "change",
+            "columnName": "change",
+            "affinity": "REAL"
+          },
+          {
+            "fieldPath": "dayLow",
+            "columnName": "dayLow",
+            "affinity": "REAL"
+          },
+          {
+            "fieldPath": "dayHigh",
+            "columnName": "dayHigh",
+            "affinity": "REAL"
+          },
+          {
+            "fieldPath": "yearLow",
+            "columnName": "yearLow",
+            "affinity": "REAL"
+          },
+          {
+            "fieldPath": "yearHigh",
+            "columnName": "yearHigh",
+            "affinity": "REAL"
+          },
+          {
+            "fieldPath": "volume",
+            "columnName": "volume",
+            "affinity": "INTEGER"
+          },
+          {
+            "fieldPath": "marketCap",
+            "columnName": "marketCap",
+            "affinity": "REAL"
+          },
+          {
+            "fieldPath": "currency",
+            "columnName": "currency",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "updatedAtEpochMs",
+            "columnName": "updatedAtEpochMs",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "exchange",
+            "columnName": "exchange",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "eps",
+            "columnName": "eps",
+            "affinity": "REAL"
+          },
+          {
+            "fieldPath": "pe",
+            "columnName": "pe",
+            "affinity": "REAL"
+          },
+          {
+            "fieldPath": "earningsAnnouncement",
+            "columnName": "earningsAnnouncement",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "sharesOutstanding",
+            "columnName": "sharesOutstanding",
+            "affinity": "INTEGER"
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "symbol"
+          ]
+        },
+        "indices": [
+          {
+            "name": "index_cached_quotes_symbol",
+            "unique": true,
+            "columnNames": [
+              "symbol"
+            ],
+            "orders": [],
+            "createSql": "CREATE UNIQUE INDEX IF NOT EXISTS `index_cached_quotes_symbol` ON `${TABLE_NAME}` (`symbol`)"
+          },
+          {
+            "name": "index_cached_quotes_updatedAtEpochMs",
+            "unique": false,
+            "columnNames": [
+              "updatedAtEpochMs"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_cached_quotes_updatedAtEpochMs` ON `${TABLE_NAME}` (`updatedAtEpochMs`)"
+          }
+        ]
+      },
+      {
+        "tableName": "portfolio_assets",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`symbol` TEXT NOT NULL, `name` TEXT NOT NULL, `purchasePrice` REAL NOT NULL, `currentPrice` REAL NOT NULL, `qty` INTEGER NOT NULL, `purchasedAt` TEXT NOT NULL, `type` TEXT NOT NULL, `note` TEXT NOT NULL, `exchangeName` TEXT NOT NULL, `notes` TEXT, PRIMARY KEY(`symbol`))",
+        "fields": [
+          {
+            "fieldPath": "symbol",
+            "columnName": "symbol",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "name",
+            "columnName": "name",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "purchasePrice",
+            "columnName": "purchasePrice",
+            "affinity": "REAL",
+            "notNull": true
+          },
+          {
+            "fieldPath": "currentPrice",
+            "columnName": "currentPrice",
+            "affinity": "REAL",
+            "notNull": true
+          },
+          {
+            "fieldPath": "qty",
+            "columnName": "qty",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "purchasedAt",
+            "columnName": "purchasedAt",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "type",
+            "columnName": "type",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "note",
+            "columnName": "note",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "exchangeName",
+            "columnName": "exchangeName",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "notes",
+            "columnName": "notes",
+            "affinity": "TEXT"
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "symbol"
+          ]
+        }
+      }
+    ],
+    "setupQueries": [
+      "CREATE TABLE IF NOT EXISTS room_master_table (id INTEGER PRIMARY KEY,identity_hash TEXT)",
+      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, 'c4898acebe99ad7dc307bcc8aaf7d3e3')"
+    ]
+  }
+}
