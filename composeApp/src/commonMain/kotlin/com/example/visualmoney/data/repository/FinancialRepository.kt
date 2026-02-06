@@ -2,6 +2,8 @@ package com.example.visualmoney.data.repository
 
 import com.example.visualmoney.data.local.CachedQuoteDao
 import com.example.visualmoney.data.local.CachedQuoteEntity
+import com.example.visualmoney.data.local.PortfolioAsset
+import com.example.visualmoney.data.local.PortfolioAssetDAO
 import com.example.visualmoney.data.local.SearchResult
 import com.example.visualmoney.data.local.toAsset
 import com.example.visualmoney.data.remote.FmpDataSource
@@ -9,6 +11,7 @@ import com.example.visualmoney.data.remote.FmpDataSource
 import com.example.visualmoney.domain.model.AssetProfile
 import com.example.visualmoney.domain.model.AssetQuote
 import com.example.visualmoney.domain.model.ChartPoint
+import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.firstOrNull
 import kotlin.time.Clock
 
@@ -30,13 +33,27 @@ interface FinancialRepository {
 
     suspend fun loadCommodities():List<SearchResult>
 
+    suspend fun addAssetToPortfolio(asset: PortfolioAsset)
+
+    suspend fun getPortfolioAssets(): Flow<List<PortfolioAsset>>
+
 }
 
 class FinancialRepositoryImpl(
     private val remoteSource: FmpDataSource,
-    private val cachedQuoteDao: CachedQuoteDao
+    private val cachedQuoteDao: CachedQuoteDao,
+    private val portfolioDao: PortfolioAssetDAO
 
 ) : FinancialRepository {
+    override suspend fun addAssetToPortfolio(asset: PortfolioAsset) {
+        portfolioDao.upsert(asset)
+    }
+
+    override suspend fun getPortfolioAssets(): Flow<List<PortfolioAsset>> {
+       return portfolioDao.observeAllAssets()
+    }
+
+
     override suspend fun getQuote(symbol: String): AssetQuote {
         val now = Clock.System.now().toEpochMilliseconds()
         val cached = cachedQuoteDao.get(symbol)

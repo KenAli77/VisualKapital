@@ -1,28 +1,45 @@
 package com.example.visualmoney.domain.model
 
+import com.example.visualmoney.util.LogoUtil
 import kotlinx.datetime.LocalDate
 import kotlinx.serialization.Serializable
 
 @Serializable
 sealed interface Asset {
     val symbol: String
-    val name: String?
+    val name: String
+
 }
 
+val Asset.iconUrl: String
+    get() {
+      return  when (this) {
+            is Commodity -> LogoUtil.getLogoUrl(symbol)
+            is Crypto -> LogoUtil.getCryptoLogoUrl(symbol)
+            is ETF -> LogoUtil.getLogoUrl(symbol)
+            is Stock -> LogoUtil.getLogoUrl(symbol)
+        }
+    }
+
 @Serializable
-data class Stock(override val symbol: String, override val name: String?, val exchange: String? = null) : Asset
+data class Stock(
+    override val symbol: String,
+    override val name: String,
+    val exchange: String? = null
+) : Asset
+
 @Serializable
-data class Crypto(override val symbol: String, override val name: String?) : Asset
+data class Crypto(override val symbol: String, override val name: String) : Asset
+
 @Serializable
-data class Commodity(override val symbol: String, override val name: String?) : Asset
+data class Commodity(override val symbol: String, override val name: String) : Asset
+
 @Serializable
-data class ETF(override val symbol: String, override val name: String?) : Asset
-@Serializable
-data class Forex(override val symbol: String, override val name: String?) : Asset
+data class ETF(override val symbol: String, override val name: String) : Asset
 
 @Serializable
 data class AssetProfile(
-    val symbol: String ="",
+    val symbol: String = "",
     val price: Double = 0.0,
     val beta: Double? = null,
     val volAvg: Long? = null,
@@ -59,13 +76,15 @@ data class AssetProfile(
     val isAdr: Boolean? = null,
     val isFund: Boolean? = null
 )
+
 fun AssetProfile.toAsset(): Asset {
     return Stock(
         symbol = symbol,
-        name = companyName,
+        name = companyName ?: "",
         exchange = exchange
     )
 }
+
 @Serializable
 data class AssetQuote(
     val symbol: String = "",
@@ -99,7 +118,8 @@ data class ChartPointDTO(
     val price: Double,
     val volume: Long
 )
-fun ChartPointDTO.toChartPoint(): ChartPoint{
+
+fun ChartPointDTO.toChartPoint(): ChartPoint {
     return ChartPoint(
         date = LocalDate.parse(date),
         symbol = symbol,
@@ -107,6 +127,7 @@ fun ChartPointDTO.toChartPoint(): ChartPoint{
         volume = volume
     )
 }
+
 data class ChartPoint(
     val date: LocalDate,
     val symbol: String,

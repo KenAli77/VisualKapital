@@ -44,14 +44,18 @@ val appModule = module {
         }
     }
     single { FmpDataSource(get()) }
-    single<AppDatabase>{
+    single<AppDatabase> {
         getDatabaseBuilder().apply {
             setDriver(BundledSQLiteDriver())
             setQueryCoroutineContext(Dispatchers.IO)
         }.build()
     }
     single<FinancialRepository> {
-        FinancialRepositoryImpl(get(), get<AppDatabase>().cachedQuoteDao())
+        FinancialRepositoryImpl(
+            get(),
+            get<AppDatabase>().cachedQuoteDao(),
+            get<AppDatabase>().portfolioAssetDao()
+        )
     }
     viewModelOf(::HomeViewModel)
     viewModelOf(::NewAssetViewModel)

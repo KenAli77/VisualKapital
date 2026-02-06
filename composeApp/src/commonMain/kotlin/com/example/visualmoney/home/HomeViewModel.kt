@@ -7,9 +7,6 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.visualmoney.data.repository.FinancialRepository
 import com.example.visualmoney.util.LogoUtil
-import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 
 class HomeViewModel(
@@ -17,7 +14,7 @@ class HomeViewModel(
 ) : ViewModel() {
 
     var state by mutableStateOf(HomeUiState())
-    private set
+        private set
 
     init {
         loadData()
@@ -27,12 +24,12 @@ class HomeViewModel(
         viewModelScope.launch {
             try {
                 // Fetching Top Gainers as the default list for now
-                val topGainers = repository.getTopGainers()
-                
-                val holdings = topGainers.map { quote ->
-                    // Determine asset class (defaulting to STOCK for FMP gainers endpoint)
+               repository.getPortfolioAssets().collect { assets ->
+
+                val holdings = assets.map { asset ->
+
                     val assetClass = AssetClass.STOCK
-                    
+                    val quote = repository.getQuote(asset.symbol)
                     HoldingRowUi(
                         symbol = quote.symbol,
                         name = quote.name ?: quote.symbol,
@@ -49,6 +46,7 @@ class HomeViewModel(
                     holdings = holdings,
                     isLoading = false
                 )
+               }
             } catch (e: Exception) {
                 // Handle error
                 state = state.copy(isLoading = false)

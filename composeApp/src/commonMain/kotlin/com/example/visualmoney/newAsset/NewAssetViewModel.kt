@@ -6,13 +6,16 @@ import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshotFlow
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.example.visualmoney.ExploreTab
+import com.example.visualmoney.AssetCategory
 import com.example.visualmoney.SearchResultRowUi
+import com.example.visualmoney.core.toSafeDouble
+import com.example.visualmoney.data.local.PortfolioAsset
 import com.example.visualmoney.data.repository.FinancialRepository
 import com.example.visualmoney.exchangeName
 import com.example.visualmoney.newAsset.event.ListedAssetInputEvent
 import com.example.visualmoney.newAsset.event.ManualAssetInputEvent
-import com.example.visualmoney.newAsset.state.ListedAssetInputState
+import com.example.visualmoney.newAsset.state.AssetInputState
+import com.example.visualmoney.newAsset.state.isValidForSubmit
 import com.example.visualmoney.util.LogoUtil
 import kotlinx.coroutines.FlowPreview
 import kotlinx.coroutines.flow.collectLatest
@@ -21,11 +24,9 @@ import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.launch
 import kotlin.math.max
 
+// TODO: Add validation and errors
 class NewAssetViewModel(private val repo: FinancialRepository) : ViewModel() {
-    var manualAssetInputState by mutableStateOf(ManualAssetInputState())
-        private set
-
-    var listedAssetInputState by mutableStateOf(ListedAssetInputState())
+    var listedAssetInputStateState by mutableStateOf(AssetInputState())
         private set
     var isLoading by mutableStateOf(false)
         private set
@@ -39,22 +40,25 @@ class NewAssetViewModel(private val repo: FinancialRepository) : ViewModel() {
         val priorityExchanges = setOf("NYSE", "NASDAQ", "OTC")
         viewModelScope.launch {
             snapshotFlow {
-                listedAssetInputState.query
+                listedAssetInputStateState.query
             }.debounce { 300 }.distinctUntilChanged().collectLatest {
-                val exchange =  listedAssetInputState.currentTab.exchangeName
+                val exchange = listedAssetInputStateState.currentTab.exchangeName
                 val results = repo.searchAsset(it, exchange).sortedBy { asset ->
                     if (asset.exchange in priorityExchanges) 0 else 1
                 }
                 isLoading = true
-                listedAssetInputState = listedAssetInputState.copy(
+
+                listedAssetInputStateState = listedAssetInputStateState.copy(
                     results = results.map {
                         SearchResultRowUi(
                             symbol = it.symbol,
                             name = it.name,
                             priceText = it.currency,
-                            assetType = ExploreTab.STOCKS,
+                            assetType = AssetCategory.STOCKS,
                             exchangeName = it.exchange,
-                            iconUrl = if (it.exchange == "CRYPTO") LogoUtil.getCryptoLogoUrl(it.symbol) else LogoUtil.getLogoUrl(it.symbol)
+                            iconUrl = if (it.exchange == "CRYPTO") LogoUtil.getCryptoLogoUrl(it.symbol) else LogoUtil.getLogoUrl(
+                                it.symbol
+                            )
                         )
                     }
                 )
@@ -66,117 +70,107 @@ class NewAssetViewModel(private val repo: FinancialRepository) : ViewModel() {
 
     fun onListedAssetInputEvent(event: ListedAssetInputEvent) {
         when (event) {
-            is ListedAssetInputEvent.QueryChanged -> {
-                listedAssetInputState = listedAssetInputState.copy(
-                    query = event.query
+            is ListedAssetInputEvent.NameChanged -> {
+                listedAssetInputStateState = listedAssetInputStateState.copy(
+                    assetName = event.value
                 )
-
             }
 
-            is ListedAssetInputEvent.SymbolSelected -> {
+            is ListedAssetInputEvent.QueryChanged -> {
+                listedAssetInputStateState = listedAssetInputStateState.copy(
+                    query = event.query
+                )
+            }
 
+            is ListedAssetInputEvent.PurchasePriceChanged -> with(event) {
+                listedAssetInputStateState = listedAssetInputStateState.copy(
+                    purchasePrice = price
+                )
+            }
+
+            is ListedAssetInputEvent.SymbolSelected -> with(event) {
+                val item = listedAssetInputStateState.results.find { it.symbol == symbol }
+                item?.let {
+                    viewModelScope.launch {
+                        val latestQuote = repo.getQuote(it.symbol)
+                        latestQuote.price
+                        listedAssetInputStateState = listedAssetInputStateState.copy(
+                            selectedSecurity = item,
+                            currentValue = latestQuote.price
+                        )
+                    }
+                }
             }
 
             is ListedAssetInputEvent.SectionSelected -> {
-                listedAssetInputState = listedAssetInputState.copy(
+                listedAssetInputStateState = listedAssetInputStateState.copy(
                     query = "",
                     currentTab = event.section
                 )
             }
-        }
-    }
 
-    fun onFixedAssetInputEvent(event: ManualAssetInputEvent) {
-        when (event) {
-            is ManualAssetInputEvent.NameChanged -> {
-                manualAssetInputState = manualAssetInputState.copy(name = event.value)
-                recalc()
+            is ListedAssetInputEvent.NotesChanged -> with(event) {
+                listedAssetInputStateState = listedAssetInputStateState.copy(
+                    notes = note
+                )
             }
 
-            is ManualAssetInputEvent.QuantityChanged -> {
-                // allow empty while typing; sanitize later
-                manualAssetInputState = manualAssetInputState.copy(quantityText = event.value)
-                recalc()
+            is ListedAssetInputEvent.PurchaseDateChanged -> with(event) {
+                listedAssetInputStateState = listedAssetInputStateState.copy(
+                    purchasedAt = date
+                )
             }
 
-            is ManualAssetInputEvent.UnitPriceChanged -> {
-                manualAssetInputState = manualAssetInputState.copy(unitPriceText = event.value)
-                recalc()
+            is ListedAssetInputEvent.QtyChanged -> with(event) {
+                listedAssetInputStateState = listedAssetInputStateState.copy(
+                    quantity = qty
+                )
             }
 
-            is ManualAssetInputEvent.PurchaseDateChanged -> {
-                manualAssetInputState = manualAssetInputState.copy(purchaseDate = event.value)
-                recalc()
-            }
+            is ListedAssetInputEvent.Submit -> {
+                if (!listedAssetInputStateState.isValidForSubmit) return
+                val asset = when (listedAssetInputStateState.currentTab) {
+                    AssetCategory.OTHER -> with(listedAssetInputStateState) {
+                        PortfolioAsset(
+                            name = assetName,
+                            symbol = assetName,
+                            exchangeName = AssetCategory.OTHER.exchangeName,
+                            qty = quantity,
+                            purchasePrice = purchasePrice,
+                            purchasedAt = purchasedAt,
+                            note = notes,
+                            type = AssetCategory.OTHER,
+                            currentPrice = currentValue,
+                        )
+                    }
 
-            is ManualAssetInputEvent.CountryChanged -> {
-                manualAssetInputState = manualAssetInputState.copy(country = event.value)
-                recalc()
-            }
+                    else -> with(listedAssetInputStateState) {
+                        selectedSecurity?.let {
+                            PortfolioAsset(
+                                name = it.name,
+                                symbol = it.symbol,
+                                exchangeName = it.exchangeName,
+                                qty = quantity,
+                                purchasePrice = purchasePrice,
+                                purchasedAt = purchasedAt,
+                                currentPrice = currentValue,
+                                note = notes,
+                                type = currentTab,
+                            )
 
-            is ManualAssetInputEvent.SectorChanged -> {
-                manualAssetInputState = manualAssetInputState.copy(sector = event.value)
-                recalc()
-            }
+                        }
 
+                    }
+                }
+                viewModelScope.launch {
+                    asset?.let {
+                        repo.addAssetToPortfolio(it)
+                        listedAssetInputStateState = AssetInputState()
 
-            ManualAssetInputEvent.Submit -> {
-                // MVP: just validate and you’d persist/create the asset
-                val s = manualAssetInputState
-                if (!s.canSubmit) {
-                    manualAssetInputState =
-                        s.copy(error = s.error ?: "Please complete required fields.")
-                    return
+                    }
                 }
 
-                val qty = parseQuantity(s.quantityText)
-                val unitPrice = parseMoney(s.unitPriceText)
-
-                // TODO: Persist your asset (repository call)
-                // createManualAsset(name=s.name, quantity=qty, unitPrice=unitPrice, date=s.purchaseDate, ...)
-
-                // Optional: reset
-                manualAssetInputState = ManualAssetInputState()
             }
         }
-
-    }
-
-    private fun recalc() {
-        val s = manualAssetInputState
-
-        val nameOk = s.name.trim().isNotEmpty()
-        val qty = parseQuantity(s.quantityText)
-        val price = parseMoney(s.unitPriceText)
-
-        val qtyOk = qty > 0
-        val priceOk = price > 0.0
-
-        val total = qty * price
-
-        val error = when {
-            !nameOk -> "Name is required."
-            !qtyOk -> "Quantity must be at least 1."
-            !priceOk -> "Enter a valid price."
-            else -> null
-        }
-
-        manualAssetInputState = s.copy(
-            computedTotalValue = total,
-            canSubmit = (error == null),
-            error = null // clear error as user edits; keep only on submit if you want
-        )
-    }
-
-    private fun parseQuantity(text: String): Int {
-        // Treat empty as 0 while typing
-        val n = text.trim().toIntOrNull() ?: 0
-        return max(0, n)
-    }
-
-    private fun parseMoney(text: String): Double {
-        // Basic parser: supports "12.34" and also "12,34"
-        val normalized = text.trim().replace(',', '.')
-        return normalized.toDoubleOrNull() ?: 0.0
     }
 }

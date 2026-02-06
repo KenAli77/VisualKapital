@@ -1,5 +1,6 @@
 package com.example.visualmoney
 
+import androidx.compose.animation.core.VisibilityThreshold
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
@@ -144,8 +145,7 @@ val BlueScaleVariants = ColorVariants(
 )
 
 
-// Here, overlay might be a semi-transparent variant of your text black,
-// for example with 0x88 (~53% opacity). And primaryShadow is set as the darkest primary variant.
+
 val DefaultAppColors = AppColors(
     primary = GreenScaleVariants,
     greyScale = GreyScaleVariants,
@@ -154,26 +154,7 @@ val DefaultAppColors = AppColors(
     blueScale = BlueScaleVariants
 )
 
-//val DarkBackgroundGradient = Brush.linearGradient(
-//    colors = listOf(
-//        Color(0xFF0F1F1A), // deep green-black
-//        Color(0xFF132824), // muted emerald
-//        Color(0xFF1B2F2B), // desaturated teal
-//        Color(0xFF0B1412)  // near-black
-//    ), start = Offset(0f, 0f), end = Offset.Infinite
-//)
-
-val DarkBackgroundGradient = Brush.linearGradient(
-    colors = listOf(
-        Color(0xFF0E0E10), // primary surface (anchor)
-        Color(0xFF141418), // slightly lifted
-        Color(0xFF0B1412),  // near-black
-        Color(0xFF1A1A1F), // soft mid-dark
-        Color(0xFF0B0B0D)  // deep shadow
-    ),
-    start = Offset(0f, 0f),
-    end = Offset.Infinite
-)
+val DarkBackgroundGradient = createGlassGradient(DefaultAppColors.primary.c100, alpha = 1f)
 val GreenGradient = Brush.linearGradient(
     colors = listOf(
         Color(0xFF91B7AA), // rgba(145, 183, 170, 1) – light green
@@ -185,3 +166,15 @@ val GreenGradient = Brush.linearGradient(
 )
 
 val surface:Color = Color(0xFF0e0e10)
+
+fun createGlassGradient(baseColor: Color, alpha: Float): Brush {
+    return Brush.verticalGradient(
+        colors = listOf(
+            baseColor.copy(alpha = alpha / 1.1f),  // Slightly brighter at top
+            baseColor.copy(alpha = alpha / 1.01f),  // Slightly brighter at middle
+            baseColor.copy(alpha = alpha),         // Base opacity
+            baseColor.copy(alpha = alpha),         // Base opacity
+            baseColor.copy(alpha = alpha)          // Consistent bottom
+        )
+    )
+}

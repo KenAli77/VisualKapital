@@ -11,7 +11,7 @@ data class AppDimension(
     val defaultRadius: Dp,
     val largeRadius: Dp,
     val veryLargeRadius: Dp,
-    val topBarHeight: Dp = 56.dp,
+    val topBarHeight: Dp = 60.dp,
     val bottomBarHeight: Dp = 56.dp,
     val navBarIconSize: Dp = 20.dp,
     val veryCloseSpacing: Dp = 2.dp,
@@ -25,7 +25,7 @@ data class AppDimension(
 )
 
 val DefaultAppDimension = AppDimension(
-    pagePadding = 16.dp,
+    pagePadding = 12.dp,
     verySmallRadius = 6.dp,
     smallRadius = 8.dp,
     chipRadius = 12.dp,

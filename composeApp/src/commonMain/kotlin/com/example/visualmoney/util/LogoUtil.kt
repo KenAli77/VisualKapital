@@ -7,10 +7,10 @@ object LogoUtil {
 
     fun getLogoUrl(symbol: String): String {
 
-        return "https://img.logo.dev/ticker/${symbol}?token=${apiKey}"
+        return "https://img.logo.dev/ticker/${symbol}?token=${apiKey}&format=png&theme=dark"
     }
 
     fun getCryptoLogoUrl(symbol: String): String {
-        return "https://img.logo.dev/crypto/${symbol}?token=${apiKey}"
+        return "https://img.logo.dev/crypto/${symbol}?token=${apiKey}&format=png&theme=dark"
     }
 }
