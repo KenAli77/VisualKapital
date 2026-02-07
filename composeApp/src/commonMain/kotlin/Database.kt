@@ -17,8 +17,6 @@ import com.example.visualmoney.data.local.PortfolioBuyEntity
 import com.example.visualmoney.data.local.RoomConverters
 import com.example.visualmoney.data.local.TrackedAssetDao
 import com.example.visualmoney.data.local.TrackedAssetEntity
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.IO
 
 
 @Database(

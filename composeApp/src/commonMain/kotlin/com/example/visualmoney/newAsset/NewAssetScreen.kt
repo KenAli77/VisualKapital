@@ -79,9 +79,14 @@ fun NewAssetScreen(
     modifier: Modifier = Modifier,
     viewModel: NewAssetViewModel,
     onBack: () -> Unit = {},
-    onNavigateToAssetDetails: (String) -> Unit = {},
 ) = with(viewModel) {
-
+    LaunchedEffect(Unit) {
+        viewModel.events.collect { event ->
+            if (event) {
+                onBack()
+            }
+        }
+    }
     Box(modifier = modifier.fillMaxSize()) {
         Column(
             modifier = Modifier.fillMaxSize(),

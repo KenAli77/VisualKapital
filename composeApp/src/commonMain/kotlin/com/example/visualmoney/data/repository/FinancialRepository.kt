@@ -26,18 +26,12 @@ interface FinancialRepository {
     suspend fun getCommodities(): List<AssetQuote>
     suspend fun getChart(symbol: String,from: String,to: String): List<ChartPoint>
     suspend fun searchAsset(name:String,exchange: String):List<SearchResult>
-
     suspend fun loadEtfs():List<SearchResult>
-
     suspend fun loadCryptos():List<SearchResult>
-
     suspend fun loadCommodities():List<SearchResult>
-
     suspend fun addAssetToPortfolio(asset: PortfolioAsset)
-
     suspend fun getPortfolioAssets(): Flow<List<PortfolioAsset>>
     suspend fun getPortfolioAsset(symbol:String): Flow<PortfolioAsset?>
-
 }
 
 class FinancialRepositoryImpl(

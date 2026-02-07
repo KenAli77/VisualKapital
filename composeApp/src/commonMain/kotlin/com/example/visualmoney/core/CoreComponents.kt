@@ -1,5 +1,6 @@
 package com.example.visualmoney.core
 
+import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -7,8 +8,10 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
@@ -57,7 +60,10 @@ import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.unit.DpSize
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.window.Dialog
+import androidx.compose.ui.window.DialogProperties
 import com.example.visualmoney.DarkBackgroundGradient
 import com.example.visualmoney.LocalAppTheme
 import com.example.visualmoney.createGlassGradient
@@ -67,6 +73,11 @@ import com.example.visualmoney.home.IconWithContainer
 import com.example.visualmoney.home.borderGradient
 import com.example.visualmoney.home.borderStroke
 import com.example.visualmoney.home.theme
+import dev.darkokoa.datetimewheelpicker.WheelDatePicker
+import dev.darkokoa.datetimewheelpicker.core.WheelPickerDefaults
+import dev.darkokoa.datetimewheelpicker.core.format.DateOrder
+import dev.darkokoa.datetimewheelpicker.core.format.MonthDisplayStyle
+import dev.darkokoa.datetimewheelpicker.core.format.dateFormatter
 import kotlinx.datetime.LocalDate
 import kotlinx.datetime.LocalDateTime
 import kotlinx.datetime.TimeZone
@@ -122,8 +133,10 @@ fun TopNavigationBar(
                 }
             }
             if (hasAddAction) {
+                Spacer(modifier = Modifier.weight(1f))
                 IconWithContainer(
                     onClick = onAdd,
+                    containerColor = theme.colors.primary.c50,
                     icon = painterResource(Res.drawable.plus),
                 )
             }
@@ -457,13 +470,14 @@ fun BaseButton(
 
     Surface(
         modifier = modifier
-            .then(
-                Modifier.clickable(enabled = enabled, onClick = onClick)
-            )
-            .background(backgroundBrush, shape),
+            .clip(shape)
+            .background(backgroundBrush, shape)
+            .clickable(enabled = enabled, onClick = onClick)
+        ,
         shape = shape,
         border = if (border) BorderStroke(1.dp, brush = borderGradient) else null,
         color = Color.Transparent,
+
         contentColor = contentColor.copy(alpha = contentAlpha),
     ) {
         Box(
@@ -531,108 +545,111 @@ fun DateInputTextField(
     var showDatePicker by remember { mutableStateOf(false) }
 
     val theme = LocalAppTheme.current
-    val dateState = rememberDatePickerState()
 
-    LaunchedEffect(Unit) {
-        if (value == null) {
-            dateState.selectedDateMillis = Clock.System.now().toEpochMilliseconds()
+    Box {
+        InputTextField(
+            label = label,
+            value = value?.toSimpleDateString() ?: "",
+            placeholder = placeholder,
+            onValueChange = {},
+            readOnly = true,
+            borderAlwaysVisible = true,
+            error = error,
+            trailingIcon = {
+                Icon(
+                    imageVector = Icons.Rounded.CalendarToday,
+                    contentDescription = "Pick a date",
+                    tint = theme.colors.greyTextColor,
+                    modifier = Modifier.size(theme.dimension.smallIconSize)
+                )
+            },
+            modifier = modifier.clickable { showDatePicker = true }
+        )
+        AnimatedVisibility(visible = showDatePicker) {
+            DateSelectionDialog (
+                selectedDate = value ?: now.date,
+                onValueChange = {
+                    onValueChange(it)
+                },
+                onDismiss = {
+                    showDatePicker = false
+                }
+            )
         }
     }
 
-    fun openDatePicker() {
-        showDatePicker = true
-    }
+}
 
-    // Displayed TextField using your InputTextField
-    InputTextField(
-        label = label,
-        value = value?.toSimpleDateString() ?: "",
-        placeholder = placeholder,
-        onValueChange = {},
-        readOnly = true,
-        borderAlwaysVisible = true,
-        error = error,
-        trailingIcon = {
-            Icon(
-                imageVector = Icons.Rounded.CalendarToday,
-                contentDescription = "Pick a date",
-                tint = theme.colors.greyTextColor,
-                modifier = Modifier.size(theme.dimension.smallIconSize)
-            )
-        },
-        modifier = modifier.clickable { openDatePicker() }
-    )
-
-
-    if (showDatePicker) {
-        //  DatePickerModal()
-
-        DatePickerDialog(
-            onDismissRequest = { showDatePicker = false },
-            shape = RoundedCornerShape(theme.dimension.veryLargeRadius),
-            colors = DatePickerDefaults.colors(
-                containerColor = theme.colors.greyScale.c10,
-                titleContentColor = theme.colors.primary.c50,
-                headlineContentColor = theme.colors.primary.c50,
-
-                ),
-            dismissButton = {
-                TextButton(
-//                    colors = ButtonDefaults.textButtonColors(
-//                        containerColor = theme.colors.greyScale.c10,
-//                        contentColor = theme.colors.primary.c50
-//                    ),
-                    onClick = {
-                        showDatePicker = false
-                    }
-                ) {
-                    Text("Cancel", color = theme.colors.onSurface)
-                }
-
-            },
-            confirmButton = {
-                TextButton(
-                    colors = ButtonDefaults.textButtonColors(
-                        containerColor = theme.colors.greyScale.c10,
-                        contentColor = theme.colors.primary.c50
-                    ),
-                    onClick = {
-                        showDatePicker = false
-                        dateState.selectedDateMillis?.let {
-                            val instant = Instant.fromEpochMilliseconds(it)
-                            val date = instant.toLocalDateTime(TimeZone.currentSystemDefault())
-                            onValueChange(date.date)
-                        }
-                    }
-                ) {
-                    Text("OK", color = theme.colors.blueScale.c50)
-                }
-            },
-
+@Composable
+fun DateSelectionDialog(
+    selectedDate: LocalDate,
+    onValueChange: (LocalDate) -> Unit,
+    onDismiss: () -> Unit
+) {
+    Dialog(
+        onDismissRequest = { onDismiss() },
+    ) {
+        CardContainer(
+            shape = RoundedCornerShape(theme.dimension.defaultRadius),
+            containerColor = theme.colors.container
+        ) {
+            Column(
+                modifier = Modifier.fillMaxWidth().padding(theme.dimension.veryLargeSpacing),
+                verticalArrangement = Arrangement.spacedBy(theme.dimension.mediumSpacing),
+                horizontalAlignment = Alignment.CenterHorizontally
             ) {
-            DatePicker(
-                dateFormatter = DatePickerDefaults.dateFormatter(
-                    selectedDateSkeleton = "dd MMM, yyyy",
-                ),
+                Text(
+                    "Pick a date",
+                    style = theme.typography.titleSmall,
+                    modifier = Modifier.fillMaxWidth(),
+                    color = theme.colors.onSurface
+                )
+                BoxWithConstraints(modifier = Modifier.fillMaxWidth()) {
+                    WheelDatePicker(
+                        startDate = selectedDate,
+                        size = DpSize(maxWidth, 140.dp),
+                        textStyle = theme.typography.bodyMediumMedium,
+                        dateFormatter = dateFormatter(
+                            dateOrder = DateOrder.DMY,
+                            monthDisplayStyle = MonthDisplayStyle.FULL
+                        ),
+                        textColor = theme.colors.onSurface,
+                        selectorProperties = WheelPickerDefaults.selectorProperties(
+                            enabled = true,
+                            shape = RoundedCornerShape(theme.dimension.defaultRadius),
+                            color = theme.colors.surface,
+                            border = borderStroke
+                        )
+                    ) { snappedDate ->
+                        onValueChange(snappedDate)
+                    }
+                }
 
-                colors = DatePickerDefaults.colors(
-                    containerColor = theme.colors.greyScale.c10,
-                    titleContentColor = theme.colors.onSurface,
-                    navigationContentColor = theme.colors.onSurface,
-                    headlineContentColor = theme.colors.onSurface,
-                    selectedDayContainerColor = theme.colors.onSurface,
-                    selectedDayContentColor = Color.White,
-                    todayDateBorderColor = theme.colors.onSurface,
-                    todayContentColor = theme.colors.onSurface,
-                    dividerColor = theme.colors.onSurface,
-                ),
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(theme.dimension.mediumSpacing)
+                ) {
+                    LargeButton(
+                        modifier = Modifier.weight(1f),
+                        text = "Cancel",
+                        backgroundColor = theme.colors.container,
+                        contentColor = theme.colors.onPrimary,
+                        onClick = onDismiss
+                    )
+                    LargeButton(
+                        modifier = Modifier.weight(1f),
+                        text = "OK",
+                        backgroundColor = theme.colors.primary.c50,
+                        contentColor = theme.colors.onPrimary,
+                        onClick = onDismiss
+                    )
 
-                state = dateState,
+                }
+            }
 
-                //    title = { Text("Select Date") },
-
-            )
         }
+
     }
 }
 

@@ -19,10 +19,12 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
 import com.example.visualmoney.DarkBackgroundGradient
+import com.example.visualmoney.LoadingOverlay
+import com.example.visualmoney.SnackBarComponent
 import com.example.visualmoney.assetDetails.AssetDetailsScreen
 import com.example.visualmoney.assetDetails.AssetDetailsViewModel
 import com.example.visualmoney.calendar.CalendarScreen
-import com.example.visualmoney.domain.model.toAsset
+import com.example.visualmoney.calendar.CalendarScreenViewModel
 import com.example.visualmoney.home.HomeScreen
 import com.example.visualmoney.home.HomeViewModel
 import com.example.visualmoney.navigation.Routes
@@ -35,6 +37,8 @@ import org.koin.compose.viewmodel.koinViewModel
 fun VisualKapitalApp(navController: NavHostController = rememberNavController()) {
     var symbol by remember { mutableStateOf("") }
     Box(modifier = Modifier.background(DarkBackgroundGradient)) {
+        LoadingOverlay(modifier = Modifier.fillMaxSize())
+        SnackBarComponent()
         Scaffold(
             modifier = Modifier.fillMaxSize(),
             containerColor = Color.Transparent,
@@ -56,9 +60,12 @@ fun VisualKapitalApp(navController: NavHostController = rememberNavController())
                         onNewAsset = { navController.navigate(Routes.NEW_ASSET) }
                     )
                 }
-                composable(route = Routes.CALENDAR) {
+                composable(route = Routes.CALENDAR) { backStackEntry ->
+                    val viewModel =
+                        koinViewModel<CalendarScreenViewModel>(viewModelStoreOwner = backStackEntry)
                     CalendarScreen(
                         modifier = Modifier.padding(top = paddingValues.calculateTopPadding()),
+                        viewModel = viewModel,
                         onBack = { navController.popBackStack() })
                 }
                 composable(route = Routes.NEW_ASSET) {
@@ -67,13 +74,7 @@ fun VisualKapitalApp(navController: NavHostController = rememberNavController())
                     NewAssetScreen(
                         modifier = Modifier.padding(top = paddingValues.calculateTopPadding()),
                         onBack = { navController.popBackStack() },
-                        viewModel = viewModel,
-                        onNavigateToAssetDetails = {
-                            println("Navigate to details of: $it")
-                            symbol = it
-                            navController.navigate(Routes.details(it))
-
-                        },
+                        viewModel = viewModel
                     )
                 }
                 composable(route = Routes.PORTFOLIO_OVERVIEW) { backStackEntry ->

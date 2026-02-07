@@ -7,7 +7,10 @@ import androidx.compose.runtime.snapshotFlow
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.visualmoney.AssetCategory
+import com.example.visualmoney.LoadingManager
 import com.example.visualmoney.SearchResultRowUi
+import com.example.visualmoney.SnackbarManager
+import com.example.visualmoney.SnackbarType
 import com.example.visualmoney.data.local.PortfolioAsset
 import com.example.visualmoney.data.repository.FinancialRepository
 import com.example.visualmoney.exchangeName
@@ -16,9 +19,11 @@ import com.example.visualmoney.newAsset.state.AssetInputState
 import com.example.visualmoney.newAsset.state.isValidForSubmit
 import com.example.visualmoney.util.LogoUtil
 import kotlinx.coroutines.FlowPreview
+import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.debounce
 import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.launch
 
 // TODO: Add validation and errors
@@ -31,6 +36,8 @@ class NewAssetViewModel(private val repo: FinancialRepository) : ViewModel() {
     init {
         searchListedAsset()
     }
+    private val _events = Channel<Boolean>(capacity = Channel.BUFFERED)
+    val events = _events.receiveAsFlow()
 
     @OptIn(FlowPreview::class)
     fun searchListedAsset() {
@@ -131,7 +138,14 @@ class NewAssetViewModel(private val repo: FinancialRepository) : ViewModel() {
             }
 
             is AssetInputEvent.Submit -> {
-                if (!listedAssetInputStateState.isValidForSubmit) return
+                if (!listedAssetInputStateState.isValidForSubmit) {
+                    SnackbarManager.showMessage(
+                        "Please enter all required fields",
+                        SnackbarType.ERROR
+                    )
+                    return
+                }
+                LoadingManager.startLoading()
                 val asset = when (listedAssetInputStateState.currentTab) {
                     AssetCategory.OTHER -> with(listedAssetInputStateState) {
                         PortfolioAsset(
@@ -160,16 +174,19 @@ class NewAssetViewModel(private val repo: FinancialRepository) : ViewModel() {
                                 note = notes,
                                 type = currentTab,
                             )
-
                         }
-
                     }
                 }
                 viewModelScope.launch {
                     asset?.let {
                         repo.addAssetToPortfolio(it)
                         listedAssetInputStateState = AssetInputState()
-
+                        LoadingManager.stopLoading()
+                        SnackbarManager.showMessage(
+                            "Asset added to portfolio 🎉",
+                            SnackbarType.SUCCESS
+                        )
+                        _events.send(true)
                     }
                 }
 

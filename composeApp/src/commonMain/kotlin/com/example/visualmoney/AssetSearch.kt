@@ -45,6 +45,8 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.example.visualmoney.assetDetails.AssetLogoContainer
 import com.example.visualmoney.core.TopNavigationBar
+import com.example.visualmoney.data.local.PortfolioAsset
+import com.example.visualmoney.data.local.logoUrl
 import com.example.visualmoney.home.ChipContainer
 import com.example.visualmoney.home.CardContainer
 import com.example.visualmoney.home.borderStroke
@@ -76,12 +78,20 @@ enum class SortMode(val label: String) { TRENDING("Trending"), PRICE("Price"), C
 data class SearchResultRowUi(
     val symbol: String,
     val name: String,
-    val priceText: String,
+    val priceText: String = "",
     val changePct: Double = 0.0, // e.g. -0.08
     val assetType: AssetCategory,
     val iconUrl: String? = null,
     val exchangeName: String = "", // e.g. -0.08
 )
+
+val PortfolioAsset.toSearchResultRowUi: SearchResultRowUi
+    get() = SearchResultRowUi(
+        symbol = symbol,
+        name = name,
+        exchangeName = exchangeName,
+        iconUrl = logoUrl,
+        assetType = type)
 
 // ---------- Screen ----------
 @OptIn(ExperimentalMaterial3Api::class)

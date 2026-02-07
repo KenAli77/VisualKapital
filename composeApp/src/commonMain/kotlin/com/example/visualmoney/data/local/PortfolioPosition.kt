@@ -4,6 +4,8 @@ import androidx.room.Entity
 import androidx.room.ForeignKey
 import androidx.room.Index
 import androidx.room.PrimaryKey
+import com.example.visualmoney.calendar.now
+import kotlinx.datetime.LocalDate
 import kotlin.time.Clock
 
 enum class AssetType { SECURITY, CRYPTO, COMMODITY,OTHER }
@@ -68,26 +70,13 @@ data class ManualInvestmentEntity(
 
 @Entity(
     tableName = "investment_reminders",
-    indices = [
-        Index(value = ["investmentId"]),
-        Index(value = ["dueDateEpochMs"])
-    ],
-    foreignKeys = [
-        ForeignKey(
-            entity = ManualInvestmentEntity::class,
-            parentColumns = ["id"],
-            childColumns = ["investmentId"],
-            onDelete = ForeignKey.CASCADE
-        )
-    ]
 )
 data class InvestmentReminderEntity(
-    @PrimaryKey val id: String,              // UUID string
-    val investmentId: String,                // links to manual_investments.id
-    val title: String,                       // "Bond coupon", "Amortization", "Maturity"
-    val dueDateEpochMs: Long,
-    val amount: Double? = null,
-    val currency: String? = null,
+    @PrimaryKey val id: String,
+    val symbol: String,
+    val description: String,
+    val note:String,
+    val dueDate: LocalDate,
     val isDone: Boolean = false,
-    val createdAtEpochMs: Long = Clock.System.now().toEpochMilliseconds()
+    val createdAtEpochMs: LocalDate = LocalDate.now()
 )
