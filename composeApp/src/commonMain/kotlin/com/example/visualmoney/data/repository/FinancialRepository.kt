@@ -1,5 +1,7 @@
 package com.example.visualmoney.data.repository
 
+import com.example.visualmoney.calendar.now
+import com.example.visualmoney.core.toLocalDateTime
 import com.example.visualmoney.data.local.CachedQuoteDao
 import com.example.visualmoney.data.local.CachedQuoteEntity
 import com.example.visualmoney.data.local.PortfolioAsset
@@ -13,6 +15,7 @@ import com.example.visualmoney.domain.model.AssetQuote
 import com.example.visualmoney.domain.model.ChartPoint
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.firstOrNull
+import kotlinx.datetime.LocalDate
 import kotlin.time.Clock
 
 private const val QUOTE_TTL_MS = 5 * 60 * 60 * 1000L // 5 hours
@@ -26,17 +29,12 @@ interface FinancialRepository {
     suspend fun getCommodities(): List<AssetQuote>
     suspend fun getChart(symbol: String,from: String,to: String): List<ChartPoint>
     suspend fun searchAsset(name:String,exchange: String):List<SearchResult>
-
     suspend fun loadEtfs():List<SearchResult>
-
     suspend fun loadCryptos():List<SearchResult>
-
     suspend fun loadCommodities():List<SearchResult>
-
     suspend fun addAssetToPortfolio(asset: PortfolioAsset)
-
     suspend fun getPortfolioAssets(): Flow<List<PortfolioAsset>>
-
+    suspend fun getPortfolioAsset(symbol:String): Flow<PortfolioAsset?>
 }
 
 class FinancialRepositoryImpl(
@@ -53,9 +51,19 @@ class FinancialRepositoryImpl(
        return portfolioDao.observeAllAssets()
     }
 
+    override suspend fun getPortfolioAsset(symbol: String): Flow<PortfolioAsset?> {
+        return portfolioDao.observeAsset(symbol)
+    }
+
 
     override suspend fun getQuote(symbol: String): AssetQuote {
         val now = Clock.System.now().toEpochMilliseconds()
+        val local = cachedQuoteDao.get(symbol)
+        local?.let {
+            if (it.updatedAtEpochMs.toLocalDateTime().date == LocalDate.now()) {
+                return@getQuote it.toAsset()
+            }
+        }
         val remote = remoteSource.getQuote(symbol)
         val entity = CachedQuoteEntity(
             symbol = remote.symbol,
@@ -127,7 +135,6 @@ class FinancialRepositoryImpl(
     override suspend fun getChart(symbol: String, from: String, to: String): List<ChartPoint> = remoteSource.getChart(symbol, from = from, to = to)
     override suspend fun searchAsset(name: String, exchange:String): List<SearchResult> {
         val remote =  remoteSource.searchCompanyByName(name,exchange)
-        println("Search result: $remote")
         return remote
     }
 

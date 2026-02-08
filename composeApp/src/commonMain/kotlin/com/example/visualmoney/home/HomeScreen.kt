@@ -11,10 +11,8 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.RowScope
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.wrapContentWidth
@@ -31,9 +29,7 @@ import androidx.compose.material.icons.rounded.SwapHoriz
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
-import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SecondaryScrollableTabRow
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Tab
@@ -56,14 +52,12 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.graphics.painter.Painter
 import androidx.compose.ui.graphics.vector.ImageVector
-import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import coil3.compose.AsyncImage
+import com.example.visualmoney.AssetCategory
 import com.example.visualmoney.DefaultAppColors
 import com.example.visualmoney.ExploreSearchScreen
-import com.example.visualmoney.GreenGradient
 import com.example.visualmoney.LocalAppTheme
 import com.example.visualmoney.assetDetails.AssetLogoContainer
 import com.example.visualmoney.core.IconPosition
@@ -73,11 +67,10 @@ import com.example.visualmoney.greyTextColor
 import kotlinx.coroutines.launch
 import org.jetbrains.compose.resources.painterResource
 import visualmoney.composeapp.generated.resources.Res
-import visualmoney.composeapp.generated.resources.arrow_up_right
+import visualmoney.composeapp.generated.resources.arrow_right
 import visualmoney.composeapp.generated.resources.calendar
 import visualmoney.composeapp.generated.resources.plus
 import visualmoney.composeapp.generated.resources.portfolio
-import visualmoney.composeapp.generated.resources.trending_up
 import visualmoney.composeapp.generated.resources.zigzag
 import kotlin.math.round
 
@@ -85,10 +78,11 @@ import kotlin.math.round
 val theme @Composable get() = LocalAppTheme.current
 
 // ---------- Models ----------
-data class HoldingRowUi(
+data class AssetListItemUI(
     val symbol: String,
     val name: String,
-    val assetClass: AssetClass,
+    val assetClass: AssetCategory,
+    val note: String = "",
     val changePct: Double,
     val price: Double,
     val dayLow: Double,
@@ -102,6 +96,9 @@ enum class HomeTab(val label: String) {
     ),
     H24("24h"),
 }
+enum class AssetDetailTabs(val label: String) {
+    About("About"), Stats("Key stats"),
+}
 
 enum class BottomNavItem {
     HOME, STATS, SWAP, ACCOUNT
@@ -114,9 +111,8 @@ fun HomeScreen(
     modifier: Modifier = Modifier,
     viewModel: HomeViewModel,
     userName: String = "James",
-    balanceUsd: Double = 5738.25,
-    profitUsd: Double = 295.83,
-    mlPct: Double = 300.00,
+    showCalendarBadge: Boolean = false,
+    calendarBadgeColor: Color = Color.Transparent,
     onGoToCalendar: () -> Unit = {},
     onGoToBalance: () -> Unit = {},
     onNewAsset: () -> Unit = {},
@@ -124,6 +120,7 @@ fun HomeScreen(
 ) = with(viewModel) {
     var showSearch by remember { mutableStateOf(false) }
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
+
     val scope = rememberCoroutineScope()
     Box(
         modifier = modifier.fillMaxSize(),
@@ -143,7 +140,12 @@ fun HomeScreen(
             modifier = Modifier.fillMaxSize().padding(theme.dimension.pagePadding),
             verticalArrangement = Arrangement.spacedBy(theme.dimension.veryLargeSpacing),
         ) {
-            HomeTopHeader(userName = userName, onGoToCalendar = onGoToCalendar)
+            HomeTopHeader(
+                userName = userName,
+                onGoToCalendar = onGoToCalendar,
+                showCalendarBadge = showCalendarBadge,
+                calendarBadgeColor = calendarBadgeColor
+            )
             LazyColumn(
                 modifier = Modifier.clip(
                     RoundedCornerShape(
@@ -155,9 +157,7 @@ fun HomeScreen(
             ) {
                 item {
                     BalanceCard(
-                        balanceUsd = balanceUsd,
-                        profitUsd = profitUsd,
-                        mlPct = mlPct,
+                        metrics = state.metrics,
                         onOpen = onGoToBalance,
                         onCurrencyClick = {},
                     )
@@ -177,7 +177,7 @@ fun HomeScreen(
                     ) {
                         Text(
                             "My portfolio",
-                            style = theme.typography.bodyMediumMedium,
+                            style = theme.typography.bodyLargeMedium,
                             color = theme.colors.greyTextColor
                         )
                         Row(
@@ -196,12 +196,13 @@ fun HomeScreen(
                         }
                     }
                 }
-                items(state.holdings) { item ->
-                    HoldingRow(
-                        modifier = Modifier, item = item, onClick = {
+                items(state.holdings, key = { it.symbol }) { item ->
+                    AssetListItem(
+                        modifier = Modifier
+                            .animateItem(), item = item, onClick = {
                             onGoToAssetDetails(item.symbol)
                         })
-                    ListDivider()
+//                    ListDivider()
                 }
 
             }
@@ -213,7 +214,11 @@ fun HomeScreen(
 // ---------- Header ----------
 @Composable
 fun HomeTopHeader(
-    userName: String, modifier: Modifier = Modifier, onGoToCalendar: () -> Unit = {}
+    userName: String,
+    modifier: Modifier = Modifier,
+    showCalendarBadge: Boolean = false,
+    calendarBadgeColor: Color = Color.Transparent,
+    onGoToCalendar: () -> Unit = {}
 ) {
     Row(
         modifier = modifier.fillMaxWidth(),
@@ -246,8 +251,10 @@ fun HomeTopHeader(
         }
         Row(horizontalArrangement = Arrangement.spacedBy(theme.dimension.mediumSpacing)) {
             IconWithContainer(
+                showBadge = showCalendarBadge,
+                badgeColor = calendarBadgeColor,
                 onClick = onGoToCalendar,
-                painterResource(Res.drawable.calendar),
+                icon = painterResource(Res.drawable.calendar),
             )
         }
 
@@ -260,32 +267,38 @@ fun IconWithContainer(
     onClick: () -> Unit = {},
     icon: Painter,
     containerColor: Color = theme.colors.surface,
+    shape: Shape = CircleShape,
+    showBadge: Boolean = false,
+    badgeColor: Color = Color.Red,
     modifier: Modifier = Modifier
 ) {
-    CardContainer(
-        modifier = modifier.clickable { onClick() },
-        containerColor = containerColor,
-        shape = CircleShape,
-//        onClick = onClick,
-//        elevation = CardDefaults.cardElevation(0.dp),
-//        border = borderStroke,
-//        colors = CardDefaults.elevatedCardColors(containerColor = containerColor)
-    ) {
-        Box(
-            modifier = Modifier.padding(theme.dimension.mediumSpacing),
-            contentAlignment = Alignment.Center
+    Box(modifier) {
+        CardContainer(
+            modifier = modifier.clickable { onClick() },
+            containerColor = containerColor,
+            shape = shape,
         ) {
-            Icon(
-                icon,
-                contentDescription = "",
-                modifier = Modifier.size(theme.dimension.iconSize),
-                tint = theme.colors.onSurface
-            )
-
+            Box(
+                modifier = Modifier.padding(theme.dimension.mediumSpacing),
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(
+                    icon,
+                    contentDescription = "",
+                    modifier = Modifier.size(theme.dimension.iconSize),
+                    tint = theme.colors.onSurface
+                )
+            }
         }
-
+        if (showBadge) {
+            Box(
+                modifier = Modifier
+                    .align(Alignment.TopEnd)
+                    .size(10.dp)
+                    .background(badgeColor, CircleShape)
+            )
+        }
     }
-
 
 }
 
@@ -296,11 +309,12 @@ fun IconWithContainerSmall(
     contentDescription: String = "",
     containerColor: Color = theme.colors.surface,
     contentColor: Color = theme.colors.onSurface,
+    shape: Shape = RoundedCornerShape(theme.dimension.smallRadius),
     modifier: Modifier = Modifier
 ) {
     Surface(
         modifier = modifier.clickable { onClick() },
-        shape = RoundedCornerShape(theme.dimension.smallRadius),
+        shape = shape,
         border = borderStroke,
         color = containerColor,
     ) {
@@ -324,17 +338,19 @@ fun IconWithContainerSmall(
 @Composable
 fun CardContainer(
     modifier: Modifier = Modifier,
-    containerColor: Color = theme.colors.container,
+    containerColor: Color = theme.colors.surface,
     shape: Shape = RoundedCornerShape(theme.dimension.defaultRadius),
     content: @Composable ColumnScope.() -> Unit
 ) {
     Box(
-        modifier = modifier.shadow(
-            elevation = 8.dp,
-            shape,
-            spotColor = theme.colors.greenScale.c90,
-            ambientColor = theme.colors.greenScale.c50
-        )
+        modifier = modifier
+            .clip(shape)
+            .shadow(
+                elevation = 8.dp,
+                shape,
+                spotColor = theme.colors.greenScale.c30,
+                ambientColor = theme.colors.surface
+            )
     ) {
         Box(
             modifier = Modifier.matchParentSize()
@@ -353,15 +369,15 @@ fun CardContainer(
 // ---------- Balance Card ----------
 @Composable
 fun BalanceCard(
-    balanceUsd: Double,
-    profitUsd: Double,
-    mlPct: Double,
+    metrics: PortfolioMetrics,
+    forOverview: Boolean = false,
     onOpen: () -> Unit,
     onCurrencyClick: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     CardContainer(
-        modifier = modifier.fillMaxWidth(),
+        modifier = modifier.fillMaxWidth().clickable { onOpen() },
+        containerColor = theme.colors.primary.c90
     ) {
         Column(
             modifier = Modifier.padding(theme.dimension.largeSpacing),
@@ -380,22 +396,22 @@ fun BalanceCard(
                     IconWithContainerSmall(
                         icon = painterResource(Res.drawable.portfolio),
                         contentDescription = "Balance",
-                    )
+                        containerColor = theme.colors.primary.c50,
+
+                        )
                     Text(
                         text = "Portfolio value",
                         style = theme.typography.bodySmall,
                         color = theme.colors.greyTextColor
                     )
-
-
                 }
-                IconWithContainerSmall(
-                    {},
-                    icon = painterResource(Res.drawable.arrow_up_right),
-                    containerColor = theme.colors.primary.c50,
-                    contentColor = theme.colors.onPrimary,
-                )
-
+                if (!forOverview) {
+                    IconWithContainerSmall(
+                        onOpen,
+                        icon = painterResource(Res.drawable.arrow_right),
+                        shape = CircleShape
+                    )
+                }
             }
 
             Row(
@@ -404,35 +420,37 @@ fun BalanceCard(
                 horizontalArrangement = Arrangement.SpaceBetween
             ) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    val text = "$" + "%.2f".format(balanceUsd)
+                    val text = "$" + "%.2f".format(metrics.totalValue)
                     Text(
                         text = text.substringBeforeLast("."),
                         style = theme.typography.titleLarge,
                         color = theme.colors.onSurface
                     )
                     Text(
-                        text = "." + text.format(balanceUsd).substringAfterLast("."),
+                        text = "." + text.format(metrics.totalValue).substringAfterLast("."),
                         style = theme.typography.titleLarge,
                         color = theme.colors.greyScale.c50
                     )
                 }
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(theme.dimension.mediumSpacing),
-                    modifier = Modifier.clickable {
-                        onCurrencyClick()
-                    }) {
-                    Text(
-                        "USD",
-                        style = theme.typography.bodySmall,
-                        color = theme.colors.greyTextColor
-                    )
-                    Icon(
-                        Icons.Outlined.KeyboardArrowDown,
-                        contentDescription = "Currency",
-                        modifier = Modifier.size(theme.dimension.smallIconSize),
-                        tint = theme.colors.greyTextColor
-                    )
+                if (!forOverview) {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(theme.dimension.mediumSpacing),
+                        modifier = Modifier.clickable {
+                            onCurrencyClick()
+                        }) {
+                        Text(
+                            "USD",
+                            style = theme.typography.bodySmall,
+                            color = theme.colors.greyTextColor
+                        )
+                        Icon(
+                            Icons.Outlined.KeyboardArrowDown,
+                            contentDescription = "Currency",
+                            modifier = Modifier.size(theme.dimension.smallIconSize),
+                            tint = theme.colors.greyTextColor
+                        )
+                    }
                 }
             }
 
@@ -441,35 +459,16 @@ fun BalanceCard(
             ) {
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(theme.dimension.veryCloseSpacing)
+                    horizontalArrangement = Arrangement.spacedBy(theme.dimension.mediumSpacing)
                 ) {
+                    metrics.ChangeIcon()
                     Text(
-                        text = "Profit:",
-                        style = theme.typography.bodySmallMedium,
-                        color = theme.colors.greyTextColor
-                    )
-                    Text(
-                        text = "$${"%.2f".format(profitUsd)}",
-                        style = theme.typography.bodySmallMedium,
-                        color = theme.colors.onSurface
+                        text = metrics.toChangeUiString("$"),
+                        style = theme.typography.bodyMediumStrong,
+                        color = metrics.color
                     )
                 }
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(theme.dimension.veryCloseSpacing)
-                ) {
-                    Text(
-                        text = "ML:",
-                        style = theme.typography.bodySmallMedium,
-                        color = theme.colors.greyTextColor
-                    )
-                    Text(
-                        text = "${"%.2f".format(mlPct)}%",
-                        style = theme.typography.bodySmallMedium,
-                        color = theme.colors.onSurface
-                    )
 
-                }
             }
         }
     }
@@ -613,14 +612,13 @@ fun HomeTabs(
 
 // ---------- Holding row ----------
 @Composable
-fun HoldingRow(
-    item: HoldingRowUi,
+fun AssetListItem(
+    item: AssetListItemUI,
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    Row(modifier = modifier.fillMaxWidth().clickable { onClick() }
-        .padding(vertical = theme.dimension.largeSpacing),
-        verticalAlignment = Alignment.Top,
+    Row(modifier = modifier.padding(vertical = theme.dimension.closeSpacing).fillMaxWidth().clickable { onClick() },
+        verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(theme.dimension.mediumSpacing)) {
 
         AssetLogoContainer(
@@ -629,7 +627,7 @@ fun HoldingRow(
         )
         Column(
             modifier = Modifier.weight(1f),
-            verticalArrangement = Arrangement.spacedBy(theme.dimension.mediumSpacing),
+            verticalArrangement = Arrangement.spacedBy(theme.dimension.mediumSpacing, alignment = Alignment.CenterVertically),
         ) {
             Text(
                 modifier = Modifier.wrapContentWidth(),
@@ -639,13 +637,21 @@ fun HoldingRow(
                 style = theme.typography.bodyMediumStrong,
                 color = theme.colors.onSurface
             )
-            Text(
-                text = item.symbol,
-                style = theme.typography.bodyMediumMedium,
-                color = theme.colors.onSurface
-            )
+            if (item.assetClass == AssetCategory.OTHER) {
+                val text = item.note.takeIf { it.isNotBlank() } ?: "Other"
+                    Text(
+                        text = text,
+                        style = theme.typography.bodyMediumMedium,
+                        color = theme.colors.greyTextColor
+                    )
+            } else {
+                Text(
+                    text = item.symbol,
+                    style = theme.typography.bodyMediumMedium,
+                    color = theme.colors.greyTextColor
+                )
+            }
         }
-
 
         Column(
             horizontalAlignment = Alignment.End,

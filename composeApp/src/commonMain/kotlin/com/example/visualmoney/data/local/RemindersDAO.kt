@@ -13,17 +13,16 @@ interface InvestmentReminderDao {
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun upsert(reminder: InvestmentReminderEntity)
 
-    @Query("SELECT * FROM investment_reminders WHERE investmentId = :investmentId ORDER BY dueDateEpochMs ASC")
-    fun observeForInvestment(investmentId: String): Flow<List<InvestmentReminderEntity>>
+    @Query("SELECT * FROM investment_reminders WHERE symbol = :symbol ORDER BY dueDate ASC")
+    fun observeForInvestment(symbol: String): Flow<List<InvestmentReminderEntity>>
 
     @Query(
         """
         SELECT * FROM investment_reminders
-        WHERE dueDateEpochMs BETWEEN :fromEpochMs AND :toEpochMs
-        ORDER BY dueDateEpochMs ASC
+        ORDER BY dueDate ASC
         """
     )
-    fun observeBetween(fromEpochMs: Long, toEpochMs: Long): Flow<List<InvestmentReminderEntity>>
+    fun observeBetween(): Flow<List<InvestmentReminderEntity>>
 
     @Query("UPDATE investment_reminders SET isDone = :done WHERE id = :id")
     suspend fun setDone(id: String, done: Boolean)

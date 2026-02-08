@@ -3,9 +3,12 @@ package com.example.visualmoney.di
 import AppDatabase
 import androidx.sqlite.driver.bundled.BundledSQLiteDriver
 import com.example.visualmoney.assetDetails.AssetDetailsViewModel
+import com.example.visualmoney.calendar.CalendarScreenViewModel
 import com.example.visualmoney.data.remote.FmpDataSource
 import com.example.visualmoney.data.repository.FinancialRepository
 import com.example.visualmoney.data.repository.FinancialRepositoryImpl
+import com.example.visualmoney.data.repository.InvestmentReminderRepository
+import com.example.visualmoney.data.repository.InvestmentReminderRepositoryImpl
 import com.example.visualmoney.home.HomeViewModel
 import com.example.visualmoney.network.provideHttpClientEngine
 import com.example.visualmoney.newAsset.NewAssetViewModel
@@ -53,9 +56,15 @@ val appModule = module {
             get<AppDatabase>().portfolioAssetDao()
         )
     }
+    single<InvestmentReminderRepository> {
+        InvestmentReminderRepositoryImpl(
+            get<AppDatabase>().investmentReminderDao(),
+        )
+    }
     viewModelOf(::HomeViewModel)
     viewModelOf(::NewAssetViewModel)
     viewModelOf(::AssetDetailsViewModel)
+    viewModelOf(::CalendarScreenViewModel)
 }
 
 

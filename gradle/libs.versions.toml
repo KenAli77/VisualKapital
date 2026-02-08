@@ -10,6 +10,7 @@ androidx-espresso = "3.7.0"
 androidx-lifecycle = "2.9.6"
 androidx-testExt = "1.3.0"
 composeMultiplatform = "1.10.0"
+datetimeWheelPicker = "1.1.0"
 junit = "4.13.2"
 kotlin = "2.3.0"
 kotlinxDatetime = "0.7.1"
@@ -27,6 +28,7 @@ ksp = "2.3.4"
 purchases = "9.1.2"
 
 [libraries]
+datetime-wheel-picker = { module = "io.github.darkokoa:datetime-wheel-picker", version.ref = "datetimeWheelPicker" }
 kotlin-test = { module = "org.jetbrains.kotlin:kotlin-test", version.ref = "kotlin" }
 kotlin-testJunit = { module = "org.jetbrains.kotlin:kotlin-test-junit", version.ref = "kotlin" }
 junit = { module = "junit:junit", version.ref = "junit" }

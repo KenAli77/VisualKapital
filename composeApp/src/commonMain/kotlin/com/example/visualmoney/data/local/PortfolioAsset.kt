@@ -4,6 +4,7 @@ import androidx.room.Entity
 import androidx.room.PrimaryKey
 import com.example.visualmoney.AssetCategory
 import com.example.visualmoney.calendar.now
+import com.example.visualmoney.util.LogoUtil
 import kotlinx.datetime.LocalDate
 
 @Entity(
@@ -19,6 +20,15 @@ data class PortfolioAsset(
     val type: AssetCategory,
     val note:String = "",
     val exchangeName: String,
-
     val notes: String? = null,
 )
+val PortfolioAsset.isQuoteTracked: Boolean get () {
+    return type != AssetCategory.OTHER
+}
+val PortfolioAsset.logoUrl:String get() = when(type) {
+    AssetCategory.STOCKS -> LogoUtil.getLogoUrl(symbol)
+    AssetCategory.CRYPTO -> LogoUtil.getCryptoLogoUrl(symbol)
+    AssetCategory.COMMODITIES -> LogoUtil.getLogoUrl(symbol)
+    AssetCategory.OTHER -> ""
+}
+

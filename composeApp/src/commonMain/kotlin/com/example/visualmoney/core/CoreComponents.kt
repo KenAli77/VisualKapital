@@ -1,14 +1,18 @@
 package com.example.visualmoney.core
 
+import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
@@ -19,9 +23,11 @@ import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Visibility
 import androidx.compose.material.icons.filled.VisibilityOff
 import androidx.compose.material.icons.rounded.CalendarToday
+import androidx.compose.material.icons.rounded.Info
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DatePicker
@@ -51,13 +57,18 @@ import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.painter.Painter
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
+import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.semantics.contentType
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.unit.DpSize
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.window.Dialog
+import androidx.compose.ui.window.DialogProperties
 import com.example.visualmoney.DarkBackgroundGradient
 import com.example.visualmoney.LocalAppTheme
 import com.example.visualmoney.createGlassGradient
@@ -67,6 +78,11 @@ import com.example.visualmoney.home.IconWithContainer
 import com.example.visualmoney.home.borderGradient
 import com.example.visualmoney.home.borderStroke
 import com.example.visualmoney.home.theme
+import dev.darkokoa.datetimewheelpicker.WheelDatePicker
+import dev.darkokoa.datetimewheelpicker.core.WheelPickerDefaults
+import dev.darkokoa.datetimewheelpicker.core.format.DateOrder
+import dev.darkokoa.datetimewheelpicker.core.format.MonthDisplayStyle
+import dev.darkokoa.datetimewheelpicker.core.format.dateFormatter
 import kotlinx.datetime.LocalDate
 import kotlinx.datetime.LocalDateTime
 import kotlinx.datetime.TimeZone
@@ -74,8 +90,11 @@ import kotlinx.datetime.format
 import kotlinx.datetime.format.char
 import kotlinx.datetime.toLocalDateTime
 import org.jetbrains.compose.resources.painterResource
+import org.jetbrains.compose.resources.vectorResource
 import visualmoney.composeapp.generated.resources.Res
 import visualmoney.composeapp.generated.resources.arrow_back
+import visualmoney.composeapp.generated.resources.close
+import visualmoney.composeapp.generated.resources.plus
 import kotlin.time.Clock
 import kotlin.time.Instant
 
@@ -86,7 +105,9 @@ fun TopNavigationBar(
     modifier: Modifier = Modifier,
     title: String,
     subtitle: String = "",
-    onBack: () -> Unit
+    hasAddAction: Boolean = false,
+    onBack: () -> Unit,
+    onAdd: () -> Unit = {},
 ) {
     Column(
         modifier = modifier.fillMaxWidth().heightIn(min = theme.dimension.topBarHeight)
@@ -116,9 +137,16 @@ fun TopNavigationBar(
                         style = theme.typography.bodyMedium,
                         color = theme.colors.greyTextColor
                     )
-
                 }
-
+            }
+            if (hasAddAction) {
+                Spacer(modifier = Modifier.weight(1f))
+                IconWithContainer(
+                    onClick = onAdd,
+                    containerColor = theme.colors.primary.c50,
+                    shape = RoundedCornerShape(theme.dimension.smallRadius),
+                    icon = painterResource(Res.drawable.plus),
+                )
             }
         }
     }
@@ -133,6 +161,7 @@ fun InputTextField(
     value: String = "",
     onValueChange: (String) -> Unit = {},
     placeholder: String = "",
+    required:Boolean = false,
     isPassword: Boolean = false,
     onPasswordVisibilityChange: (Boolean) -> Unit = {},
     keyboardOptions: KeyboardOptions = KeyboardOptions.Default,
@@ -187,9 +216,15 @@ fun InputTextField(
     ) {
 
         if (label.isNotEmpty()) {
+            val labelText = buildString {
+                append(label)
+                if (required) {
+                    append(" *")
+                }
+            }
             Text(
                 modifier = Modifier.padding(bottom = theme.dimension.veryCloseSpacing),
-                text = label,
+                text = labelText,
                 style = theme.typography.bodySmallStrong,
                 color = if (error) theme.colors.error else theme.colors.onSurface
             )
@@ -450,13 +485,13 @@ fun BaseButton(
 
     Surface(
         modifier = modifier
-            .then(
-                Modifier.clickable(enabled = enabled, onClick = onClick)
-            )
-            .background(backgroundBrush, shape),
+            .clip(shape)
+            .background(backgroundBrush, shape)
+            .clickable(enabled = enabled, onClick = onClick),
         shape = shape,
         border = if (border) BorderStroke(1.dp, brush = borderGradient) else null,
         color = Color.Transparent,
+
         contentColor = contentColor.copy(alpha = contentAlpha),
     ) {
         Box(
@@ -524,108 +559,116 @@ fun DateInputTextField(
     var showDatePicker by remember { mutableStateOf(false) }
 
     val theme = LocalAppTheme.current
-    val dateState = rememberDatePickerState()
 
-    LaunchedEffect(Unit) {
-        if (value == null) {
-            dateState.selectedDateMillis = Clock.System.now().toEpochMilliseconds()
-        }
+    if (showDatePicker){
+        DateSelectionDialog(
+            selectedDate = value ?: now.date,
+            onValueChange = {
+                onValueChange(it)
+            },
+            onDismiss = {
+                showDatePicker = false
+            }
+        )
     }
 
-    fun openDatePicker() {
-        showDatePicker = true
+    Box {
+        InputTextField(
+            label = label,
+            value = value?.toSimpleDateString() ?: "",
+            placeholder = placeholder,
+            onValueChange = {},
+            readOnly = true,
+            borderAlwaysVisible = true,
+            error = error,
+            trailingIcon = {
+                Icon(
+                    imageVector = Icons.Rounded.CalendarToday,
+                    contentDescription = "Pick a date",
+                    tint = theme.colors.greyTextColor,
+                    modifier = Modifier.size(theme.dimension.smallIconSize)
+                )
+            },
+            modifier = modifier.clickable { showDatePicker = true }
+        )
     }
 
-    // Displayed TextField using your InputTextField
-    InputTextField(
-        label = label,
-        value = value?.toSimpleDateString() ?: "",
-        placeholder = placeholder,
-        onValueChange = {},
-        readOnly = true,
-        borderAlwaysVisible = true,
-        error = error,
-        trailingIcon = {
-            Icon(
-                imageVector = Icons.Rounded.CalendarToday,
-                contentDescription = "Pick a date",
-                tint = theme.colors.greyTextColor,
-                modifier = Modifier.size(theme.dimension.smallIconSize)
-            )
-        },
-        modifier = modifier.clickable { openDatePicker() }
-    )
+}
 
-
-    if (showDatePicker) {
-        //  DatePickerModal()
-
-        DatePickerDialog(
-            onDismissRequest = { showDatePicker = false },
-            shape = RoundedCornerShape(theme.dimension.veryLargeRadius),
-            colors = DatePickerDefaults.colors(
-                containerColor = theme.colors.greyScale.c10,
-                titleContentColor = theme.colors.primary.c50,
-                headlineContentColor = theme.colors.primary.c50,
-
-                ),
-            dismissButton = {
-                TextButton(
-//                    colors = ButtonDefaults.textButtonColors(
-//                        containerColor = theme.colors.greyScale.c10,
-//                        contentColor = theme.colors.primary.c50
-//                    ),
-                    onClick = {
-                        showDatePicker = false
-                    }
-                ) {
-                    Text("Cancel", color = theme.colors.onSurface)
-                }
-
-            },
-            confirmButton = {
-                TextButton(
-                    colors = ButtonDefaults.textButtonColors(
-                        containerColor = theme.colors.greyScale.c10,
-                        contentColor = theme.colors.primary.c50
-                    ),
-                    onClick = {
-                        showDatePicker = false
-                        dateState.selectedDateMillis?.let {
-                            val instant = Instant.fromEpochMilliseconds(it)
-                            val date = instant.toLocalDateTime(TimeZone.currentSystemDefault())
-                            onValueChange(date.date)
-                        }
-                    }
-                ) {
-                    Text("OK", color = theme.colors.blueScale.c50)
-                }
-            },
-
+@Composable
+fun DateSelectionDialog(
+    selectedDate: LocalDate,
+    onValueChange: (LocalDate) -> Unit,
+    onDismiss: () -> Unit
+) {
+    Dialog(
+        properties = DialogProperties(
+            usePlatformDefaultWidth = false
+        ),
+        onDismissRequest = onDismiss,
+    ) {
+        CardContainer(
+            modifier = Modifier.padding(horizontal = theme.dimension.largeSpacing),
+            shape = RoundedCornerShape(theme.dimension.defaultRadius),
+            containerColor = theme.colors.container
+        ) {
+            Column(
+                modifier = Modifier.fillMaxWidth().padding(theme.dimension.veryLargeSpacing),
+                verticalArrangement = Arrangement.spacedBy(theme.dimension.mediumSpacing),
+                horizontalAlignment = Alignment.CenterHorizontally
             ) {
-            DatePicker(
-                dateFormatter = DatePickerDefaults.dateFormatter(
-                    selectedDateSkeleton = "dd MMM, yyyy",
-                ),
+                Text(
+                    "Pick a date",
+                    style = theme.typography.titleSmall,
+                    modifier = Modifier.fillMaxWidth(),
+                    color = theme.colors.onSurface
+                )
+                BoxWithConstraints(modifier = Modifier.fillMaxWidth()) {
+                    WheelDatePicker(
+                        startDate = selectedDate,
+                        size = DpSize(maxWidth, 140.dp),
+                        textStyle = theme.typography.bodyMediumMedium,
+                        dateFormatter = dateFormatter(
+                            dateOrder = DateOrder.DMY,
+                            monthDisplayStyle = MonthDisplayStyle.FULL
+                        ),
+                        textColor = theme.colors.onSurface,
+                        selectorProperties = WheelPickerDefaults.selectorProperties(
+                            enabled = true,
+                            shape = RoundedCornerShape(theme.dimension.defaultRadius),
+                            color = theme.colors.surface,
+                            border = borderStroke
+                        )
+                    ) { snappedDate ->
+                        onValueChange(snappedDate)
+                    }
+                }
 
-                colors = DatePickerDefaults.colors(
-                    containerColor = theme.colors.greyScale.c10,
-                    titleContentColor = theme.colors.onSurface,
-                    navigationContentColor = theme.colors.onSurface,
-                    headlineContentColor = theme.colors.onSurface,
-                    selectedDayContainerColor = theme.colors.onSurface,
-                    selectedDayContentColor = Color.White,
-                    todayDateBorderColor = theme.colors.onSurface,
-                    todayContentColor = theme.colors.onSurface,
-                    dividerColor = theme.colors.onSurface,
-                ),
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(theme.dimension.mediumSpacing)
+                ) {
+                    LargeButton(
+                        modifier = Modifier.weight(1f),
+                        text = "Cancel",
+                        backgroundColor = theme.colors.container,
+                        contentColor = theme.colors.onPrimary,
+                        onClick = onDismiss
+                    )
+                    LargeButton(
+                        modifier = Modifier.weight(1f),
+                        text = "OK",
+                        backgroundColor = theme.colors.primary.c50,
+                        contentColor = theme.colors.onPrimary,
+                        onClick = onDismiss
+                    )
 
-                state = dateState,
+                }
+            }
 
-                //    title = { Text("Select Date") },
-
-            )
         }
+
     }
 }
 
@@ -655,9 +698,9 @@ fun LocalDate.toApiDateString(): String {
     val formatter = LocalDate.Format {
         year()
         char('-')
-        day()
-        char('/')
         monthNumber()
+        char('-')
+        day()
     }
     return this.format(formatter)
 }
@@ -669,4 +712,131 @@ fun Long.toLocalDateTime(): LocalDateTime {
 
 expect fun getCountries(): List<Country>
 data class Country(val countryCode: String = "", val displayText: String = "")
+
+enum class AlertType {
+    SUCCESS,
+    ERROR,
+    DELETE,
+}
+
+@Composable
+fun BaseAlertPopup(
+    modifier: Modifier = Modifier,
+    title: String,
+    description: String,
+    type: AlertType,
+//    vector: ImageVector? = null,
+    onPrimaryAction: () -> Unit = {},
+    onSecondaryAction: () -> Unit = {},
+    canBeDismissed: Boolean = true,
+    primaryActionText: String = "",
+    secondaryActionText: String = "",
+    onDismiss: () -> Unit = {}
+) {
+    val theme = LocalAppTheme.current
+//    val icon = vector ?: when (type) {
+//        AlertType.SUCCESS -> vectorResource(Res.drawable.ic_done)
+//        AlertType.ERROR -> vectorResource(Res.drawable.ic_error_illustration)
+//        AlertType.DELETE -> vectorResource(Res.drawable.ic_delete_confirm)
+//    }
+
+    val primaryButtonColor = when (type) {
+        AlertType.SUCCESS -> theme.colors.primary.c50
+        AlertType.DELETE -> theme.colors.error
+        else -> theme.colors.onSurface
+    }
+    val primaryButtonTextColor = when (type) {
+        AlertType.SUCCESS -> theme.colors.onPrimary
+        AlertType.DELETE -> theme.colors.onPrimary
+        else -> Color.White
+    }
+    val haptics = LocalHapticFeedback.current
+
+    LaunchedEffect(Unit) {
+        haptics.performHapticFeedback(HapticFeedbackType.LongPress)
+    }
+
+    Dialog(
+        onDismissRequest = onDismiss,
+        properties = DialogProperties(
+            usePlatformDefaultWidth = false
+        )
+    ) {
+        Surface(
+            modifier = modifier.padding(horizontal = theme.dimension.largeSpacing),
+            shape = RoundedCornerShape(theme.dimension.largeRadius),
+            color = theme.colors.surface,
+        ) {
+            Column(
+                modifier = Modifier
+                    .padding(theme.dimension.pagePadding),
+                horizontalAlignment = Alignment.CenterHorizontally,
+            ) {
+                // Close icon
+                if (canBeDismissed) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.End
+                    ) {
+                        Icon(
+                            painter = painterResource(Res.drawable.close),
+                            contentDescription = "Dismiss",
+                            modifier = Modifier.size(theme.dimension.iconSize)
+                                .clickable { onDismiss() },
+                            tint = theme.colors.onSurface
+                        )
+                    }
+                }
+                Column(
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.spacedBy(theme.dimension.closeSpacing)
+                ) {
+                    Text(
+                        text = title,
+                        style = theme.typography.titleSmall,
+                        textAlign = TextAlign.Center,
+                        color = theme.colors.onSurface
+                    )
+                }
+                // Description
+                Text(
+                    modifier = Modifier.padding(vertical = theme.dimension.veryLargeSpacing),
+                    text = description,
+                    style = theme.typography.bodyMedium,
+                    color = theme.colors.onSurface,
+                    textAlign = TextAlign.Center
+                )
+                if (secondaryActionText.isNotBlank() || primaryActionText.isNotBlank()) {
+                    Row(
+                        horizontalArrangement = Arrangement.spacedBy(theme.dimension.mediumSpacing),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        if (secondaryActionText.isNotBlank()) {
+                            LargeButton(
+                                onClick = onSecondaryAction,
+                                text = secondaryActionText,
+                                border = true,
+                                modifier = Modifier.fillMaxWidth().weight(1f),
+                                contentColor = theme.colors.onSurface,
+                                backgroundColor = theme.colors.container
+                            )
+                        }
+                        if (primaryActionText.isNotBlank()) {
+                            LargeButton(
+                                onClick = onPrimaryAction,
+                                text = primaryActionText,
+                                modifier = Modifier.fillMaxWidth().weight(1f),
+                                contentColor = primaryButtonTextColor,
+                                backgroundColor = primaryButtonColor
+                            )
+                        }
+
+                    }
+                }
+
+            }
+        }
+    }
+
+}
 

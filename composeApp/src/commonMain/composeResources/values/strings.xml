@@ -5,4 +5,6 @@
     <string name="details">Details</string>
     <string name="news">News</string>
     <string name="new_asset">New Asset</string>
+    <string name="portfolio_overview">Portfolio overview</string>
+    <string name="new_reminder">New reminder</string>
 </resources>
