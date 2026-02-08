@@ -21,6 +21,7 @@ enum class VisualKapitalScreens(val title: StringResource) {
 }
 
 object Routes {
+    const val ONBOARDING = "onboarding"
     const val HOME = "home"
     const val CALENDAR = "calendar"
     const val NEWS = "news"

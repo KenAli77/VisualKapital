@@ -1,0 +1,11 @@
+# Uncomment the next line to define a global platform for your project
+
+target 'iosApp' do
+use_frameworks!
+platform :ios, '16.0'
+# Pods for iosApp
+pod 'composeApp', :path => '../composeApp'
+pod 'RevenueCat'
+pod 'RevenueCatUI'
+
+end
