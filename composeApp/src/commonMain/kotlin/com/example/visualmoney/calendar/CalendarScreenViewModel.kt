@@ -11,6 +11,8 @@ import com.example.visualmoney.SnackbarType
 import com.example.visualmoney.data.repository.FinancialRepository
 import com.example.visualmoney.data.repository.InvestmentReminderRepository
 import kotlinx.coroutines.launch
+import kotlinx.datetime.LocalDate
+import kotlinx.datetime.yearMonth
 
 class CalendarScreenViewModel(
     private val repo: FinancialRepository,
@@ -27,6 +29,9 @@ class CalendarScreenViewModel(
                     assets = it,
                     searchResults = it
                 )
+                state = state.copy(
+                    availableAssets = it
+                )
             }
         }
         viewModelScope.launch {
@@ -34,6 +39,49 @@ class CalendarScreenViewModel(
                 state = state.copy(
                     reminders = it
                 )
+                var showRemindersBadge = it.any { !it.isDone && it.dueDate <= LocalDate.now() }
+
+            }
+        }
+    }
+
+
+    fun onEvent(event: CalendarEvent) {
+        when (event) {
+            is CalendarEvent.DateSelected -> {
+                state = state.copy(
+                    selectedDate = event.date
+                )
+            }
+
+            is CalendarEvent.OnReminderDoneChanged -> {
+                viewModelScope.launch {
+                    remindersRepo.setDone(event.id, event.done)
+                }
+            }
+
+            is CalendarEvent.OnRemoveReminder -> {
+                viewModelScope.launch {
+                    remindersRepo.delete(event.id)
+                    SnackbarManager.showMessage("Reminder deleted", SnackbarType.SUCCESS)
+                }
+            }
+
+            is CalendarEvent.NextMonth -> {
+                val nextMonth = state.selectedDate.yearMonth.plusMonths(1)
+                val date = nextMonth.atDay(1)
+                state = state.copy(
+                    selectedDate = date
+                )
+            }
+
+            is CalendarEvent.PrevMonth -> {
+                val prevMonth = state.selectedDate.yearMonth.plusMonths(1)
+                val date = prevMonth.atDay(1)
+                state = state.copy(
+                    selectedDate = date
+                )
+
             }
         }
     }
@@ -67,26 +115,32 @@ class CalendarScreenViewModel(
             is ReminderInputEvent.HideReminderInputSheet -> {
                 state = state.copy(reminderInputVisible = false)
             }
+
             is ReminderInputEvent.ShowReminderInputSheet -> {
-                state = state.copy(reminderInputVisible = false)
+                state = state.copy(reminderInputVisible = true)
 
             }
 
             is ReminderInputEvent.Save -> {
                 if (newReminderState.isValidForSubmit) {
+                    println("Ready for save of reminder with asset: ${newReminderState.selectedAsset}")
                     viewModelScope.launch {
                         LoadingManager.startLoading()
                         val reminder = newReminderState.toReminder()
                         remindersRepo.upsert(reminder)
                         LoadingManager.stopLoading()
-                        SnackbarManager.showMessage("Reminder saved", SnackbarType.SUCCESS)
                         newReminderState = ReminderInputState()
                         state = state.copy(
                             reminderInputVisible = false
                         )
+                        SnackbarManager.showMessage("Reminder saved", SnackbarType.SUCCESS)
+
                     }
                 } else {
-                    SnackbarManager.showMessage("Please enter all required fields", SnackbarType.ERROR)
+                    SnackbarManager.showMessage(
+                        "Please enter all required fields",
+                        SnackbarType.ERROR
+                    )
                 }
             }
 

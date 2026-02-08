@@ -25,6 +25,9 @@ import com.example.visualmoney.assetDetails.AssetDetailsScreen
 import com.example.visualmoney.assetDetails.AssetDetailsViewModel
 import com.example.visualmoney.calendar.CalendarScreen
 import com.example.visualmoney.calendar.CalendarScreenViewModel
+import com.example.visualmoney.calendar.NewReminderScreen
+import com.example.visualmoney.calendar.reminderBadgeColor
+import com.example.visualmoney.calendar.showRemindersBadge
 import com.example.visualmoney.home.HomeScreen
 import com.example.visualmoney.home.HomeViewModel
 import com.example.visualmoney.navigation.Routes
@@ -37,14 +40,15 @@ import org.koin.compose.viewmodel.koinViewModel
 fun VisualKapitalApp(navController: NavHostController = rememberNavController()) {
     var symbol by remember { mutableStateOf("") }
     Box(modifier = Modifier.background(DarkBackgroundGradient)) {
-        LoadingOverlay(modifier = Modifier.fillMaxSize())
-        SnackBarComponent()
         Scaffold(
             modifier = Modifier.fillMaxSize(),
             containerColor = Color.Transparent,
         ) { paddingValues ->
             val homeViewModel = koinViewModel<HomeViewModel>()
+            val calendarViewModel =
+                koinViewModel<CalendarScreenViewModel>()
             NavHost(navController, startDestination = Routes.HOME) {
+
                 composable(route = Routes.HOME) {
 
                     HomeScreen(
@@ -53,6 +57,8 @@ fun VisualKapitalApp(navController: NavHostController = rememberNavController())
                             symbol = it
                             navController.navigate(Routes.details(it))
                         },
+                        showCalendarBadge = calendarViewModel.state.showRemindersBadge,
+                        calendarBadgeColor = calendarViewModel.state.reminderBadgeColor,
                         onGoToBalance = {
                             navController.navigate(Routes.PORTFOLIO_OVERVIEW)
                         },
@@ -61,12 +67,19 @@ fun VisualKapitalApp(navController: NavHostController = rememberNavController())
                     )
                 }
                 composable(route = Routes.CALENDAR) { backStackEntry ->
-                    val viewModel =
-                        koinViewModel<CalendarScreenViewModel>(viewModelStoreOwner = backStackEntry)
                     CalendarScreen(
                         modifier = Modifier.padding(top = paddingValues.calculateTopPadding()),
-                        viewModel = viewModel,
-                        onBack = { navController.popBackStack() })
+                        viewModel = calendarViewModel,
+                        onBack = { navController.popBackStack() },
+                        onAddReminder = { navController.navigate(Routes.NEW_REMINDER) }
+                    )
+                }
+                composable(route = Routes.NEW_REMINDER) {
+                    NewReminderScreen(
+                        calendarViewModel,
+                        onBack = { navController.popBackStack() },
+                        modifier = Modifier.padding(top = paddingValues.calculateTopPadding())
+                    )
                 }
                 composable(route = Routes.NEW_ASSET) {
                     val viewModel = koinViewModel<NewAssetViewModel>()
@@ -102,5 +115,8 @@ fun VisualKapitalApp(navController: NavHostController = rememberNavController())
                 }
             }
         }
+        LoadingOverlay(modifier = Modifier.fillMaxSize())
+        SnackBarComponent()
+
     }
 }

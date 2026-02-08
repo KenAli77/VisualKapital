@@ -90,8 +90,7 @@ fun LoadingOverlay(modifier: Modifier = Modifier) {
     ) {
         Box(
             modifier = modifier
-//                .fillMaxSize()
-                .background(Color.White.copy(alpha = 0.5f))
+                .background(theme.colors.surface.copy(alpha = 0.5f))
                 .zIndex(1f), // Semi-transparent black overlay
             contentAlignment = Alignment.Center
         ) {

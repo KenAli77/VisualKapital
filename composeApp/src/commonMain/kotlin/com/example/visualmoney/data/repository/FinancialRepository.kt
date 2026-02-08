@@ -1,5 +1,7 @@
 package com.example.visualmoney.data.repository
 
+import com.example.visualmoney.calendar.now
+import com.example.visualmoney.core.toLocalDateTime
 import com.example.visualmoney.data.local.CachedQuoteDao
 import com.example.visualmoney.data.local.CachedQuoteEntity
 import com.example.visualmoney.data.local.PortfolioAsset
@@ -13,6 +15,7 @@ import com.example.visualmoney.domain.model.AssetQuote
 import com.example.visualmoney.domain.model.ChartPoint
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.firstOrNull
+import kotlinx.datetime.LocalDate
 import kotlin.time.Clock
 
 private const val QUOTE_TTL_MS = 5 * 60 * 60 * 1000L // 5 hours
@@ -55,6 +58,12 @@ class FinancialRepositoryImpl(
 
     override suspend fun getQuote(symbol: String): AssetQuote {
         val now = Clock.System.now().toEpochMilliseconds()
+        val local = cachedQuoteDao.get(symbol)
+        local?.let {
+            if (it.updatedAtEpochMs.toLocalDateTime().date == LocalDate.now()) {
+                return@getQuote it.toAsset()
+            }
+        }
         val remote = remoteSource.getQuote(symbol)
         val entity = CachedQuoteEntity(
             symbol = remote.symbol,

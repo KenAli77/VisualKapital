@@ -22,7 +22,7 @@ data class AssetInputState(
             AssetCategory.STOCKS -> "Ticker, Stock, ETF, ..."
             AssetCategory.CRYPTO -> "eg. Bitcoin"
             AssetCategory.COMMODITIES -> "eg. Gold"
-            AssetCategory.OTHER -> ""
+            AssetCategory.OTHER -> "eg. Condo Lewis street, Cash account ... "
         }
     val assetFieldTitle: String
         get() = when (currentTab) {
@@ -37,7 +37,8 @@ val AssetInputState.totalValue: Double
     get() {
         return (purchasePrice ?: 0.0) * (quantity ?: 0)
     }
-
+val AssetInputState.isOtherTab: Boolean
+    get() = currentTab == AssetCategory.OTHER
 val AssetInputState.isValidForSubmit: Boolean
     get() {
         return if (selectedSecurity != null) {

@@ -64,6 +64,7 @@ import com.example.visualmoney.home.theme
 import com.example.visualmoney.newAsset.event.AssetInputEvent
 import com.example.visualmoney.newAsset.event.ManualAssetInputEvent
 import com.example.visualmoney.newAsset.state.AssetInputState
+import com.example.visualmoney.newAsset.state.isOtherTab
 import com.example.visualmoney.newAsset.state.isValidForSubmit
 import com.example.visualmoney.newAsset.state.totalValue
 import kotlinx.coroutines.launch
@@ -92,16 +93,12 @@ fun NewAssetScreen(
             modifier = Modifier.fillMaxSize(),
             verticalArrangement = Arrangement.spacedBy(theme.dimension.largeSpacing),
         ) {
-            Row(
-                modifier = Modifier.padding(horizontal = theme.dimension.pagePadding),
-
-                ) {
+            Row(modifier = Modifier.padding(horizontal = theme.dimension.pagePadding)) {
                 TopNavigationBar(
                     title = "New Asset",
                     subtitle = "Add a new asset to your portfolio",
                     onBack = onBack
                 )
-
             }
             Box(
                 modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.BottomCenter
@@ -163,7 +160,7 @@ data class ManualAssetInputState(
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun ListedAssetInputScreen(
+fun AssetInputScreen(
     modifier: Modifier = Modifier,
     state: AssetInputState,
     onEvent: (AssetInputEvent) -> Unit = {}
@@ -200,35 +197,49 @@ fun ListedAssetInputScreen(
             contentPadding = PaddingValues(bottom = theme.dimension.bottomBarHeight * 8)
         ) {
             item() {
-                Column(
-                    verticalArrangement = Arrangement.spacedBy(theme.dimension.veryCloseSpacing)
-                ) {
-                    Text(
-                        modifier = Modifier.padding(bottom = theme.dimension.veryCloseSpacing),
-                        text = state.assetFieldTitle,
-                        style = theme.typography.bodySmallStrong,
-                        color = theme.colors.onSurface
+                if (state.isOtherTab) {
+                    InputTextField(
+                        readOnly = false,
+                        required = true,
+                        label = "Asset name",
+                        borderAlwaysVisible = true,
+                        placeholder = state.searchBarPlaceHolder,
+                        value = state.assetName,
+                        onValueChange = {
+                            onEvent(AssetInputEvent.NameChanged(it))
+                        }
                     )
-                    Row(modifier = Modifier.clickable {
-                        showSearchSheet = true
-                    }) {
-                        if (selectedSecurity != null) {
-                            SelectedAssetField(
-                                rowItem = selectedSecurity,
-                            )
-                        } else {
-                            InputTextField(
-                                readOnly = true,
-                                borderAlwaysVisible = true,
-                                placeholder = state.searchBarPlaceHolder,
-                                leadingIcon = {
-                                    Icon(
-                                        painterResource(Res.drawable.search),
-                                        null,
-                                        modifier = Modifier.size(theme.dimension.smallIconSize),
-                                        tint = theme.colors.greyTextColor
-                                    )
-                                })
+                } else {
+                    Column(
+                        verticalArrangement = Arrangement.spacedBy(theme.dimension.veryCloseSpacing)
+                    ) {
+                        Text(
+                            modifier = Modifier.padding(bottom = theme.dimension.veryCloseSpacing),
+                            text = state.assetFieldTitle,
+                            style = theme.typography.bodySmallStrong,
+                            color = theme.colors.onSurface
+                        )
+                        Row(modifier = Modifier.clickable {
+                            showSearchSheet = true
+                        }) {
+                            if (selectedSecurity != null) {
+                                SelectedAssetField(
+                                    rowItem = selectedSecurity,
+                                )
+                            } else {
+                                InputTextField(
+                                    readOnly = true,
+                                    borderAlwaysVisible = true,
+                                    placeholder = state.searchBarPlaceHolder,
+                                    leadingIcon = {
+                                        Icon(
+                                            painterResource(Res.drawable.search),
+                                            null,
+                                            modifier = Modifier.size(theme.dimension.smallIconSize),
+                                            tint = theme.colors.greyTextColor
+                                        )
+                                    })
+                            }
                         }
                     }
                 }
@@ -239,11 +250,11 @@ fun ListedAssetInputScreen(
                     label = "Transaction date",
                     value = state.purchasedAt,
                     onValueChange = { onEvent(AssetInputEvent.PurchaseDateChanged(it)) })
-
             }
             item {
                 InputTextField(
                     label = "Purchase price",
+                    required = true,
                     value = state.purchasePrice?.let {
                         it.toString()
                     } ?: "",
@@ -265,9 +276,11 @@ fun ListedAssetInputScreen(
                 InputTextField(
                     label = "Current value",
                     placeholder = "0.0",
+                    required = true,
                     value = currentValue?.let {
-                       it.toString()
+                        it.toString()
                     } ?: "",
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                     trailingIcon = {
                         Icon(
                             imageVector = Icons.Rounded.EuroSymbol,
@@ -284,6 +297,7 @@ fun ListedAssetInputScreen(
             item {
                 InputTextField(
                     label = "Quantity",
+                    required = true,
                     placeholder = "0",
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                     value = "${state.quantity ?: ""}",
@@ -303,53 +317,6 @@ fun ListedAssetInputScreen(
 
 }
 
-@Composable
-fun ManualAssetInputScreen(
-    modifier: Modifier = Modifier,
-    state: ManualAssetInputState = ManualAssetInputState(),
-    onEvent: (ManualAssetInputEvent) -> Unit = {}
-) {
-    var showDialog by remember { mutableStateOf(false) }
-    var expanded by remember { mutableStateOf(false) }
-
-    Column(
-        modifier = modifier,
-        verticalArrangement = Arrangement.spacedBy(theme.dimension.largeSpacing)
-    ) {
-        InputTextField(
-            label = "Asset name",
-            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Text),
-            value = state.name,
-            onValueChange = { onEvent(ManualAssetInputEvent.NameChanged(it)) })
-
-        InputTextField(
-            label = "Purchase price",
-            value = "%.2f".format(state.computedTotalValue),
-            trailingIcon = {
-                Icon(
-                    imageVector = Icons.Rounded.EuroSymbol,
-                    contentDescription = null,
-                    tint = theme.colors.greyTextColor,
-                    modifier = Modifier.size(theme.dimension.smallIconSize)
-                )
-            },
-            onValueChange = {})
-
-        DateInputTextField(
-            label = "Transaction date",
-            value = state.purchaseDate,
-            onValueChange = { onEvent(ManualAssetInputEvent.PurchaseDateChanged(it)) })
-
-        InputTextField(
-            modifier = Modifier.weight(1f),
-            label = "Notes",
-            value = state.notes,
-            onValueChange = { onEvent(ManualAssetInputEvent.UnitPriceChanged(it)) })
-        state.error?.let { err ->
-            Text(text = err, color = theme.colors.error)
-        }
-    }
-}
 
 @Composable
 fun NewAssetInputContent(
@@ -417,14 +384,7 @@ fun NewAssetInputContent(
                     }
                 }
             }
-
-            AnimatedContent(showOtherView) { show ->
-                if (show) {
-                    ManualAssetInputScreen()
-                } else {
-                    ListedAssetInputScreen(state = state, onEvent = onEvent)
-                }
-            }
+            AssetInputScreen(state = state, onEvent = onEvent)
 
         }
     }
@@ -454,7 +414,7 @@ fun ListedAssetSearchSheet(
             modifier = Modifier.fillMaxSize().padding(theme.dimension.pagePadding),
             verticalArrangement = Arrangement.spacedBy(theme.dimension.largeSpacing),
         ) {
-            Column( verticalArrangement = Arrangement.spacedBy(theme.dimension.largeSpacing)) {
+            Column(verticalArrangement = Arrangement.spacedBy(theme.dimension.largeSpacing)) {
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.SpaceBetween,

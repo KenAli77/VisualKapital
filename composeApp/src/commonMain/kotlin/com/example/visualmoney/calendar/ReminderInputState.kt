@@ -17,7 +17,7 @@ data class ReminderInputState(
 )
 
 val ReminderInputState.isValidForSubmit: Boolean get() {
-    return selectedAsset != null
+    return selectedAsset != null && description.isNotBlank()
 }
 
 @OptIn(ExperimentalUuidApi::class)

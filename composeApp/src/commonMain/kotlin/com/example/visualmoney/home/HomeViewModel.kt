@@ -8,7 +8,6 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.text.intl.Locale
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.visualmoney.AssetCategory
@@ -87,16 +86,14 @@ class HomeViewModel(
 
                     try {
                         // 1) Fetch quotes for quote-tracked assets (in parallel)
-                        val quoteMap: Map<String, AssetQuote> =
+                        val quoteMap=
                             assets
                                 .filter { it.isQuoteTracked }
                                 .map { it.symbol }
-                                .distinct()
-                                .map { symbol ->
-                                    async { symbol to repository.getQuote(symbol) }
+                                .distinct().associateWith {
+                                    symbol -> repository.getQuote(symbol)
                                 }
-                                .awaitAll()
-                                .toMap()
+
 
                         // 2) Build UI rows + portfolio metrics
                         val (holdingRows, metrics) = buildHoldingsAndMetrics(assets, quoteMap)
@@ -123,7 +120,7 @@ class HomeViewModel(
     private fun buildHoldingsAndMetrics(
         assets: List<PortfolioAsset>,
         quoteMap: Map<String, AssetQuote>
-    ): Pair<List<HoldingRowUi>, PortfolioMetrics> {
+    ): Pair<List<AssetListItemUI>, PortfolioMetrics> {
 
         var totalValue = 0.0
         var totalCost = 0.0
@@ -146,12 +143,13 @@ class HomeViewModel(
                 ((currentPrice - asset.purchasePrice) / asset.purchasePrice) * 100.0
             } else 0.0
 
-            HoldingRowUi(
+            AssetListItemUI(
                 symbol = asset.symbol,
                 name = asset.name,
                 assetClass = asset.type,
                 changePct = changePct,
                 price = currentPrice,
+                note = asset.notes ?: asset.note,
                 dayLow = quoteMap[asset.symbol]?.dayLow ?: currentPrice,
                 dayHigh = quoteMap[asset.symbol]?.dayHigh ?: currentPrice,
                 logoUrl = LogoUtil.getLogoUrl(asset.symbol)
@@ -171,7 +169,7 @@ class HomeViewModel(
 }
 
 data class HomeUiState(
-    val holdings: List<HoldingRowUi> = emptyList(),
+    val holdings: List<AssetListItemUI> = emptyList(),
     val isLoading: Boolean = true,
     val distribution: List<PortfolioDistributionItem> = emptyList(),
     val metrics: PortfolioMetrics = PortfolioMetrics(),

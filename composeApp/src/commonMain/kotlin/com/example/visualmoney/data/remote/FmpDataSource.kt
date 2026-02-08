@@ -26,7 +26,6 @@ class FmpDataSource(private val client: HttpClient) {
                 parameter("apikey", apiKey)
             }.body()
             response.firstOrNull() ?: AssetQuote()
-
         } catch (e: Exception) {
             AssetQuote()
         }

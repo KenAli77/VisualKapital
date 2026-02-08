@@ -11,6 +11,7 @@ data class AssetDetailState(
     val selectedChartRange: ChartRange = ChartRange.ONE_YEAR,
     val quote: AssetQuote? = AssetQuote(),
     val profile: AssetProfile? = AssetProfile(),
+    val isLoading:Boolean = false,
     val chart1W: List<ChartPoint> = emptyList(),
     val chart1M: List<ChartPoint> = emptyList(),
     val chart3M: List<ChartPoint> = emptyList(),

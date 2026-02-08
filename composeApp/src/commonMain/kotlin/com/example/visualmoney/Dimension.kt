@@ -29,7 +29,7 @@ val DefaultAppDimension = AppDimension(
     verySmallRadius = 6.dp,
     smallRadius = 8.dp,
     chipRadius = 12.dp,
-    defaultRadius = 16.dp,
+    defaultRadius = 18.dp,
     largeRadius = 22.dp,
     veryLargeRadius = 28.dp
 )

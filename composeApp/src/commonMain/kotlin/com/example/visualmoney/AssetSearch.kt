@@ -436,27 +436,7 @@ fun SearchResultRow(
     }
 }
 
-// ---------- Small shared icon container (same look as your Home) ----------
-@Composable
-private fun IconWithContainer(
-    onClick: () -> Unit = {},
-    icon: androidx.compose.ui.graphics.vector.ImageVector,
-    contentDescription: String = "",
-    containerColor: Color = theme.colors.container,
-    modifier: Modifier = Modifier,
-    shape: Shape = CircleShape
-) {
-    Box(
-        modifier = modifier.clip(shape).background(containerColor).clickable { onClick() }) {
-        Icon(
-            icon,
-            contentDescription = contentDescription,
-            modifier = Modifier.padding(theme.dimension.mediumSpacing)
-                .size(theme.dimension.iconSize),
-            tint = theme.colors.onSurface
-        )
-    }
-}
+
 
 @Composable
 fun SelectedAssetField(modifier: Modifier = Modifier, rowItem: SearchResultRowUi) {
@@ -489,30 +469,33 @@ fun SelectedAssetField(modifier: Modifier = Modifier, rowItem: SearchResultRowUi
                         size = theme.dimension.smallIconSize
                     )
                     Row(
+                        modifier = Modifier.weight(1f),
                         verticalAlignment = Alignment.CenterVertically,
                         horizontalArrangement = Arrangement.spacedBy(theme.dimension.closeSpacing)
                     ) {
                         Text(
-                            rowItem.name,
-                            style = theme.typography.bodyMediumStrong,
-                            color = theme.colors.onSurface
-                        )
-                        Text(
                             rowItem.symbol,
+                            style = theme.typography.bodyMediumStrong,
+                            color = theme.colors.onSurface,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis
+                        )
+
+                        Text(
+                            rowItem.name,
+                            modifier = Modifier.weight(1f),
                             style = theme.typography.bodyMedium,
-                            color = theme.colors.greyTextColor
+                            color = theme.colors.greyTextColor,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis
                         )
                     }
-                    Spacer(Modifier.weight(1f))
 
                     Icon(
                         painterResource(Res.drawable.edit_variant),
                         null,
                         tint = theme.colors.greyTextColor,
-                        modifier = Modifier.size(theme.dimension.smallIconSize)
-                           ,
-
-                        )
+                        modifier = Modifier.size(theme.dimension.smallIconSize),)
 
 
                 }

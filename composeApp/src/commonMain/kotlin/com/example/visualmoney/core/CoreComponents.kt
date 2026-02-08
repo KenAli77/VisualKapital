@@ -2,6 +2,7 @@ package com.example.visualmoney.core
 
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -22,9 +23,11 @@ import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Visibility
 import androidx.compose.material.icons.filled.VisibilityOff
 import androidx.compose.material.icons.rounded.CalendarToday
+import androidx.compose.material.icons.rounded.Info
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DatePicker
@@ -54,6 +57,8 @@ import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.painter.Painter
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
+import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.semantics.contentType
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.input.PasswordVisualTransformation
@@ -85,8 +90,10 @@ import kotlinx.datetime.format
 import kotlinx.datetime.format.char
 import kotlinx.datetime.toLocalDateTime
 import org.jetbrains.compose.resources.painterResource
+import org.jetbrains.compose.resources.vectorResource
 import visualmoney.composeapp.generated.resources.Res
 import visualmoney.composeapp.generated.resources.arrow_back
+import visualmoney.composeapp.generated.resources.close
 import visualmoney.composeapp.generated.resources.plus
 import kotlin.time.Clock
 import kotlin.time.Instant
@@ -137,6 +144,7 @@ fun TopNavigationBar(
                 IconWithContainer(
                     onClick = onAdd,
                     containerColor = theme.colors.primary.c50,
+                    shape = RoundedCornerShape(theme.dimension.smallRadius),
                     icon = painterResource(Res.drawable.plus),
                 )
             }
@@ -153,6 +161,7 @@ fun InputTextField(
     value: String = "",
     onValueChange: (String) -> Unit = {},
     placeholder: String = "",
+    required:Boolean = false,
     isPassword: Boolean = false,
     onPasswordVisibilityChange: (Boolean) -> Unit = {},
     keyboardOptions: KeyboardOptions = KeyboardOptions.Default,
@@ -207,9 +216,15 @@ fun InputTextField(
     ) {
 
         if (label.isNotEmpty()) {
+            val labelText = buildString {
+                append(label)
+                if (required) {
+                    append(" *")
+                }
+            }
             Text(
                 modifier = Modifier.padding(bottom = theme.dimension.veryCloseSpacing),
-                text = label,
+                text = labelText,
                 style = theme.typography.bodySmallStrong,
                 color = if (error) theme.colors.error else theme.colors.onSurface
             )
@@ -472,8 +487,7 @@ fun BaseButton(
         modifier = modifier
             .clip(shape)
             .background(backgroundBrush, shape)
-            .clickable(enabled = enabled, onClick = onClick)
-        ,
+            .clickable(enabled = enabled, onClick = onClick),
         shape = shape,
         border = if (border) BorderStroke(1.dp, brush = borderGradient) else null,
         color = Color.Transparent,
@@ -546,6 +560,18 @@ fun DateInputTextField(
 
     val theme = LocalAppTheme.current
 
+    if (showDatePicker){
+        DateSelectionDialog(
+            selectedDate = value ?: now.date,
+            onValueChange = {
+                onValueChange(it)
+            },
+            onDismiss = {
+                showDatePicker = false
+            }
+        )
+    }
+
     Box {
         InputTextField(
             label = label,
@@ -565,17 +591,6 @@ fun DateInputTextField(
             },
             modifier = modifier.clickable { showDatePicker = true }
         )
-        AnimatedVisibility(visible = showDatePicker) {
-            DateSelectionDialog (
-                selectedDate = value ?: now.date,
-                onValueChange = {
-                    onValueChange(it)
-                },
-                onDismiss = {
-                    showDatePicker = false
-                }
-            )
-        }
     }
 
 }
@@ -587,9 +602,13 @@ fun DateSelectionDialog(
     onDismiss: () -> Unit
 ) {
     Dialog(
-        onDismissRequest = { onDismiss() },
+        properties = DialogProperties(
+            usePlatformDefaultWidth = false
+        ),
+        onDismissRequest = onDismiss,
     ) {
         CardContainer(
+            modifier = Modifier.padding(horizontal = theme.dimension.largeSpacing),
             shape = RoundedCornerShape(theme.dimension.defaultRadius),
             containerColor = theme.colors.container
         ) {
@@ -693,4 +712,131 @@ fun Long.toLocalDateTime(): LocalDateTime {
 
 expect fun getCountries(): List<Country>
 data class Country(val countryCode: String = "", val displayText: String = "")
+
+enum class AlertType {
+    SUCCESS,
+    ERROR,
+    DELETE,
+}
+
+@Composable
+fun BaseAlertPopup(
+    modifier: Modifier = Modifier,
+    title: String,
+    description: String,
+    type: AlertType,
+//    vector: ImageVector? = null,
+    onPrimaryAction: () -> Unit = {},
+    onSecondaryAction: () -> Unit = {},
+    canBeDismissed: Boolean = true,
+    primaryActionText: String = "",
+    secondaryActionText: String = "",
+    onDismiss: () -> Unit = {}
+) {
+    val theme = LocalAppTheme.current
+//    val icon = vector ?: when (type) {
+//        AlertType.SUCCESS -> vectorResource(Res.drawable.ic_done)
+//        AlertType.ERROR -> vectorResource(Res.drawable.ic_error_illustration)
+//        AlertType.DELETE -> vectorResource(Res.drawable.ic_delete_confirm)
+//    }
+
+    val primaryButtonColor = when (type) {
+        AlertType.SUCCESS -> theme.colors.primary.c50
+        AlertType.DELETE -> theme.colors.error
+        else -> theme.colors.onSurface
+    }
+    val primaryButtonTextColor = when (type) {
+        AlertType.SUCCESS -> theme.colors.onPrimary
+        AlertType.DELETE -> theme.colors.onPrimary
+        else -> Color.White
+    }
+    val haptics = LocalHapticFeedback.current
+
+    LaunchedEffect(Unit) {
+        haptics.performHapticFeedback(HapticFeedbackType.LongPress)
+    }
+
+    Dialog(
+        onDismissRequest = onDismiss,
+        properties = DialogProperties(
+            usePlatformDefaultWidth = false
+        )
+    ) {
+        Surface(
+            modifier = modifier.padding(horizontal = theme.dimension.largeSpacing),
+            shape = RoundedCornerShape(theme.dimension.largeRadius),
+            color = theme.colors.surface,
+        ) {
+            Column(
+                modifier = Modifier
+                    .padding(theme.dimension.pagePadding),
+                horizontalAlignment = Alignment.CenterHorizontally,
+            ) {
+                // Close icon
+                if (canBeDismissed) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.End
+                    ) {
+                        Icon(
+                            painter = painterResource(Res.drawable.close),
+                            contentDescription = "Dismiss",
+                            modifier = Modifier.size(theme.dimension.iconSize)
+                                .clickable { onDismiss() },
+                            tint = theme.colors.onSurface
+                        )
+                    }
+                }
+                Column(
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.spacedBy(theme.dimension.closeSpacing)
+                ) {
+                    Text(
+                        text = title,
+                        style = theme.typography.titleSmall,
+                        textAlign = TextAlign.Center,
+                        color = theme.colors.onSurface
+                    )
+                }
+                // Description
+                Text(
+                    modifier = Modifier.padding(vertical = theme.dimension.veryLargeSpacing),
+                    text = description,
+                    style = theme.typography.bodyMedium,
+                    color = theme.colors.onSurface,
+                    textAlign = TextAlign.Center
+                )
+                if (secondaryActionText.isNotBlank() || primaryActionText.isNotBlank()) {
+                    Row(
+                        horizontalArrangement = Arrangement.spacedBy(theme.dimension.mediumSpacing),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        if (secondaryActionText.isNotBlank()) {
+                            LargeButton(
+                                onClick = onSecondaryAction,
+                                text = secondaryActionText,
+                                border = true,
+                                modifier = Modifier.fillMaxWidth().weight(1f),
+                                contentColor = theme.colors.onSurface,
+                                backgroundColor = theme.colors.container
+                            )
+                        }
+                        if (primaryActionText.isNotBlank()) {
+                            LargeButton(
+                                onClick = onPrimaryAction,
+                                text = primaryActionText,
+                                modifier = Modifier.fillMaxWidth().weight(1f),
+                                contentColor = primaryButtonTextColor,
+                                backgroundColor = primaryButtonColor
+                            )
+                        }
+
+                    }
+                }
+
+            }
+        }
+    }
+
+}
 

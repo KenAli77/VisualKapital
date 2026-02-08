@@ -5,6 +5,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.example.visualmoney.LoadingManager
 import com.example.visualmoney.data.repository.FinancialRepository
 import kotlinx.coroutines.launch
 
@@ -14,8 +15,20 @@ class AssetDetailsViewModel(private val repository: FinancialRepository) : ViewM
         private set
 
 
+    override fun onCleared() {
+        LoadingManager.stopLoading()
+        super.onCleared()
+    }
     fun loadSymbolData(symbol: String) {
         viewModelScope.launch {
+            LoadingManager.startLoading()
+            viewModelScope.launch {
+                repository.getPortfolioAsset(symbol).collect {
+                    state = state.copy(
+                        asset = it
+                    )
+                }
+            }
             val profile = repository.getProfile(symbol)
             val quote = repository.getQuote(symbol)
             val chart1W = repository.getChart(
@@ -47,15 +60,9 @@ class AssetDetailsViewModel(private val repository: FinancialRepository) : ViewM
                 chart1M = chart1M,
                 chart3M = chart3M,
             )
+            LoadingManager.stopLoading()
+        }
 
-        }
-        viewModelScope.launch {
-            repository.getPortfolioAsset(symbol).collect {
-                state = state.copy(
-                    asset = it
-                )
-            }
-        }
     }
 
     fun onEvent(event: AssetDetailEvent) {

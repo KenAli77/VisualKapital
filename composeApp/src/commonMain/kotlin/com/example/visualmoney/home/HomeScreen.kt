@@ -68,9 +68,7 @@ import kotlinx.coroutines.launch
 import org.jetbrains.compose.resources.painterResource
 import visualmoney.composeapp.generated.resources.Res
 import visualmoney.composeapp.generated.resources.arrow_right
-import visualmoney.composeapp.generated.resources.arrow_up_right
 import visualmoney.composeapp.generated.resources.calendar
-import visualmoney.composeapp.generated.resources.maximize
 import visualmoney.composeapp.generated.resources.plus
 import visualmoney.composeapp.generated.resources.portfolio
 import visualmoney.composeapp.generated.resources.zigzag
@@ -80,10 +78,11 @@ import kotlin.math.round
 val theme @Composable get() = LocalAppTheme.current
 
 // ---------- Models ----------
-data class HoldingRowUi(
+data class AssetListItemUI(
     val symbol: String,
     val name: String,
     val assetClass: AssetCategory,
+    val note: String = "",
     val changePct: Double,
     val price: Double,
     val dayLow: Double,
@@ -97,6 +96,9 @@ enum class HomeTab(val label: String) {
     ),
     H24("24h"),
 }
+enum class AssetDetailTabs(val label: String) {
+    About("About"), Stats("Key stats"),
+}
 
 enum class BottomNavItem {
     HOME, STATS, SWAP, ACCOUNT
@@ -109,6 +111,8 @@ fun HomeScreen(
     modifier: Modifier = Modifier,
     viewModel: HomeViewModel,
     userName: String = "James",
+    showCalendarBadge: Boolean = false,
+    calendarBadgeColor: Color = Color.Transparent,
     onGoToCalendar: () -> Unit = {},
     onGoToBalance: () -> Unit = {},
     onNewAsset: () -> Unit = {},
@@ -136,7 +140,12 @@ fun HomeScreen(
             modifier = Modifier.fillMaxSize().padding(theme.dimension.pagePadding),
             verticalArrangement = Arrangement.spacedBy(theme.dimension.veryLargeSpacing),
         ) {
-            HomeTopHeader(userName = userName, onGoToCalendar = onGoToCalendar)
+            HomeTopHeader(
+                userName = userName,
+                onGoToCalendar = onGoToCalendar,
+                showCalendarBadge = showCalendarBadge,
+                calendarBadgeColor = calendarBadgeColor
+            )
             LazyColumn(
                 modifier = Modifier.clip(
                     RoundedCornerShape(
@@ -187,12 +196,13 @@ fun HomeScreen(
                         }
                     }
                 }
-                items(state.holdings) { item ->
-                    HoldingRow(
-                        modifier = Modifier, item = item, onClick = {
+                items(state.holdings, key = { it.symbol }) { item ->
+                    AssetListItem(
+                        modifier = Modifier
+                            .animateItem(), item = item, onClick = {
                             onGoToAssetDetails(item.symbol)
                         })
-                    ListDivider()
+//                    ListDivider()
                 }
 
             }
@@ -204,7 +214,11 @@ fun HomeScreen(
 // ---------- Header ----------
 @Composable
 fun HomeTopHeader(
-    userName: String, modifier: Modifier = Modifier, onGoToCalendar: () -> Unit = {}
+    userName: String,
+    modifier: Modifier = Modifier,
+    showCalendarBadge: Boolean = false,
+    calendarBadgeColor: Color = Color.Transparent,
+    onGoToCalendar: () -> Unit = {}
 ) {
     Row(
         modifier = modifier.fillMaxWidth(),
@@ -237,8 +251,10 @@ fun HomeTopHeader(
         }
         Row(horizontalArrangement = Arrangement.spacedBy(theme.dimension.mediumSpacing)) {
             IconWithContainer(
+                showBadge = showCalendarBadge,
+                badgeColor = calendarBadgeColor,
                 onClick = onGoToCalendar,
-                painterResource(Res.drawable.calendar),
+                icon = painterResource(Res.drawable.calendar),
             )
         }
 
@@ -251,27 +267,38 @@ fun IconWithContainer(
     onClick: () -> Unit = {},
     icon: Painter,
     containerColor: Color = theme.colors.surface,
+    shape: Shape = CircleShape,
+    showBadge: Boolean = false,
+    badgeColor: Color = Color.Red,
     modifier: Modifier = Modifier
 ) {
-    CardContainer(
-        modifier = modifier.clickable { onClick() },
-        containerColor = containerColor,
-        shape = CircleShape,
-    ) {
-        Box(
-            modifier = Modifier.padding(theme.dimension.mediumSpacing),
-            contentAlignment = Alignment.Center
+    Box(modifier) {
+        CardContainer(
+            modifier = modifier.clickable { onClick() },
+            containerColor = containerColor,
+            shape = shape,
         ) {
-            Icon(
-                icon,
-                contentDescription = "",
-                modifier = Modifier.size(theme.dimension.iconSize),
-                tint = theme.colors.onSurface
+            Box(
+                modifier = Modifier.padding(theme.dimension.mediumSpacing),
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(
+                    icon,
+                    contentDescription = "",
+                    modifier = Modifier.size(theme.dimension.iconSize),
+                    tint = theme.colors.onSurface
+                )
+            }
+        }
+        if (showBadge) {
+            Box(
+                modifier = Modifier
+                    .align(Alignment.TopEnd)
+                    .size(10.dp)
+                    .background(badgeColor, CircleShape)
             )
         }
-
     }
-
 
 }
 
@@ -585,14 +612,13 @@ fun HomeTabs(
 
 // ---------- Holding row ----------
 @Composable
-fun HoldingRow(
-    item: HoldingRowUi,
+fun AssetListItem(
+    item: AssetListItemUI,
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    Row(modifier = modifier.fillMaxWidth().clickable { onClick() }
-        .padding(vertical = theme.dimension.largeSpacing),
-        verticalAlignment = Alignment.Top,
+    Row(modifier = modifier.padding(vertical = theme.dimension.closeSpacing).fillMaxWidth().clickable { onClick() },
+        verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(theme.dimension.mediumSpacing)) {
 
         AssetLogoContainer(
@@ -601,7 +627,7 @@ fun HoldingRow(
         )
         Column(
             modifier = Modifier.weight(1f),
-            verticalArrangement = Arrangement.spacedBy(theme.dimension.mediumSpacing),
+            verticalArrangement = Arrangement.spacedBy(theme.dimension.mediumSpacing, alignment = Alignment.CenterVertically),
         ) {
             Text(
                 modifier = Modifier.wrapContentWidth(),
@@ -611,13 +637,21 @@ fun HoldingRow(
                 style = theme.typography.bodyMediumStrong,
                 color = theme.colors.onSurface
             )
-            Text(
-                text = item.symbol,
-                style = theme.typography.bodyMediumMedium,
-                color = theme.colors.onSurface
-            )
+            if (item.assetClass == AssetCategory.OTHER) {
+                val text = item.note.takeIf { it.isNotBlank() } ?: "Other"
+                    Text(
+                        text = text,
+                        style = theme.typography.bodyMediumMedium,
+                        color = theme.colors.greyTextColor
+                    )
+            } else {
+                Text(
+                    text = item.symbol,
+                    style = theme.typography.bodyMediumMedium,
+                    color = theme.colors.greyTextColor
+                )
+            }
         }
-
 
         Column(
             horizontalAlignment = Alignment.End,

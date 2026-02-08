@@ -1,10 +1,10 @@
 package com.example.visualmoney.calendar
 
 import androidx.compose.animation.animateColorAsState
-import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -17,6 +17,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.wrapContentSize
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.itemsIndexed
@@ -25,26 +26,20 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.outlined.KeyboardArrowLeft
-import androidx.compose.material.icons.outlined.KeyboardArrowRight
-import androidx.compose.material.icons.rounded.Add
 import androidx.compose.material.icons.rounded.Alarm
-import androidx.compose.material.icons.rounded.ArrowBack
-import androidx.compose.material.icons.rounded.CalendarToday
-import androidx.compose.material.icons.rounded.EuroSymbol
 import androidx.compose.material.icons.rounded.NorthEast
-import androidx.compose.material.icons.rounded.Search
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.ElevatedCard
+import androidx.compose.material3.Checkbox
+import androidx.compose.material3.CheckboxDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.ModalBottomSheet
-import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SheetState
 import androidx.compose.material3.Surface
+import androidx.compose.material3.SwipeToDismissBox
+import androidx.compose.material3.SwipeToDismissBoxValue
 import androidx.compose.material3.Text
 import androidx.compose.material3.rememberModalBottomSheetState
+import androidx.compose.material3.rememberSwipeToDismissBoxState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -56,19 +51,23 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.platform.LocalFocusManager
+import androidx.compose.ui.platform.LocalSoftwareKeyboardController
+import androidx.compose.ui.text.input.ImeAction
+import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.example.visualmoney.LocalAppTheme
 import com.example.visualmoney.SearchBar
 import com.example.visualmoney.SearchResultRow
-import com.example.visualmoney.SearchResultRowUi
 import com.example.visualmoney.assetDetails.AssetLogoContainer
 import com.example.visualmoney.core.DateInputTextField
 import com.example.visualmoney.core.InputTextField
 import com.example.visualmoney.core.LargeButton
 import com.example.visualmoney.core.ListDivider
 import com.example.visualmoney.core.TopNavigationBar
+import com.example.visualmoney.data.local.InvestmentReminderEntity
 import com.example.visualmoney.data.local.PortfolioAsset
 import com.example.visualmoney.data.local.logoUrl
 import com.example.visualmoney.greyTextColor
@@ -76,29 +75,17 @@ import com.example.visualmoney.home.CardContainer
 import com.example.visualmoney.home.IconWithContainer
 import com.example.visualmoney.home.IconWithContainerSmall
 import com.example.visualmoney.home.borderStroke
-import com.example.visualmoney.home.format
 import com.example.visualmoney.home.primaryGradient
 import com.example.visualmoney.home.theme
-import com.example.visualmoney.newAsset.event.AssetInputEvent
-import com.example.visualmoney.newAsset.event.ManualAssetInputEvent
-import com.example.visualmoney.newAsset.state.AssetInputState
-import com.example.visualmoney.newAsset.state.isValidForSubmit
-import com.example.visualmoney.newAsset.state.totalValue
 import com.example.visualmoney.toSearchResultRowUi
-import dev.darkokoa.datetimewheelpicker.WheelDatePicker
-import dev.darkokoa.datetimewheelpicker.core.WheelPickerDefaults
-import dev.darkokoa.datetimewheelpicker.core.format.DateOrder
-import dev.darkokoa.datetimewheelpicker.core.format.MonthDisplayStyle
-import dev.darkokoa.datetimewheelpicker.core.format.dateFormatter
 import kotlinx.coroutines.launch
-import kotlinx.datetime.DateTimePeriod
 import kotlinx.datetime.DateTimeUnit
 import kotlinx.datetime.DayOfWeek
 import kotlinx.datetime.LocalDate
-import kotlinx.datetime.LocalDateTime
-import kotlinx.datetime.Month
 import kotlinx.datetime.TimeZone
 import kotlinx.datetime.YearMonth
+import kotlinx.datetime.format.DayOfWeekNames
+import kotlinx.datetime.format.MonthNames
 import kotlinx.datetime.format.char
 import kotlinx.datetime.isoDayNumber
 import kotlinx.datetime.minus
@@ -115,7 +102,7 @@ import visualmoney.composeapp.generated.resources.close
 import visualmoney.composeapp.generated.resources.edit_variant
 import visualmoney.composeapp.generated.resources.plus
 import visualmoney.composeapp.generated.resources.search
-import kotlin.math.min
+import visualmoney.composeapp.generated.resources.trash
 import kotlin.time.Clock
 
 private val theme @Composable get() = LocalAppTheme.current
@@ -123,13 +110,25 @@ private val theme @Composable get() = LocalAppTheme.current
 // ---------- Models ----------
 data class ReminderUi(
     val id: String,
-    val title: String,
-    val subtitle: String,
+    val description: String,
+    val asset: PortfolioAsset,
+    val note: String,
     val date: LocalDate,
     val timeLabel: String, // e.g. "09:30"
-    val amountLabel: String? = null, // e.g. "$120.00"
-    val status: ReminderStatus = ReminderStatus.UPCOMING
+    val isDone: Boolean
 )
+
+fun InvestmentReminderEntity.toReminderUI(asset: PortfolioAsset): ReminderUi {
+    return ReminderUi(
+        id = id,
+        description = description,
+        note = note,
+        date = dueDate,
+        asset = asset,
+        timeLabel = dueDate.format(),
+        isDone = isDone,
+    )
+}
 
 enum class ReminderStatus { UPCOMING, PAID, MISSED }
 
@@ -161,80 +160,42 @@ fun CalendarScreen(
     modifier: Modifier = Modifier,
     viewModel: CalendarScreenViewModel,
     initialMonth: YearMonth = YearMonth.now(),
-    reminders: List<ReminderUi> = sampleReminders(),
     onBack: () -> Unit = {},
-    onOpenReminder: (ReminderUi) -> Unit = {},
+    onAddReminder:()->Unit = {},
 ) = with(viewModel) {
     var month by remember { mutableStateOf(initialMonth) }
     val today = remember { LocalDate.now() }
-    var selectedDate by remember { mutableStateOf(today) }
 
     val monthDays = remember(month) { buildMonthGrid(month, startOfWeek = DayOfWeek.MONDAY) }
-    val remindersForSelected = remember(reminders, selectedDate) {
-        reminders.filter { it.date == selectedDate }.sortedBy { it.timeLabel }
-    }
-    val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
-    val assetSearchSheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
-    var showNewReminderSheet by remember { mutableStateOf(false) }
-    var showAssetSearchSheet by remember { mutableStateOf(false) }
-    val scope = rememberCoroutineScope()
-    LaunchedEffect(viewModel.state.reminderInputVisible) {
-        when (viewModel.state.reminderInputVisible) {
-            true -> launch { sheetState.show() }.invokeOnCompletion {
-                showNewReminderSheet = true
-            }
 
-            false -> launch { sheetState.hide() }.invokeOnCompletion {
-                showNewReminderSheet = false
-            }
-        }
-    }
-    if (showAssetSearchSheet) {
-        PortfolioAssetSearchSheet(
-            sheetState = assetSearchSheetState,
-            results = viewModel.newReminderState.searchResults,
-            query = newReminderState.query,
+    val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
+    val focusManager = LocalFocusManager.current
+    val localController = LocalSoftwareKeyboardController.current
+    var showConfirmDelete by remember { mutableStateOf(false) }
+    var reminderToDelete: ReminderUi? by remember { mutableStateOf(null) }
+
+    if (showConfirmDelete) {
+        ConfirmReminderDeleteAlert(
             onDismiss = {
-                scope.launch {
-                    assetSearchSheetState.hide()
-                }.invokeOnCompletion {
-                    showAssetSearchSheet = false
+                showConfirmDelete = false
+                reminderToDelete = null
+            },
+            onConfirm = {
+                showConfirmDelete = false
+                reminderToDelete?.let {
+                    onEvent(CalendarEvent.OnRemoveReminder(it.id))
                 }
-            },
-            onQueryEntered = {
-                onEvent(
-                    ReminderInputEvent.QueryChanged(it)
-                )
-            },
-            onAssetSelected = {
-                onEvent(ReminderInputEvent.SymbolChanged(it))
             }
         )
-    }
-    if (showNewReminderSheet) {
-        NewReminderSheet(
-            sheetState,
-            state = viewModel.newReminderState,
-            onEvent = {
-                viewModel.onEvent(it)
-            },
-            onSearchAsset = {
-                showAssetSearchSheet = true
-            },
-            onDismiss = {
-                onEvent(ReminderInputEvent.HideReminderInputSheet)
-            })
     }
     Box(
         modifier = Modifier.fillMaxSize(),
     ) {
-
-
         Column(
             modifier = modifier
                 .fillMaxSize()
                 .padding(horizontal = theme.dimension.pagePadding),
-            verticalArrangement = Arrangement.spacedBy(theme.dimension.veryLargeSpacing)
+            verticalArrangement = Arrangement.spacedBy(theme.dimension.largeSpacing)
         ) {
             TopNavigationBar(
                 title = "Calendar",
@@ -242,7 +203,7 @@ fun CalendarScreen(
                 onBack = onBack,
                 hasAddAction = true,
                 onAdd = {
-                    onEvent(ReminderInputEvent.ShowReminderInputSheet)
+                    onAddReminder()
                 }
             )
 
@@ -253,42 +214,33 @@ fun CalendarScreen(
                     bottom = theme.dimension.pagePadding
                 )
             ) {
-
                 item {
                     CalendarCard(
                         month = month,
                         monthDays = monthDays,
-                        selectedDate = selectedDate,
+                        selectedDate = state.selectedDate,
                         today = today,
-                        reminders = reminders,
+                        reminders = state.remindersUI,
                         onPrevMonth = { month = month.minusMonths(1) },
                         onNextMonth = { month = month.plusMonths(1) },
-                        onSelectDate = { selectedDate = it }
+                        onSelectDate = { onEvent(CalendarEvent.DateSelected(it)) }
                     )
                 }
 
-//            item {
-//                AddReminderCta(
-//                    title = "Add reminder",
-//                    subtitle = "Bills, dividends, earnings, alerts…",
-//                    onClick = { onAddReminder(selectedDate) }
-//                )
-//            }
-
-                item {
-                    SelectedDateHeader(
-                        selectedDate = selectedDate,
-                        count = remindersForSelected.size
-                    )
-                }
-
-                if (remindersForSelected.isEmpty()) {
-                    item { EmptyStateCard(selectedDate = selectedDate) }
+                if (state.remindersForSelected.isEmpty()) {
+                    item { EmptyStateCard(title ="No reminders", subtitle = "You’re clear for this day. You have no reminders coming up.") }
                 } else {
-                    items(remindersForSelected, key = { it.id }) { r ->
+                    items(state.remindersForSelected, key = { it.id }) { r ->
                         ReminderRow(
                             item = r,
-                            onClick = { onOpenReminder(r) }
+                            onRemove = {
+                                reminderToDelete = r
+                                showConfirmDelete = true
+                            },
+                            onDone = {
+                                onEvent(CalendarEvent.OnReminderDoneChanged(r.id, it))
+                            }
+                            //   onClick = { onOpenReminder(r) }
                         )
                     }
                 }
@@ -355,6 +307,44 @@ fun LocalDate.format(): String {
     return format.format(this)
 }
 
+val monthNames = listOf(
+    "January",
+    "February",
+    "March",
+    "April",
+    "May",
+    "June",
+    "July",
+    "August",
+    "September",
+    "October",
+    "November",
+    "December"
+)
+
+fun LocalDate.formatMonthAndYear(): String {
+    val format = LocalDate.Format {
+        monthName(MonthNames(monthNames))
+        char(' ')
+        year()
+    }
+
+    return format.format(this)
+}
+
+val weekDaysNames =
+    listOf("Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday")
+
+fun LocalDate.formatDayOfWeek(): String {
+    val format = LocalDate.Format {
+        dayOfWeek(DayOfWeekNames(weekDaysNames))
+        char(' ')
+        dayOfMonth()
+    }
+
+    return format.format(this)
+}
+
 // ---------- Calendar card ----------
 @Composable
 private fun CalendarCard(
@@ -369,10 +359,12 @@ private fun CalendarCard(
     modifier: Modifier = Modifier
 ) {
     val monthLabel = remember(month) {
-        month.atDay(1).format()
+        month.atDay(1).formatMonthAndYear()
     }
 
     CardContainer(
+        modifier = modifier,
+        containerColor = theme.colors.primary.c90
     ) {
         Column(
             modifier = Modifier.padding(theme.dimension.largeSpacing),
@@ -614,142 +606,144 @@ private fun SelectedDateHeader(
     modifier: Modifier = Modifier
 ) {
     val label = remember(selectedDate) {
-        selectedDate.format()
+        selectedDate.formatDayOfWeek()
     }
 
     Row(
         modifier = modifier.fillMaxWidth(),
-        verticalAlignment = Alignment.CenterVertically
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.SpaceBetween
     ) {
         Text(
             text = label,
             style = theme.typography.titleSmallMedium,
             color = theme.colors.onSurface
         )
-        Spacer(Modifier.weight(1f))
-        Surface(
-            shape = RoundedCornerShape(theme.dimension.verySmallRadius),
-            color = theme.colors.greyScale.c10
-        ) {
-            Text(
-                text = "$count",
-                style = theme.typography.bodySmallMedium,
-                color = theme.colors.greyScale.c60,
-                modifier = Modifier.padding(
-                    horizontal = theme.dimension.closeSpacing,
-                    vertical = theme.dimension.veryCloseSpacing
-                )
-            )
-        }
+        Text(
+            text = "$count",
+            style = theme.typography.bodyMediumStrong,
+            color = theme.colors.greyScale.c60,
+        )
+
     }
 }
 
 // ---------- Empty state ----------
 @Composable
-private fun EmptyStateCard(
-    selectedDate: LocalDate,
-    modifier: Modifier = Modifier
+fun EmptyStateCard(
+    modifier: Modifier = Modifier,
+    title:String = "",
+    subtitle:String = ""
 ) {
-    Card(
-        modifier = modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(theme.dimension.defaultRadius),
-        border = BorderStroke(1.dp, theme.colors.border),
-        elevation = CardDefaults.cardElevation(0.dp),
-        colors = CardDefaults.elevatedCardColors(containerColor = theme.colors.surface)
+    Column(
+        modifier = modifier.padding(vertical = theme.dimension.largeSpacing),
+        verticalArrangement = Arrangement.spacedBy(theme.dimension.closeSpacing)
     ) {
-        Column(
-            modifier = Modifier.padding(theme.dimension.largeSpacing),
-            verticalArrangement = Arrangement.spacedBy(theme.dimension.closeSpacing)
-        ) {
-            Text(
-                text = "No reminders",
-                style = theme.typography.titleSmallMedium
-            )
-            Text(
-                text = "You’re clear for this day. Add a bill or alert to stay on track.",
-                style = theme.typography.bodySmall,
-                color = theme.colors.greyTextColor
-            )
-        }
+        Text(
+            text = title,
+            style = theme.typography.titleSmallMedium,
+            color = theme.colors.onSurface
+        )
+        Text(
+            text = subtitle,
+            style = theme.typography.bodySmall,
+            color = theme.colors.greyTextColor
+        )
     }
+
 }
 
 // ---------- Reminder row ----------
 @Composable
 private fun ReminderRow(
     item: ReminderUi,
-    onClick: () -> Unit,
+    onDone: (Boolean) -> Unit = {},
+    onRemove: () -> Unit = {},
     modifier: Modifier = Modifier
 ) {
-    Card(
-        modifier = modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(theme.dimension.defaultRadius),
-        border = BorderStroke(1.dp, theme.colors.border),
-        elevation = CardDefaults.cardElevation(0.dp),
-        colors = CardDefaults.elevatedCardColors(containerColor = theme.colors.surface),
-        onClick = onClick
-    ) {
-        Row(
-            modifier = Modifier.padding(theme.dimension.mediumSpacing),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(theme.dimension.mediumSpacing)
-        ) {
-            Box(
-                modifier = Modifier
-                    .clip(CircleShape)
-                    .background(theme.colors.onPrimary),
-                contentAlignment = Alignment.Center
-            ) {
+
+    val swipeToDismissBoxState = rememberSwipeToDismissBoxState(
+        confirmValueChange = {
+            if (it == SwipeToDismissBoxValue.StartToEnd) onRemove()
+            else if (it == SwipeToDismissBoxValue.EndToStart) onRemove()
+            // Reset item when toggling done status
+            false
+        }
+    )
+
+    SwipeToDismissBox(state = swipeToDismissBoxState, backgroundContent = {
+        when (swipeToDismissBoxState.dismissDirection) {
+            SwipeToDismissBoxValue.StartToEnd -> {
                 Icon(
-                    Icons.Rounded.Alarm,
-                    contentDescription = null,
+                    painter = painterResource(Res.drawable.trash),
+                    contentDescription = "Remove item",
                     modifier = Modifier
-                        .padding(theme.dimension.mediumSpacing)
-                        .size(theme.dimension.smallIconSize)
+                        .clip(RoundedCornerShape(theme.dimension.defaultRadius))
+                        .fillMaxSize()
+                        .background(theme.colors.error)
+                        .wrapContentSize(Alignment.CenterStart)
+                        .padding(12.dp),
+                    tint = Color.White
                 )
             }
 
-            Column(
-                modifier = Modifier.weight(1f),
-                verticalArrangement = Arrangement.spacedBy(theme.dimension.closeSpacing)
+            SwipeToDismissBoxValue.EndToStart -> {
+                Icon(
+                    painter = painterResource(Res.drawable.trash),
+                    contentDescription = "Remove item",
+                    modifier = Modifier
+                        .clip(RoundedCornerShape(theme.dimension.defaultRadius))
+                        .fillMaxSize()
+                        .background(theme.colors.error)
+                        .wrapContentSize(Alignment.CenterEnd)
+                        .padding(12.dp),
+                    tint = Color.White
+                )
+            }
+
+            else -> {}
+        }
+    }) {
+        CardContainer(modifier = modifier, containerColor = theme.colors.surface) {
+            Row(
+                modifier = Modifier.fillMaxWidth()
+                    .padding(theme.dimension.largeSpacing),
+                horizontalArrangement = Arrangement.spacedBy(theme.dimension.mediumSpacing),
+                verticalAlignment = Alignment.CenterVertically
             ) {
-                Text(
-                    text = item.title,
-                    style = theme.typography.titleSmallMedium,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis
-                )
-                Text(
-                    text = "${item.timeLabel} • ${item.subtitle}",
-                    style = theme.typography.bodySmall,
-                    color = theme.colors.onSurface,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis
-                )
-            }
-
-            Column(horizontalAlignment = Alignment.End) {
-                if (item.amountLabel != null) {
+                AssetLogoContainer(item.asset.logoUrl, symbol = item.asset.symbol)
+                Column(
+                    modifier = Modifier.weight(1f),
+                    verticalArrangement = Arrangement.spacedBy(theme.dimension.closeSpacing)
+                ) {
                     Text(
-                        text = item.amountLabel,
-                        style = theme.typography.titleSmallMedium
+                        text = item.description,
+                        style = theme.typography.bodyMedium,
+                        maxLines = 2,
+                        color = theme.colors.onSurface,
+                        overflow = TextOverflow.Ellipsis,
+                        textDecoration = if (item.isDone) TextDecoration.LineThrough else TextDecoration.None
                     )
-                } else {
+
                     Text(
-                        text = " ",
-                        style = theme.typography.titleSmallMedium
+                        text = item.asset.name.takeIf { it.isNotEmpty() } ?: item.asset.symbol,
+                        style = theme.typography.bodySmallStrong,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                        color = theme.colors.greyTextColor,
+                        textDecoration = if (item.isDone) TextDecoration.LineThrough else TextDecoration.None
                     )
                 }
-
-                val statusColor = when (item.status) {
-                    ReminderStatus.UPCOMING -> theme.colors.greenScale.c50
-                    ReminderStatus.PAID -> theme.colors.greyScale.c60
-                    ReminderStatus.MISSED -> theme.colors.error
-                }
-                Text(
-                    text = item.status.name.lowercase().replaceFirstChar { it.uppercase() },
-                    style = theme.typography.bodySmallMedium,
-                    color = statusColor
+                Checkbox(
+                    modifier = Modifier.clip(RoundedCornerShape(theme.dimension.defaultRadius)),
+                    checked = item.isDone,
+                    colors = CheckboxDefaults.colors(
+                        checkedColor = theme.colors.primary.c50,
+                        uncheckedColor = theme.colors.greyTextColor
+                    ),
+                    onCheckedChange = {
+                        onDone(it)
+                    },
                 )
             }
         }
@@ -779,155 +773,152 @@ private fun buildMonthGrid(
     return result
 }
 
-private fun sampleReminders(): List<ReminderUi> {
-    val today = LocalDate.now()
-    return listOf(
-        ReminderUi(
-            id = "1",
-            title = "Rent payment",
-            subtitle = "Apartment",
-            date = today,
-            timeLabel = "09:00",
-            amountLabel = "$1,250.00",
-            status = ReminderStatus.UPCOMING
-        ),
-        ReminderUi(
-            id = "2",
-            title = "AAPL earnings call",
-            subtitle = "Watchlist",
-            date = today.plusDays(1),
-            timeLabel = "16:30",
-            amountLabel = null,
-            status = ReminderStatus.UPCOMING
-        ),
-        ReminderUi(
-            id = "3",
-            title = "Dividend",
-            subtitle = "MSFT",
-            date = today.plusDays(2),
-            timeLabel = "10:00",
-            amountLabel = "$42.10",
-            status = ReminderStatus.UPCOMING
-        ),
-        ReminderUi(
-            id = "4",
-            title = "Credit card",
-            subtitle = "Statement due",
-            date = today.minusDays(1),
-            timeLabel = "12:00",
-            amountLabel = "$320.44",
-            status = ReminderStatus.MISSED
-        )
-    )
-}
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun NewReminderSheet(
-    sheetState: SheetState,
-    state: ReminderInputState,
-    onEvent: (ReminderInputEvent) -> Unit = {},
-    onSearchAsset: () -> Unit = {},
-    onDismiss: () -> Unit,
+fun NewReminderScreen(
+    viewModel: CalendarScreenViewModel,
+    onBack: () -> Unit,
     modifier: Modifier = Modifier,
-) = with(state) {
+) = with(viewModel) {
+    val lazyListState = rememberLazyListState()
+    val focusManager = LocalFocusManager.current
+    val localController = LocalSoftwareKeyboardController.current
+    val assetSearchSheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
+    val scope = rememberCoroutineScope()
+    var showAssetSearchSheet by remember { mutableStateOf(false) }
 
-    ModalBottomSheet(
-        modifier = modifier.fillMaxSize(),
-        sheetState = sheetState,
-        onDismissRequest = { onDismiss() },
-        dragHandle = {},
-        containerColor = theme.colors.container,
+    LaunchedEffect(lazyListState.isScrollInProgress) {
+        focusManager.clearFocus()
+        localController?.hide()
+    }
+    if (showAssetSearchSheet) {
+        PortfolioAssetSearchSheet(
+            sheetState = assetSearchSheetState,
+            results = viewModel.newReminderState.searchResults,
+            query = newReminderState.query,
+            onDismiss = {
+                scope.launch {
+                    assetSearchSheetState.hide()
+                }.invokeOnCompletion {
+                    showAssetSearchSheet = false
+                }
+            },
+            onQueryEntered = {
+                onEvent(
+                    ReminderInputEvent.QueryChanged(it)
+                )
+            },
+            onAssetSelected = {
+                onEvent(ReminderInputEvent.SymbolChanged(it))
+            }
+        )
+    }
+    Box(
+        modifier = modifier.fillMaxWidth()
+            .pointerInput(Unit) {
+                detectTapGestures(onTap = {
+                    focusManager.clearFocus()
+                    localController?.hide()
+                })
+            },
+        contentAlignment = Alignment.BottomCenter
     ) {
-        Box(modifier = Modifier.fillMaxWidth(), contentAlignment = Alignment.BottomCenter) {
-            Column(
-                modifier = Modifier.fillMaxWidth().padding(vertical = theme.dimension.mediumSpacing)
-                    .padding(horizontal = theme.dimension.pagePadding),
-                verticalArrangement = Arrangement.spacedBy(theme.dimension.veryLargeSpacing),
+        Column(
+            modifier = Modifier.fillMaxWidth().padding(vertical = theme.dimension.mediumSpacing)
+                .padding(horizontal = theme.dimension.pagePadding),
+            verticalArrangement = Arrangement.spacedBy(theme.dimension.veryLargeSpacing),
+        ) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
             ) {
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Text(
-                        "Add a new reminder",
-                        style = theme.typography.titleSmall,
-                        color = theme.colors.onSurface
-                    )
-                    IconWithContainer(
-                        icon = painterResource(Res.drawable.close), onClick = onDismiss
-                    )
-                }
-                LazyColumn(
-                    modifier = Modifier.padding(vertical = theme.dimension.largeSpacing),
-                    verticalArrangement = Arrangement.spacedBy(theme.dimension.largeSpacing)
-                ) {
-                    item {
-                        Column(
-                            verticalArrangement = Arrangement.spacedBy(theme.dimension.veryCloseSpacing)
-                        ) {
-                            Text(
-                                modifier = Modifier.padding(bottom = theme.dimension.veryCloseSpacing),
-                                text = "Asset",
-                                style = theme.typography.bodySmallStrong,
-                                color = theme.colors.onSurface
-                            )
-                            Row(modifier = Modifier.clickable {
-                                onSearchAsset()
-                            }) {
-                                selectedAsset?.let {
-                                    SelectedAssetReminderField(asset = it)
-                                } ?: InputTextField(
-                                    readOnly = true,
-                                    borderAlwaysVisible = true,
-                                    placeholder = "Pick an asset from your portfolio",
-                                    leadingIcon = {
-                                        Icon(
-                                            painterResource(Res.drawable.search),
-                                            null,
-                                            modifier = Modifier.size(theme.dimension.smallIconSize),
-                                            tint = theme.colors.greyTextColor
-                                        )
-                                    })
-                            }
-
-                        }
-                    }
-                    item {
-                        DateInputTextField(
-                            label = "Date",
-                            value = date,
-                            onValueChange = { onEvent(ReminderInputEvent.DateChanged(it)) })
-                    }
-                    item {
-                        InputTextField(
-                            label = "Description",
-                            placeholder = "Eg. Rent payment",
-                            value = notes,
-                            onValueChange = {
-                                onEvent(ReminderInputEvent.DescriptionChanged(it))
-                            })
-                    }
-                    item {
-                        InputTextField(
-                            label = "Note",
-                            value = notes,
-                            onValueChange = {
-                                onEvent(ReminderInputEvent.NoteChanged(it))
-                            })
-                    }
-                }
-                LargeButton(
-                    modifier = Modifier.padding(top = theme.dimension.veryLargeSpacing * 2),
-                    text = "Save reminder",
-                    enabled = isValidForSubmit,
-                    onClick = {
-                        onEvent(ReminderInputEvent.Save)
-                    }
+                Text(
+                    "Add a new reminder",
+                    style = theme.typography.titleSmall,
+                    color = theme.colors.onSurface
+                )
+                IconWithContainer(
+                    icon = painterResource(Res.drawable.close), onClick = onBack
                 )
             }
+            LazyColumn(
+                modifier = Modifier.padding(vertical = theme.dimension.largeSpacing),
+                state = lazyListState,
+                verticalArrangement = Arrangement.spacedBy(theme.dimension.largeSpacing)
+            ) {
+                item {
+                    Column(
+                        verticalArrangement = Arrangement.spacedBy(theme.dimension.veryCloseSpacing)
+                    ) {
+                        Text(
+                            modifier = Modifier.padding(bottom = theme.dimension.veryCloseSpacing),
+                            text = "Asset *",
+                            style = theme.typography.bodySmallStrong,
+                            color = theme.colors.onSurface
+                        )
+                        Row(modifier = Modifier.clickable {
+                            showAssetSearchSheet = true
+                        }) {
+                            newReminderState.selectedAsset?.let {
+                                SelectedAssetReminderField(asset = it)
+                            } ?: InputTextField(
+                                readOnly = true,
+                                borderAlwaysVisible = true,
+                                placeholder = "Pick an asset from your portfolio",
+                                leadingIcon = {
+                                    Icon(
+                                        painterResource(Res.drawable.search),
+                                        null,
+                                        modifier = Modifier.size(theme.dimension.smallIconSize),
+                                        tint = theme.colors.greyTextColor
+                                    )
+                                })
+                        }
+                    }
+                }
+                item {
+                    DateInputTextField(
+                        label = "Date",
+                        value = newReminderState.date,
+                        onValueChange = { onEvent(ReminderInputEvent.DateChanged(it)) })
+                }
+                item {
+                    InputTextField(
+                        label = "Description",
+                        placeholder = "Eg. Rent payment",
+                        required = true,
+                        value = newReminderState.description,
+                        keyboardOptions = KeyboardOptions(imeAction = ImeAction.Default),
+                        onValueChange = {
+                            onEvent(ReminderInputEvent.DescriptionChanged(it))
+                        })
+                }
+                item {
+                    InputTextField(
+                        label = "Note",
+                        keyboardOptions = KeyboardOptions(imeAction = ImeAction.Default),
+                        value = newReminderState.notes,
+                        onValueChange = {
+                            onEvent(ReminderInputEvent.NoteChanged(it))
+                        })
+                }
+                item {
+                    Spacer(modifier = Modifier.height(theme.dimension.bottomBarHeight * 3))
+                }
+            }
         }
+        LargeButton(
+            modifier = Modifier.padding(horizontal = theme.dimension.pagePadding),
+            text = "Save reminder",
+            enabled = newReminderState.isValidForSubmit,
+            onClick = {
+                onEvent(ReminderInputEvent.Save)
+                onBack()
+            }
+        )
+
     }
 }
 
@@ -962,21 +953,24 @@ fun SelectedAssetReminderField(modifier: Modifier = Modifier, asset: PortfolioAs
                         size = theme.dimension.smallIconSize
                     )
                     Row(
+                        modifier = Modifier.weight(1f),
                         verticalAlignment = Alignment.CenterVertically,
                         horizontalArrangement = Arrangement.spacedBy(theme.dimension.closeSpacing)
                     ) {
                         Text(
-                            asset.name,
+                            asset.symbol,
                             style = theme.typography.bodyMediumStrong,
-                            color = theme.colors.onSurface
+                            color = theme.colors.onSurface,
                         )
                         Text(
-                            asset.symbol,
+                            asset.name,
+                            Modifier.weight(1f),
                             style = theme.typography.bodyMedium,
-                            color = theme.colors.greyTextColor
+                            color = theme.colors.greyTextColor,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis
                         )
                     }
-                    Spacer(Modifier.weight(1f))
 
                     Icon(
                         painterResource(Res.drawable.edit_variant),

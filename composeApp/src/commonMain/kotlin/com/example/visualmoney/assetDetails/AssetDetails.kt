@@ -16,6 +16,7 @@ import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -27,11 +28,17 @@ import androidx.compose.material.icons.rounded.WorkspacePremium
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Icon
+import androidx.compose.material3.SecondaryScrollableTabRow
+import androidx.compose.material3.SecondaryTabRow
 import androidx.compose.material3.Surface
+import androidx.compose.material3.Tab
+import androidx.compose.material3.TabRowDefaults
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -50,23 +57,31 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import coil3.compose.AsyncImage
+import com.example.visualmoney.AssetCategory
 import com.example.visualmoney.DefaultAppColors
 import com.example.visualmoney.LocalAppTheme
+import com.example.visualmoney.calendar.EmptyStateCard
+import com.example.visualmoney.calendar.format
+import com.example.visualmoney.core.ListDivider
 import com.example.visualmoney.core.TopNavigationBar
 import com.example.visualmoney.core.toApiDateString
 import com.example.visualmoney.data.local.PortfolioAsset
+import com.example.visualmoney.data.local.isQuoteTracked
 import com.example.visualmoney.data.local.logoUrl
 import com.example.visualmoney.domain.model.AssetProfile
 import com.example.visualmoney.domain.model.AssetQuote
 import com.example.visualmoney.domain.model.ChartPoint
 import com.example.visualmoney.domain.model.logoUrl
 import com.example.visualmoney.greyTextColor
+import com.example.visualmoney.home.AssetDetailTabs
 import com.example.visualmoney.home.CardContainer
 import com.example.visualmoney.home.IconWithContainer
 import com.example.visualmoney.home.borderGradient
 import com.example.visualmoney.home.borderStroke
 import com.example.visualmoney.home.format
 import com.example.visualmoney.home.theme
+import com.example.visualmoney.newAsset.event.AssetInputEvent
+import com.example.visualmoney.shimmer
 import kotlinx.datetime.DatePeriod
 import kotlinx.datetime.TimeZone
 import kotlinx.datetime.minus
@@ -136,6 +151,8 @@ fun AssetDetailsScreen(
     onBack: () -> Unit = {},
     onOpenWebsite: (String) -> Unit = {},
 ) = with(viewModel) {
+    var selectedTab by remember { mutableStateOf(AssetDetailTabs.About) }
+
     Box(
         modifier = modifier.fillMaxSize(),
     ) {
@@ -145,10 +162,7 @@ fun AssetDetailsScreen(
         ) {
             LazyColumn(
                 verticalArrangement = Arrangement.spacedBy(theme.dimension.veryLargeSpacing),
-                contentPadding = PaddingValues(
-                    bottom = theme.dimension.veryLargeSpacing,
-
-                    )
+                contentPadding = PaddingValues(bottom = theme.dimension.veryLargeSpacing)
             ) {
                 item {
                     TopNavigationBar(title = "Asset details", onBack = onBack)
@@ -164,9 +178,16 @@ fun AssetDetailsScreen(
                                     profile = profile,
                                     chart = state.chart,
                                     selectedRange = state.selectedChartRange,
-                                    onSelectRange = { onEvent(AssetDetailEvent.ChartPeriodChanged(it)) }
+                                    onSelectRange = {
+                                        onEvent(
+                                            AssetDetailEvent.ChartPeriodChanged(
+                                                it
+                                            )
+                                        )
+                                    }
                                 )
                             }
+
                         }
                     }
                 }
@@ -175,28 +196,83 @@ fun AssetDetailsScreen(
                     PortfolioCard(
                         state = state
                     )
-                }
-                state.quote?.let {
-                    item {
-                        KeyStatsCard(quote = it, profile = state.profile ?: AssetProfile())
-                    }
 
                 }
-                if (!state.profile?.description.isNullOrBlank()) {
-                    state.profile?.let {
-                        item {
-                            AboutCard(
-                                companyName = it.companyName ?: "",
-                                industry = it.industry,
-                                sector = it.sector,
-                                country = it.country,
-                                description = it.description,
-                                website = it.website,
-                                onOpenWebsite = onOpenWebsite
-                            )
+                item {
+                    Column(modifier = Modifier.heightIn(400.dp)) {
+                        SecondaryTabRow(
+                            selectedTabIndex = selectedTab.ordinal,
+                            modifier = Modifier.fillMaxWidth(),
+                            contentColor = theme.colors.onSurface,
+                            containerColor = Color.Transparent,
+                            divider = { ListDivider() },
+                            indicator = {
+                                TabRowDefaults.SecondaryIndicator(
+                                    Modifier.tabIndicatorOffset(
+                                        selectedTab.ordinal,
+                                        matchContentSize = false
+                                    )
+                                        .clip(RoundedCornerShape(theme.dimension.verySmallRadius)),
+                                    color = theme.colors.primary.c50,
+                                )
+                            }
+                        ) {
+                            AssetDetailTabs.entries.forEach { currentTab ->
+                                Tab(
+                                    modifier = Modifier.clip(
+                                        RoundedCornerShape(
+                                            topStart = theme.dimension.defaultRadius,
+                                            topEnd = theme.dimension.defaultRadius
+                                        )
+                                    ), selected = currentTab == currentTab, onClick = {
+                                        selectedTab = currentTab
+                                    }) {
+                                    Row(
+                                        modifier = Modifier.padding(vertical = theme.dimension.veryLargeSpacing),
+                                        horizontalArrangement = Arrangement.spacedBy(theme.dimension.mediumSpacing),
+                                        verticalAlignment = Alignment.CenterVertically
+                                    ) {
+                                        Text(
+                                            text = currentTab.label,
+                                            style = theme.typography.bodyMediumStrong
+                                        )
+                                    }
+                                }
+                            }
+                        }
+
+                        when (selectedTab) {
+                            AssetDetailTabs.Stats -> {
+                                if (state.asset?.isQuoteTracked == true) {
+                                    state.quote?.let {
+                                        KeyStatsCard(
+                                            quote = it,
+                                            profile = state.profile ?: AssetProfile()
+                                        )
+                                    } ?: EmptyStateCard(title = "No stats available")
+
+                                } else {
+                                    Column(
+                                        modifier = Modifier,
+                                        verticalArrangement = Arrangement.spacedBy(theme.dimension.largeSpacing)
+                                    ) {
+                                        Text("Added on ${state.asset?.purchasedAt?.format()}")
+                                    }
+                                }
+                            }
+
+                            AssetDetailTabs.About -> {
+                                state.profile?.let {
+                                    AboutCard(
+                                        profile = it,
+                                        onOpenWebsite = onOpenWebsite
+                                    )
+                                } ?: EmptyStateCard(title = "No information available")
+                            }
                         }
                     }
                 }
+
             }
         }
     }
@@ -291,19 +367,21 @@ private fun PriceAndChartCard(
                             overflow = TextOverflow.Ellipsis
                         )
                     }
-                    Surface(
-                        shape = RoundedCornerShape(theme.dimension.verySmallRadius),
-                        color = theme.colors.greyScale.c10
-                    ) {
-                        Text(
-                            text = asset.exchangeName,
-                            style = theme.typography.bodySmallMedium,
-                            color = theme.colors.greyScale.c60,
-                            modifier = Modifier.padding(
-                                horizontal = theme.dimension.closeSpacing,
-                                vertical = theme.dimension.veryCloseSpacing
+                    if (asset.exchangeName.isNotBlank()) {
+                        Surface(
+                            shape = RoundedCornerShape(theme.dimension.verySmallRadius),
+                            color = theme.colors.greyScale.c10
+                        ) {
+                            Text(
+                                text = asset.exchangeName,
+                                style = theme.typography.bodySmallMedium,
+                                color = theme.colors.greyScale.c60,
+                                modifier = Modifier.padding(
+                                    horizontal = theme.dimension.closeSpacing,
+                                    vertical = theme.dimension.veryCloseSpacing
+                                )
                             )
-                        )
+                        }
                     }
                 }
                 Row(
@@ -313,7 +391,9 @@ private fun PriceAndChartCard(
                 ) {
                     Column(verticalArrangement = Arrangement.spacedBy(theme.dimension.mediumSpacing)) {
                         Row(verticalAlignment = Alignment.CenterVertically) {
-                            val price = "%.2f".format(quote.price)
+                            val quotePrice =
+                                if (asset.isQuoteTracked) quote.price else asset.currentPrice
+                            val price = "%.2f".format(quotePrice)
                             Text(
                                 text = price.substringBeforeLast("."),
                                 style = theme.typography.titleLarge,
@@ -325,35 +405,37 @@ private fun PriceAndChartCard(
                                 color = theme.colors.greyScale.c50
                             )
                         }
-                        val pct = quote.changesPercentage
-                        val absChange = quote.change
-                        val pctChange = if (absChange >= 0) "+" else ""
-                        val pctText = (if (pct >= 0) "+" else "") + "%.2f".format(pct) + "%"
-                        Row {
-                            Text(
-                                text = "$pctText ($pctChange$absChange)",
-                                style = theme.typography.bodySmallMedium,
-                                color = if (pct >= 0) theme.colors.greenScale.c50 else theme.colors.error
-                            )
-
-                            Spacer(Modifier.width(theme.dimension.closeSpacing))
-                            Text(
-                                text = "Today",
-                                style = theme.typography.bodySmall,
-                                color = theme.colors.greyTextColor
-                            )
+                        if (asset.isQuoteTracked) {
+                            val pct = quote.changesPercentage
+                            val absChange = quote.change
+                            val pctChange = if (absChange >= 0) "+" else ""
+                            val pctText = (if (pct >= 0) "+" else "") + "%.2f".format(pct) + "%"
+                            Row {
+                                Text(
+                                    text = "$pctText ($pctChange$absChange)",
+                                    style = theme.typography.bodySmallMedium,
+                                    color = if (pct >= 0) theme.colors.greenScale.c50 else theme.colors.error
+                                )
+                                Spacer(Modifier.width(theme.dimension.closeSpacing))
+                                Text(
+                                    text = "Today",
+                                    style = theme.typography.bodySmall,
+                                    color = theme.colors.greyTextColor
+                                )
+                            }
                         }
                     }
-                    AssetLogoContainer(asset.logoUrl, profile.symbol, size = 60.dp)
+                    AssetLogoContainer(asset.logoUrl, asset.symbol, size = 60.dp)
                 }
             }
         }
+        if (asset.isQuoteTracked) {
+            Sparkline(
+                points = chart.map { it.price }, modifier = Modifier.fillMaxWidth().height(200.dp)
+            )
 
-        Sparkline(
-            points = chart.map { it.price }, modifier = Modifier.fillMaxWidth().height(200.dp)
-        )
-
-        ChartRangeTabs(selected = selectedRange, onSelect = onSelectRange)
+            ChartRangeTabs(selected = selectedRange, onSelect = onSelectRange)
+        }
     }
 
 }
@@ -465,48 +547,10 @@ private fun Sparkline(
             )
 
         }
-//        ListDivider()
-//        Row(
-//            modifier = Modifier.padding(vertical = theme.dimension.veryCloseSpacing)
-//                .fillMaxWidth(),
-//            horizontalArrangement = Arrangement.SpaceBetween
-//        ) {
-//            Text(
-//                "09AM",
-//                style = theme.typography.bodySmallMedium,
-//                color = theme.colors.greyTextColor
-//            )
-//            Text(
-//                "10AM",
-//                style = theme.typography.bodySmallMedium,
-//                color = theme.colors.greyTextColor
-//            )
-//            Text(
-//                "11AM",
-//                style = theme.typography.bodySmallMedium,
-//                color = theme.colors.greyTextColor
-//            )
-//            Text(
-//                "12AM",
-//                style = theme.typography.bodySmallMedium,
-//                color = theme.colors.greyTextColor
-//            )
-//            Text(
-//                "1PM",
-//                style = theme.typography.bodySmallMedium,
-//                color = theme.colors.greyTextColor
-//            )
-//        }
-    }
 
+    }
 }
 
-// ---------- Portfolio card (view + add/remove + edit) ----------
-private val primaryGradient = Brush.linearGradient(
-    colorStops = arrayOf(
-        0.0f to Color(0xFFFFBC42), 0.5f to Color(0xFFFFC653), 1.0f to Color(0xFFFFA904)
-    ), start = Offset(0f, 0f), end = Offset.Infinite
-)
 
 @Composable
 private fun PortfolioCard(state: AssetDetailState) {
@@ -524,21 +568,47 @@ private fun PortfolioCard(state: AssetDetailState) {
                 modifier = Modifier.padding(theme.dimension.largeSpacing),
                 verticalArrangement = Arrangement.spacedBy(theme.dimension.largeSpacing)
             ) {
-                Row(
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    modifier = Modifier.fillMaxWidth()
-                ) {
-                    Text(
-                        text = "Current value",
-                        style = theme.typography.bodyMediumMedium,
-                        color = theme.colors.greyTextColor,
-                    )
-                    Text(
-                        text = "${state.quote?.price}",
-                        style = theme.typography.bodyMediumStrong,
-                        color = theme.colors.onSurface,
-                    )
+                val currentValue = if (state.asset?.isQuoteTracked == true) {
+                    state.quote?.price ?: state.asset.currentPrice
+                } else {
+                    state.asset?.currentPrice
                 }
+                val purchaseValue = state.asset?.purchasePrice
+                if (purchaseValue != null) {
+                    Row(
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Text(
+                            text = "Purchase price",
+                            style = theme.typography.bodyMediumMedium,
+                            color = theme.colors.greyTextColor,
+                        )
+                        Text(
+                            text = "$purchaseValue",
+                            style = theme.typography.bodyMediumStrong,
+                            color = theme.colors.onSurface,
+                        )
+                    }
+                }
+                if (currentValue != null) {
+                    Row(
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Text(
+                            text = "Current value",
+                            style = theme.typography.bodyMediumMedium,
+                            color = theme.colors.greyTextColor,
+                        )
+                        Text(
+                            text = "$currentValue",
+                            style = theme.typography.bodyMediumStrong,
+                            color = theme.colors.onSurface,
+                        )
+                    }
+                }
+
                 Row(
                     horizontalArrangement = Arrangement.SpaceBetween,
                     modifier = Modifier.fillMaxWidth()
@@ -581,36 +651,26 @@ private fun PortfolioCard(state: AssetDetailState) {
 private fun KeyStatsCard(
     quote: AssetQuote, profile: AssetProfile?
 ) {
-
     Column(
         modifier = Modifier,
         verticalArrangement = Arrangement.spacedBy(theme.dimension.largeSpacing)
     ) {
-        Text(
-            "Key stats",
-            style = theme.typography.bodyLargeMedium,
-            color = theme.colors.greyTextColor
-        )
-        CardContainer(
-            modifier = Modifier.fillMaxWidth(),
-            containerColor = theme.colors.surface
-        ) {
-            Box(modifier = Modifier.padding(theme.dimension.largeSpacing)) {
-                StatGrid(
-                    stats = listOfNotNull(
-                        Stat("Day range", quote.dayLow?.let { low ->
-                            quote.dayHigh?.let { high -> "${fmt2(low)} - ${fmt2(high)}" }
-                        } ?: ""),
-                        Stat("52w range", quote.yearLow?.let { low ->
-                            quote.yearHigh?.let { high -> "${fmt2(low)} - ${fmt2(high)}" }
-                        }),
-                        Stat("Volume", quote.volume?.let { fmtCompact(it.toDouble()) }),
-                        Stat("Market cap", quote.marketCap?.let { fmtCompact(it) }),
-                    )
+        Box(modifier = Modifier.padding(theme.dimension.largeSpacing)) {
+            StatGrid(
+                stats = listOfNotNull(
+                    Stat("Day range", quote.dayLow?.let { low ->
+                        quote.dayHigh?.let { high -> "${fmt2(low)} - ${fmt2(high)}" }
+                    } ?: ""),
+                    Stat("52w range", quote.yearLow?.let { low ->
+                        quote.yearHigh?.let { high -> "${fmt2(low)} - ${fmt2(high)}" }
+                    }),
+                    Stat("Volume", quote.volume?.let { fmtCompact(it.toDouble()) }),
+                    Stat("Market cap", quote.marketCap?.let { fmtCompact(it) }),
                 )
+            )
 
-            }
         }
+
     }
 }
 
@@ -656,142 +716,87 @@ private fun StatCell(
 // ---------- About ----------
 @Composable
 private fun AboutCard(
-    companyName: String?,
-    industry: String?,
-    sector: String?,
-    country: String?,
-    description: String?,
-    website: String?,
+    profile: AssetProfile,
     onOpenWebsite: (String) -> Unit
-) {
+) = with(profile) {
     Column(verticalArrangement = Arrangement.spacedBy(theme.dimension.mediumSpacing)) {
-        Text(
-            "About",
-            style = theme.typography.bodyLargeMedium,
-            color = theme.colors.greyTextColor
-        )
-
-        CardContainer(
-            containerColor = theme.colors.surface
+        Column(
+            modifier = Modifier.padding(theme.dimension.largeSpacing),
+            verticalArrangement = Arrangement.spacedBy(theme.dimension.largeSpacing)
         ) {
-            Column(
-                modifier = Modifier.padding(theme.dimension.largeSpacing),
-                verticalArrangement = Arrangement.spacedBy(theme.dimension.largeSpacing)
-            ) {
+            companyName?.let {
                 Text(
-                    companyName ?: "About",
+                    companyName,
                     style = theme.typography.titleSmallMedium,
                     color = theme.colors.onSurface
                 )
+            }
+            if (!description.isNullOrBlank()) {
+                Text(
+                    text = description,
+                    style = theme.typography.bodySmall,
+                    color = theme.colors.greyTextColor,
+                    maxLines = 6,
+                    overflow = TextOverflow.Ellipsis
+                )
+            } else {
+                Text(
+                    text = "No description available.",
+                    style = theme.typography.bodySmall,
+                    color = theme.colors.greyTextColor
+                )
+            }
 
-                if (!description.isNullOrBlank()) {
-                    Text(
-                        text = description,
-                        style = theme.typography.bodySmall,
-                        color = theme.colors.greyTextColor,
-                        maxLines = 6,
-                        overflow = TextOverflow.Ellipsis
-                    )
-                } else {
-                    Text(
-                        text = "No description available.",
-                        style = theme.typography.bodySmall,
-                        color = theme.colors.greyTextColor
-                    )
-                }
+            // Meta line
+            val meta = listOfNotNull(
+                industry?.takeIf { it.isNotBlank() },
+                sector?.takeIf { it.isNotBlank() },
+                country?.takeIf { it.isNotBlank() }).joinToString(" • ")
+            if (meta.isNotBlank()) {
+                Text(
+                    meta,
+                    style = theme.typography.bodySmallMedium,
+                    color = theme.colors.onSurface
+                )
+            }
 
-                // Meta line
-                val meta = listOfNotNull(
-                    industry?.takeIf { it.isNotBlank() },
-                    sector?.takeIf { it.isNotBlank() },
-                    country?.takeIf { it.isNotBlank() }).joinToString(" • ")
-                if (meta.isNotBlank()) {
-                    Text(
-                        meta,
-                        style = theme.typography.bodySmallMedium,
-                        color = theme.colors.onSurface
-                    )
-                }
+            if (!website.isNullOrBlank()) {
+                Surface(
+                    shape = RoundedCornerShape(theme.dimension.defaultRadius),
+                    color = theme.colors.container,
+                    onClick = { onOpenWebsite(website) }) {
+                    Row(
+                        modifier = Modifier.padding(theme.dimension.mediumSpacing),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Icon(
+                            Icons.Rounded.WorkspacePremium,
+                            contentDescription = null,
+                            modifier = Modifier.size(theme.dimension.smallIconSize),
+                            tint = theme.colors.onSurface
+                        )
+                        Spacer(Modifier.width(8.dp))
+                        Text(
+                            text = website,
+                            style = theme.typography.bodySmallMedium,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis,
+                            color = theme.colors.onSurface
+                        )
+                        Spacer(Modifier.weight(1f))
+                        Icon(
+                            Icons.Outlined.KeyboardArrowDown,
+                            contentDescription = null,
+                            modifier = Modifier.size(theme.dimension.smallIconSize),
+                            tint = theme.colors.onSurface
 
-                if (!website.isNullOrBlank()) {
-                    Surface(
-                        shape = RoundedCornerShape(theme.dimension.defaultRadius),
-                        color = theme.colors.container,
-                        onClick = { onOpenWebsite(website) }) {
-                        Row(
-                            modifier = Modifier.padding(theme.dimension.mediumSpacing),
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Icon(
-                                Icons.Rounded.WorkspacePremium,
-                                contentDescription = null,
-                                modifier = Modifier.size(theme.dimension.smallIconSize),
-                                tint = theme.colors.onSurface
-                            )
-                            Spacer(Modifier.width(8.dp))
-                            Text(
-                                text = website,
-                                style = theme.typography.bodySmallMedium,
-                                maxLines = 1,
-                                overflow = TextOverflow.Ellipsis,
-                                color = theme.colors.onSurface
-                            )
-                            Spacer(Modifier.weight(1f))
-                            Icon(
-                                Icons.Outlined.KeyboardArrowDown,
-                                contentDescription = null,
-                                modifier = Modifier.size(theme.dimension.smallIconSize),
-                                tint = theme.colors.onSurface
-
-                            )
-                        }
+                        )
                     }
                 }
             }
         }
     }
-}
 
-// ---------- Meta chips row ----------
-@Composable
-private fun MetaChipsRow(
-    exchange: String?,
-    ceo: String?,
-    employees: String?,
-    isin: String?,
-) {
-    val chips = listOfNotNull(
-        exchange?.takeIf { it.isNotBlank() }?.let { "Exchange: $it" },
-        ceo?.takeIf { it.isNotBlank() }?.let { "CEO: $it" },
-        employees?.takeIf { it.isNotBlank() }?.let { "Employees: $it" },
-        isin?.takeIf { it.isNotBlank() }?.let { "ISIN: $it" },
-    )
-
-    if (chips.isEmpty()) return
-
-    Row(
-        modifier = Modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.spacedBy(theme.dimension.closeSpacing)
-    ) {
-        chips.take(3).forEach { c ->
-            Surface(
-                shape = RoundedCornerShape(theme.dimension.verySmallRadius),
-                color = theme.colors.greyScale.c10
-            ) {
-                Text(
-                    text = c,
-                    style = theme.typography.bodySmallMedium,
-                    color = theme.colors.greyScale.c60,
-                    modifier = Modifier.padding(
-                        horizontal = theme.dimension.closeSpacing,
-                        vertical = theme.dimension.veryCloseSpacing
-                    ),
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis
-                )
-            }
-        }
-    }
 }
 
 
@@ -808,30 +813,6 @@ private fun fmtCompact(v: Double): String {
     }
 }
 
-fun ImageBitmap.averageColor(sampleSize: Int = 8): Color {
-    val width = this.width
-    val height = this.height
-
-    var r = 0f
-    var g = 0f
-    var b = 0f
-    var count = 0
-
-    val stepX = maxOf(1, width / sampleSize)
-    val stepY = maxOf(1, height / sampleSize)
-
-    for (x in 0 until width step stepX) {
-        for (y in 0 until height step stepY) {
-            val pixel = this
-//            r += pixel.red
-//            g += pixel.green
-//            b += pixel.blue
-            count++
-        }
-    }
-
-    return Color(r / count, g / count, b / count)
-}
 
 @Composable
 fun AssetLogoContainer(
