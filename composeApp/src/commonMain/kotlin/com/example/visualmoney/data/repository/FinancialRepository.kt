@@ -13,6 +13,7 @@ import com.example.visualmoney.data.remote.FmpDataSource
 import com.example.visualmoney.domain.model.AssetProfile
 import com.example.visualmoney.domain.model.AssetQuote
 import com.example.visualmoney.domain.model.ChartPoint
+import com.example.visualmoney.domain.model.StockNews
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.firstOrNull
 import kotlinx.datetime.LocalDate
@@ -35,6 +36,8 @@ interface FinancialRepository {
     suspend fun addAssetToPortfolio(asset: PortfolioAsset)
     suspend fun getPortfolioAssets(): Flow<List<PortfolioAsset>>
     suspend fun getPortfolioAsset(symbol:String): Flow<PortfolioAsset?>
+    suspend fun getStockNews(symbols: List<String>): List<StockNews>
+    suspend fun getProfiles(symbols: List<String>): List<AssetProfile>
 }
 
 class FinancialRepositoryImpl(
@@ -53,6 +56,14 @@ class FinancialRepositoryImpl(
 
     override suspend fun getPortfolioAsset(symbol: String): Flow<PortfolioAsset?> {
         return portfolioDao.observeAsset(symbol)
+    }
+
+    override suspend fun getStockNews(symbols: List<String>): List<StockNews> {
+        return remoteSource.getStockNews(symbols)
+    }
+
+    override suspend fun getProfiles(symbols: List<String>): List<AssetProfile> {
+        return remoteSource.getProfiles(symbols)
     }
 
 

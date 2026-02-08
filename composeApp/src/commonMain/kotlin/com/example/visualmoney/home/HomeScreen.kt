@@ -116,6 +116,7 @@ fun HomeScreen(
     onGoToCalendar: () -> Unit = {},
     onGoToBalance: () -> Unit = {},
     onNewAsset: () -> Unit = {},
+    onGoToPremium: () -> Unit = {},
     onGoToAssetDetails: (String) -> Unit = {}
 ) = with(viewModel) {
     var showSearch by remember { mutableStateOf(false) }
@@ -166,7 +167,7 @@ fun HomeScreen(
                     UnlockPremiumSection(
                         title = "Smarter investing starts here",
                         subtitle = "See risk exposure, portfolio health, and actionable insights. All in one place.",
-                        onOpen = {})
+                        onOpen = onGoToPremium)
                 }
 
                 item {
@@ -573,6 +574,7 @@ fun UnlockPremiumSection(
                         iconPosition = IconPosition.TRAILING,
 //                        iconPainter = painterResource(Res.drawable.arrow_up_right),
                         backgroundColor = Color.Black,
+                        onClick = onOpen
                     )
                 }
             }

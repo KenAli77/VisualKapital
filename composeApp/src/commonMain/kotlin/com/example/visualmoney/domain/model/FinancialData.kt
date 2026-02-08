@@ -141,3 +141,14 @@ data class ChartPoint(
     val volume: Long
 
 )
+
+@Serializable
+data class StockNews(
+    val symbol: String,
+    val publishedDate: String,
+    val title: String,
+    val image: String,
+    val site: String,
+    val text: String,
+    val url: String
+)

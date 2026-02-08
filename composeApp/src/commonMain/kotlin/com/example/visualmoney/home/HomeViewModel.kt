@@ -228,13 +228,13 @@ fun PortfolioMetrics.toChangeUiString(
         else -> ""
     }
 
-    val money = formatDecimal(
+    val money = com.example.visualmoney.util.formatDecimal(
         value = abs(changeAbs),
         decimals = decimalsMoney,
         grouping = useGrouping
     )
 
-    val pct = formatDecimal(
+    val pct = com.example.visualmoney.util.formatDecimal(
         value = abs(changePct),
         decimals = decimalsPct,
         grouping = false
@@ -242,8 +242,8 @@ fun PortfolioMetrics.toChangeUiString(
 
     // Choose how you want "flat" to look
     if (isFlat && flatAsZeroNoTriangle) {
-        return "${currency}${formatDecimal(0.0, decimalsMoney, useGrouping)} (${
-            formatDecimal(
+        return "${currency}${com.example.visualmoney.util.formatDecimal(0.0, decimalsMoney, useGrouping)} (${
+            com.example.visualmoney.util.formatDecimal(
                 0.0,
                 decimalsPct,
                 false
@@ -255,41 +255,6 @@ fun PortfolioMetrics.toChangeUiString(
     return "$sign$currency$money ($sign$pct%)"
 }
 
-private fun formatDecimal(
-    value: Double,
-    decimals: Int = 2,
-    grouping: Boolean = true
-): String {
-    // Round to N decimals without relying on platform formatting
-    val factor = pow10(decimals)
-    val rounded = round(value * factor) / factor
-
-    val whole = rounded.toLong()
-    val frac = ((rounded - whole) * factor).let { round(it).toLong() }.coerceIn(0, factor - 1)
-
-    val wholeStr = if (grouping) groupThousands(whole) else whole.toString()
-    val fracStr = frac.toString().padStart(decimals, '0')
-
-    return if (decimals == 0) wholeStr else "$wholeStr.$fracStr"
-}
-
-private fun pow10(n: Int): Long {
-    var r = 1L
-    repeat(n.coerceAtLeast(0)) { r *= 10L }
-    return r
-}
-
-private fun groupThousands(value: Long): String {
-    val s = value.toString()
-    val out = StringBuilder()
-    var count = 0
-    for (i in s.length - 1 downTo 0) {
-        out.append(s[i])
-        count++
-        if (count % 3 == 0 && i != 0) out.append(',')
-    }
-    return out.reverse().toString()
-}
 
 data class PortfolioDistributionItem(
     val category: AssetCategory,
@@ -331,18 +296,18 @@ fun PortfolioDistributionItem.categoryPerformanceString(currency: String): Strin
         else -> ""
     }
 
-    val money = formatDecimal(
+    val money = com.example.visualmoney.util.formatDecimal(
         value = abs(changeAbs),
     )
 
-    val pct = formatDecimal(
+    val pct = com.example.visualmoney.util.formatDecimal(
         value = abs(changePct),
     )
 
     // Choose how you want "flat" to look
     if (isFlat) {
-        return "${currency}${formatDecimal(0.0)} (${
-            formatDecimal(
+        return "${currency}${com.example.visualmoney.util.formatDecimal(0.0)} (${
+            com.example.visualmoney.util.formatDecimal(
                 0.0,
             )
         }%)"

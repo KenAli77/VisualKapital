@@ -30,6 +30,7 @@ object Routes {
     const val DETAILS_SYMBOL = "symbol"
     const val NEW_ASSET = "new_asset"
     const val NEW_REMINDER = "new_reminder"
+    const val PREMIUM_FEATURES = "premium_features"
     const val DETAILS_ROUTE = "$DETAILS/{$DETAILS_SYMBOL}"
 
     fun details(symbol: String) = "$DETAILS/$symbol"

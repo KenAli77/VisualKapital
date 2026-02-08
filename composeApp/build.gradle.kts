@@ -99,6 +99,7 @@ kotlin {
             implementation(libs.androidx.sqlite.bundled)
 
             implementation(libs.datetime.wheel.picker)
+            implementation(libs.purchases.kmp.core)
 
         }
         commonTest.dependencies {

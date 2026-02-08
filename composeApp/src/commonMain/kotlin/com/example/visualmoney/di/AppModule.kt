@@ -13,6 +13,7 @@ import com.example.visualmoney.home.HomeViewModel
 import com.example.visualmoney.network.provideHttpClientEngine
 import com.example.visualmoney.newAsset.NewAssetViewModel
 import com.example.visualmoney.onboarding.OnboardingViewModel
+import com.example.visualmoney.premium.PremiumViewModel
 import getDatabaseBuilder
 import io.ktor.client.HttpClient
 import io.ktor.client.plugins.auth.Auth
@@ -63,11 +64,13 @@ val appModule = module {
         )
     }
     single { get<AppDatabase>().onboardingPreferencesDao() }
+    single { com.revenuecat.purchases.kmp.Purchases.sharedInstance }
     viewModelOf(::HomeViewModel)
     viewModelOf(::NewAssetViewModel)
     viewModelOf(::AssetDetailsViewModel)
     viewModelOf(::CalendarScreenViewModel)
     viewModelOf(::OnboardingViewModel)
+    viewModelOf(::PremiumViewModel)
 }
 
 

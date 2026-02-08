@@ -26,8 +26,10 @@ room = "2.8.4"
 sqlite = "2.6.2"
 ksp = "2.3.4"
 purchases = "9.1.2"
+purchasesKmp = "2.5.0+17.32.0" # Version from user request
 
 [libraries]
+purchases-kmp-core = { module = "com.revenuecat.purchases:purchases-kmp-core", version.ref = "purchasesKmp" }
 datetime-wheel-picker = { module = "io.github.darkokoa:datetime-wheel-picker", version.ref = "datetimeWheelPicker" }
 kotlin-test = { module = "org.jetbrains.kotlin:kotlin-test", version.ref = "kotlin" }
 kotlin-testJunit = { module = "org.jetbrains.kotlin:kotlin-test-junit", version.ref = "kotlin" }

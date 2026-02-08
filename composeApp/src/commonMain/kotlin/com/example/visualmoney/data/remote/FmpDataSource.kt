@@ -7,6 +7,7 @@ import com.example.visualmoney.domain.model.AssetProfile
 import com.example.visualmoney.domain.model.AssetQuote
 import com.example.visualmoney.domain.model.ChartPoint
 import com.example.visualmoney.domain.model.ChartPointDTO
+import com.example.visualmoney.domain.model.StockNews
 import com.example.visualmoney.domain.model.toChartPoint
 import io.ktor.client.HttpClient
 import io.ktor.client.call.body
@@ -152,5 +153,34 @@ class FmpDataSource(private val client: HttpClient) {
         return client.get("$baseUrl/stable/cryptocurrency-list") {
             parameter("apikey", apiKey)
         }.body()
+    }
+
+    suspend fun getStockNews(symbols: List<String>, limit: Int = 20): List<StockNews> {
+        return try {
+            if (symbols.isEmpty()) return emptyList()
+            val symbolsParam = symbols.joinToString(",")
+            client.get("$baseUrl/api/v3/stock_news") {
+                parameter("tickers", symbolsParam)
+                parameter("limit", limit)
+                parameter("apikey", apiKey)
+            }.body()
+        } catch (e: Exception) {
+            println("Error getting stock news: $e")
+            emptyList()
+        }
+    }
+
+    suspend fun getProfiles(symbols: List<String>): List<AssetProfile> {
+        return try {
+            if (symbols.isEmpty()) return emptyList()
+            val symbolsParam = symbols.joinToString(",")
+            client.get("$baseUrl/stable/profile") {
+                parameter("symbol", symbolsParam)
+                parameter("apikey", apiKey)
+            }.body()
+        } catch (e: Exception) {
+            println("Error getting profiles: $e")
+            emptyList()
+        }
     }
 }
