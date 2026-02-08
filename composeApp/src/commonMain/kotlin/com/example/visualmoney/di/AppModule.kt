@@ -12,6 +12,7 @@ import com.example.visualmoney.data.repository.InvestmentReminderRepositoryImpl
 import com.example.visualmoney.home.HomeViewModel
 import com.example.visualmoney.network.provideHttpClientEngine
 import com.example.visualmoney.newAsset.NewAssetViewModel
+import com.example.visualmoney.onboarding.OnboardingViewModel
 import getDatabaseBuilder
 import io.ktor.client.HttpClient
 import io.ktor.client.plugins.auth.Auth
@@ -61,10 +62,12 @@ val appModule = module {
             get<AppDatabase>().investmentReminderDao(),
         )
     }
+    single { get<AppDatabase>().onboardingPreferencesDao() }
     viewModelOf(::HomeViewModel)
     viewModelOf(::NewAssetViewModel)
     viewModelOf(::AssetDetailsViewModel)
     viewModelOf(::CalendarScreenViewModel)
+    viewModelOf(::OnboardingViewModel)
 }
 
 

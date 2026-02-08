@@ -1,11 +1,14 @@
 package com
 
+import AppDatabase
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Scaffold
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -33,12 +36,41 @@ import com.example.visualmoney.home.HomeViewModel
 import com.example.visualmoney.navigation.Routes
 import com.example.visualmoney.newAsset.NewAssetScreen
 import com.example.visualmoney.newAsset.NewAssetViewModel
+import com.example.visualmoney.onboarding.OnboardingScreen
+import com.example.visualmoney.onboarding.OnboardingViewModel
 import com.example.visualmoney.portfolioOverview.PortfolioOverviewScreen
 import org.koin.compose.viewmodel.koinViewModel
 
 @Composable
 fun VisualKapitalApp(navController: NavHostController = rememberNavController()) {
     var symbol by remember { mutableStateOf("") }
+    var startDestination by remember { mutableStateOf<String?>(null) }
+    
+    // Check onboarding status and observe user name
+    val database = org.koin.compose.koinInject<AppDatabase>()
+    
+    // Observe user name from database reactively
+    val userNameState = database.onboardingPreferencesDao()
+        .getOnboardingPreferences()
+        .collectAsState(initial = null)
+    
+    val userName = userNameState.value?.userName?.ifBlank { "User" } ?: "User"
+    
+    LaunchedEffect(Unit) {
+        val preferences = database.onboardingPreferencesDao().getOnboardingPreferencesOnce()
+        startDestination = if (preferences?.isOnboardingCompleted == true) {
+            Routes.HOME
+        } else {
+            Routes.ONBOARDING
+        }
+    }
+    
+    if (startDestination == null) {
+        // Show loading while checking onboarding status
+        Box(modifier = Modifier.fillMaxSize().background(DarkBackgroundGradient))
+        return
+    }
+    
     Box(modifier = Modifier.background(DarkBackgroundGradient)) {
         Scaffold(
             modifier = Modifier.fillMaxSize(),
@@ -47,13 +79,28 @@ fun VisualKapitalApp(navController: NavHostController = rememberNavController())
             val homeViewModel = koinViewModel<HomeViewModel>()
             val calendarViewModel =
                 koinViewModel<CalendarScreenViewModel>()
-            NavHost(navController, startDestination = Routes.HOME) {
+            NavHost(navController, startDestination = startDestination!!) {
+                
+                composable(route = Routes.ONBOARDING) {
+                    val onboardingViewModel = koinViewModel<OnboardingViewModel>()
+                    OnboardingScreen(
+                        viewModel = onboardingViewModel,
+                        onComplete = {
+                            // Reload user name after onboarding
+                            navController.navigate(Routes.HOME) {
+                                popUpTo(Routes.ONBOARDING) { inclusive = true }
+                            }
+                        }
+                    )
+                }
 
                 composable(route = Routes.HOME) {
 
                     HomeScreen(
                         modifier = Modifier.padding(top = paddingValues.calculateTopPadding()),
-                        viewModel = homeViewModel, onGoToAssetDetails = {
+                        viewModel = homeViewModel,
+                        userName = userName,
+                        onGoToAssetDetails = {
                             symbol = it
                             navController.navigate(Routes.details(it))
                         },

@@ -10,6 +10,8 @@ import com.example.visualmoney.data.local.InvestmentReminderDao
 import com.example.visualmoney.data.local.InvestmentReminderEntity
 import com.example.visualmoney.data.local.ManualInvestmentDao
 import com.example.visualmoney.data.local.ManualInvestmentEntity
+import com.example.visualmoney.data.local.OnboardingPreferencesDao
+import com.example.visualmoney.data.local.OnboardingPreferencesEntity
 import com.example.visualmoney.data.local.PortfolioAsset
 import com.example.visualmoney.data.local.PortfolioAssetDAO
 import com.example.visualmoney.data.local.PortfolioBuyDao
@@ -26,9 +28,10 @@ import com.example.visualmoney.data.local.TrackedAssetEntity
         ManualInvestmentEntity::class,
         InvestmentReminderEntity::class,
         CachedQuoteEntity::class,
-        PortfolioAsset::class
+        PortfolioAsset::class,
+        OnboardingPreferencesEntity::class
     ],
-    version = 1,
+    version = 2,
     exportSchema = true,
 )
 @TypeConverters(RoomConverters::class)
@@ -40,6 +43,7 @@ abstract class AppDatabase : RoomDatabase() {
     abstract fun manualInvestmentDao(): ManualInvestmentDao
     abstract fun investmentReminderDao(): InvestmentReminderDao
     abstract fun cachedQuoteDao(): CachedQuoteDao
+    abstract fun onboardingPreferencesDao(): OnboardingPreferencesDao
 }
 
 @Suppress("KotlinNoActualForExpect","NO_ACTUAL_FOR_EXPECT")
