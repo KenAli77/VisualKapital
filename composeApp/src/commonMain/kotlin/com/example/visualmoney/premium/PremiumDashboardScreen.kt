@@ -31,10 +31,16 @@ import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.LinearProgressIndicator
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -132,7 +138,7 @@ fun PremiumDashboardScreen(
                 
                 // 6. Insights & High Risk Assets
                 item {
-                    InsightsSection(state.highRiskAssets, onNavigateToAsset)
+                    InsightsSection(state.metrics, state.highRiskAssets, onNavigateToAsset)
                 }
             }
         }
@@ -220,6 +226,26 @@ fun PulseSection(metrics: PortfolioMetrics) {
 @Composable
 fun MetricRow(label: String, value: String, isGood: Boolean, description: String) {
     val theme = LocalAppTheme.current
+    var showDialog by remember { mutableStateOf(false) }
+
+    if (showDialog) {
+        AlertDialog(
+            onDismissRequest = { showDialog = false },
+            title = {
+                Text(text = label, style = theme.typography.titleMedium, color = theme.colors.onSurface)
+            },
+            text = {
+                Text(text = description, style = theme.typography.bodyMedium, color = theme.colors.onSurface)
+            },
+            confirmButton = {
+                TextButton(onClick = { showDialog = false }) {
+                    Text("OK", color = theme.colors.primary.c50)
+                }
+            },
+            containerColor = theme.colors.surface
+        )
+    }
+
     Row(verticalAlignment = Alignment.CenterVertically) {
         Column {
             Text(
@@ -236,9 +262,11 @@ fun MetricRow(label: String, value: String, isGood: Boolean, description: String
         Spacer(modifier = Modifier.width(12.dp))
         Icon(
             Icons.Rounded.Info,
-            contentDescription = null,
+            contentDescription = "Info",
             tint = theme.colors.greyScale.c80,
-            modifier = Modifier.size(16.dp)
+            modifier = Modifier
+                .size(16.dp)
+                .clickable { showDialog = true }
         )
     }
 }
@@ -352,15 +380,48 @@ fun RiskMetricsSection(metrics: PortfolioMetrics) {
 @Composable
 fun MetricCard(modifier: Modifier, title: String, value: String, subtitle: String, color: Color) {
     val theme = LocalAppTheme.current
+    var showDialog by remember { mutableStateOf(false) }
+
+    if (showDialog) {
+        AlertDialog(
+            onDismissRequest = { showDialog = false },
+            title = {
+                Text(text = title, style = theme.typography.titleMedium, color = theme.colors.onSurface)
+            },
+            text = {
+                Text(text = "Explanation for $title: $subtitle", style = theme.typography.bodyMedium, color = theme.colors.onSurface)
+            },
+            confirmButton = {
+                TextButton(onClick = { showDialog = false }) {
+                    Text("OK", color = theme.colors.primary.c50)
+                }
+            },
+            containerColor = theme.colors.surface
+        )
+    }
+
     CardContainer(
-        modifier = modifier,
+        modifier = modifier.clickable { showDialog = true }, // Make whole card clickable or just adding icon
         containerColor = theme.colors.surface
     ) {
         Column(
             modifier = Modifier.padding(theme.dimension.mediumSpacing),
             verticalArrangement = Arrangement.spacedBy(4.dp)
         ) {
-            Text(title, style = theme.typography.bodySmall, color = theme.colors.greyScale.c50)
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                 Text(title, style = theme.typography.bodySmall, color = theme.colors.greyScale.c50)
+                 Icon(
+                    Icons.Rounded.Info,
+                    contentDescription = "Info",
+                    tint = theme.colors.greyScale.c80,
+                    modifier = Modifier.size(14.dp)
+                 )
+            }
+           
             Text(value, style = theme.typography.titleMedium, color = color)
             Text(subtitle, style = theme.typography.bodySmall, color = theme.colors.greyScale.c60)
         }
@@ -530,54 +591,6 @@ fun ConcentrationSection(alerts: List<ConcentrationAlert>, onNavigateToAsset: (S
     }
 }
 
-@Composable
-fun InsightsSection(highRiskAssets: List<HighRiskAsset>, onNavigateToAsset: (String) -> Unit) {
-    val theme = LocalAppTheme.current
-    
-    Column(
-        modifier = Modifier.padding(horizontal = theme.dimension.pagePadding, vertical = theme.dimension.mediumSpacing)
-    ) {
-        Text(
-            "Insights & Actions",
-            style = theme.typography.titleSmall,
-            color = theme.colors.greyScale.c50,
-            modifier = Modifier.padding(bottom = theme.dimension.closeSpacing)
-        )
-        
-        // Rebalancing Suggestion (Mock)
-        CardContainer(
-            modifier = Modifier.fillMaxWidth().padding(bottom = 16.dp),
-            containerColor = theme.colors.surface
-        ) {
-            Column(modifier = Modifier.padding(theme.dimension.largeSpacing)) {
-                Text("Rebalancing Suggestion", style = theme.typography.bodyMediumStrong, color = theme.colors.onSurface)
-                Spacer(modifier = Modifier.height(8.dp))
-                Text(
-                    "Your portfolio is heavily weighted towards Technology sectors. Consider determining a target allocation and rebalancing.",
-                    style = theme.typography.bodySmall,
-                    color = theme.colors.greyScale.c50
-                )
-            }
-        }
-        
-        // High Risk Assets List
-        if (highRiskAssets.isNotEmpty()) {
-            Text(
-                "High Risk Assets",
-                style = theme.typography.bodyMediumStrong,
-                color = theme.colors.greyScale.c50,
-                modifier = Modifier.padding(bottom = 8.dp)
-            )
-            
-            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                highRiskAssets.forEach { asset ->
-                    HighRiskAssetItem(asset, onNavigateToAsset)
-                }
-            }
-        }
-    }
-}
-
 // Re-using simplified RiskScoreGauge
 @Composable
 fun RiskScoreGauge(
@@ -616,6 +629,90 @@ fun RiskScoreGauge(
             size = Size(radius * 2, radius * 2),
             style = Stroke(width = strokeWidth, cap = StrokeCap.Round)
         )
+    }
+}
+
+@Composable
+fun InsightsSection(metrics: PortfolioMetrics, highRiskAssets: List<HighRiskAsset>, onNavigateToAsset: (String) -> Unit) {
+    val theme = LocalAppTheme.current
+    
+    Column(
+        modifier = Modifier.padding(horizontal = theme.dimension.pagePadding, vertical = theme.dimension.mediumSpacing)
+    ) {
+        Text(
+            "Insights & Actions",
+            style = theme.typography.titleSmall,
+            color = theme.colors.greyScale.c50,
+            modifier = Modifier.padding(bottom = theme.dimension.closeSpacing)
+        )
+        
+        // Rebalancing Suggestion (Mock)
+        CardContainer(
+            modifier = Modifier.fillMaxWidth().padding(bottom = 16.dp),
+            containerColor = theme.colors.surface
+        ) {
+            Column(modifier = Modifier.padding(theme.dimension.largeSpacing)) {
+                Text("Rebalancing Suggestion", style = theme.typography.bodyMediumStrong, color = theme.colors.onSurface)
+                Spacer(modifier = Modifier.height(8.dp))
+                Text(
+                    metrics.rebalancingSuggestion,
+                    style = theme.typography.bodySmall,
+                    color = theme.colors.greyScale.c50
+                )
+            }
+        }
+
+         // Dividend Insights
+        CardContainer(
+            modifier = Modifier.fillMaxWidth().padding(bottom = 16.dp),
+            containerColor = theme.colors.surface
+        ) {
+            Column(modifier = Modifier.padding(theme.dimension.largeSpacing)) {
+                Text("Dividend Outlook", style = theme.typography.bodyMediumStrong, color = theme.colors.onSurface)
+                Spacer(modifier = Modifier.height(8.dp))
+                Text(
+                     "Projected annual income based on current yields.",
+                    style = theme.typography.bodySmall,
+                    color = theme.colors.greyScale.c50
+                )
+                Spacer(modifier = Modifier.height(12.dp))
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text(
+                        "$${formatDecimal(metrics.estimatedAnnualIncome)}",
+                        style = theme.typography.titleLarge,
+                        color = theme.colors.onSurface
+                    )
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Surface(
+                        color = theme.colors.greenScale.c10,
+                        shape = RoundedCornerShape(4.dp)
+                    ) {
+                        Text(
+                            "${formatDecimal(metrics.currentYield)}% Yield",
+                            style = theme.typography.bodySmallStrong,
+                            color = theme.colors.greenScale.c50,
+                            modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
+                        )
+                    }
+                }
+            }
+        }
+        
+        // High Risk Assets List
+        if (highRiskAssets.isNotEmpty()) {
+            Text(
+                "High Risk Assets",
+                style = theme.typography.bodyMediumStrong,
+                color = theme.colors.greyScale.c50,
+                modifier = Modifier.padding(bottom = 8.dp)
+            )
+            
+            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                highRiskAssets.forEach { asset ->
+                    HighRiskAssetItem(asset, onNavigateToAsset)
+                }
+            }
+        }
     }
 }
 

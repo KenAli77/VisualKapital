@@ -159,7 +159,7 @@ class FmpDataSource(private val client: HttpClient) {
         return try {
             if (symbols.isEmpty()) return emptyList()
             val symbolsParam = symbols.joinToString(",")
-            client.get("$baseUrl/api/v3/stock_news") {
+            client.get("$baseUrl/stable/stock_news") {
                 parameter("tickers", symbolsParam)
                 parameter("limit", limit)
                 parameter("apikey", apiKey)

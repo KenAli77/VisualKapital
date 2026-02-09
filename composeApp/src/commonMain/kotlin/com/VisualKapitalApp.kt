@@ -154,7 +154,12 @@ fun VisualKapitalApp(navController: NavHostController = rememberNavController())
                 ) { backStackEntry ->
                     val viewModel =
                         koinViewModel<AssetDetailsViewModel>(viewModelStoreOwner = backStackEntry)
-                    viewModel.loadSymbolData(symbol)
+                    
+                    LaunchedEffect(symbol) {
+                        if (symbol.isNotBlank()) {
+                            viewModel.loadSymbolData(symbol)
+                        }
+                    }
                     AssetDetailsScreen(
                         modifier = Modifier.padding(top = paddingValues.calculateTopPadding()),
                         viewModel = viewModel,

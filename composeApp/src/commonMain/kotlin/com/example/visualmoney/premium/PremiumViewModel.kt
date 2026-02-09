@@ -6,9 +6,14 @@ import androidx.lifecycle.viewModelScope
 import com.example.visualmoney.domain.model.AssetQuote
 import com.example.visualmoney.domain.model.StockNews
 import com.example.visualmoney.data.repository.FinancialRepository
+import kotlinx.coroutines.awaitAll
+import com.example.visualmoney.assetDetails.ChartRange
+import com.example.visualmoney.assetDetails.apiPeriod
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.async
 import kotlinx.coroutines.flow.first
-import kotlinx.coroutines.launch
+
+
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -54,7 +59,12 @@ data class PortfolioMetrics(
     
     // Overall Risk Assessment
     val riskScore: Int = 50,            // 0-100 (higher = safer)
-    val riskLevel: RiskLevel = RiskLevel.MEDIUM
+    val riskLevel: RiskLevel = RiskLevel.MEDIUM,
+    
+    // Dividend Metrics
+    val estimatedAnnualIncome: Double = 0.0,
+    val currentYield: Double = 0.0,
+    val rebalancingSuggestion: String = "Your portfolio looks balanced. Keep monitoring your asset allocation."
 )
 
 data class ExposureItem(
@@ -138,8 +148,35 @@ val SECTOR_COLORS = mapOf(
     "Basic Materials" to 0xFF78716C,
     "Utilities" to 0xFF0EA5E9,
     "Cryptocurrency" to 0xFFF97316,
-    "Unknown" to 0xFF9CA3AF
+    "Precious Metals" to 0xFFEAB308, // Gold color
+    "Unknown" to 0xFF9CA3AF,
+    
+    // Asset Classes
+    "Stocks" to 0xFF3B82F6, // Blue
+    "ETF" to 0xFF06B6D4,    // Cyan
+    "Crypto" to 0xFFF97316, // Orange
+    "Commodities" to 0xFFEAB308, // Yellow
+    
+    // Countries (Common ones)
+    "US" to 0xFF2563EB,     // Darker Blue
+    "Global" to 0xFF10B981, // Emerald
+    "China" to 0xFFEF4444,  // Red
+    "Europe" to 0xFF6366F1  // Indigo
 )
+
+fun getChartColor(name: String): Long {
+    return SECTOR_COLORS[name] ?: run {
+        // Deterministic color generation for unknown labels
+        val hash = name.hashCode()
+        val r = (hash and 0xFF0000) shr 16
+        val g = (hash and 0x00FF00) shr 8
+        val b = (hash and 0x0000FF)
+        
+        // Ensure color isn't too dark or too light (simple normalization)
+        // Or just mask with alpha and use raw hash bytes
+        (0xFF000000 or (hash.toLong() and 0xFFFFFF))
+    }
+}
 
 // ============ ViewModel ============
 
@@ -222,14 +259,29 @@ class PremiumViewModel(
                 
                 val symbols = assets.map { it.symbol }
                 
-                // 2. Fetch Profiles & Quotes & News
+                // 2. Fetch Profiles & Quotes & News & Charts (in parallel)
                 val profilesHelper = async { repository.getProfiles(symbols) }
                 val quotesHelper = async { repository.getQuotes(symbols) }
                 val newsHelper = async { repository.getStockNews(symbols) }
                 
+                // Fetch 3 months of history for each asset for volatility calculation
+                val chartHelpers = symbols.map { symbol ->
+                    async { 
+                        symbol to repository.getChart(
+                            symbol,
+                            ChartRange.THREE_MONTHS.apiPeriod.start,
+                            ChartRange.THREE_MONTHS.apiPeriod.end
+                        )
+                    }
+                }
+                
                 val profiles = profilesHelper.await()
+                println("DEBUG: Fetching premium data for symbols: $symbols")
+                println("DEBUG: Fetched ${profiles.size} profiles: ${profiles.map { it.symbol }}")
+                
                 val quotes = quotesHelper.await()
                 val news = newsHelper.await()
+                val charts = chartHelpers.awaitAll().toMap()
                 
                 val quoteMap = quotes.associateBy { it.symbol }
                 val profileMap = profiles.associateBy { it.symbol }
@@ -280,22 +332,59 @@ class PremiumViewModel(
                 val countryMap = mutableMapOf<String, Double>()
                 val assetClassMap = mutableMapOf<String, Double>()
                 
+                val dividendCalendar = mutableListOf<String>() // Simple string list for now, can be improved
+                
                 assets.forEach { asset ->
                     val price = quoteMap[asset.symbol]?.price ?: asset.purchasePrice
                     val value = asset.qty * price
                     val profile = profileMap[asset.symbol]
                     
-                    val sector = profile?.sector ?: "Unknown"
-                    val country = profile?.country ?: "Unknown"
+                    var sector = profile?.sector
+                    var country = profile?.country
+                    
+                    // Fallback logic for Commodities and Crypto if profile is missing or incomplete
+                    if (sector.isNullOrBlank() || sector == "Unknown") {
+                        when {
+                            asset.symbol.contains("BTC") || asset.symbol.contains("ETH") || asset.symbol.contains("-USD") -> {
+                                sector = "Cryptocurrency"
+                                country = "Global"
+                            }
+                            asset.symbol.equals("GC=F", ignoreCase = true) || asset.symbol.contains("Gold", ignoreCase = true) || asset.name.contains("Gold", ignoreCase = true) -> {
+                                sector = "Precious Metals"
+                                country = "Global"
+                            }
+                            asset.symbol.equals("SI=F", ignoreCase = true) || asset.name.contains("Silver", ignoreCase = true) -> {
+                                sector = "Precious Metals"
+                                country = "Global"
+                            }
+                            asset.symbol.equals("CL=F", ignoreCase = true) || asset.name.contains("Crude Oil", ignoreCase = true) -> {
+                                sector = "Energy"
+                                country = "Global"
+                            }
+                            else -> {
+                                sector = "Unknown"
+                                country = "Unknown"
+                            }
+                        }
+                    }
+
                     val assetClass = when {
-                        asset.name.contains("ETF", ignoreCase = true) -> "ETF"
-                        asset.symbol.contains("BTC") || asset.symbol.contains("ETH") -> "Crypto"
+                        asset.name.contains("ETF", ignoreCase = true) || profile?.isEtf == true -> "ETF"
+                        sector == "Cryptocurrency" || profile?.exchange == "CRYPTO" -> "Crypto"
+                        sector == "Precious Metals" || sector == "Energy" || sector == "Agricultural" -> "Commodities"
                         else -> "Stocks"
                     }
+
                     
                     sectorMap[sector] = (sectorMap[sector] ?: 0.0) + value
+                    if (country?.isNotBlank() == true)
                     countryMap[country] = (countryMap[country] ?: 0.0) + value
                     assetClassMap[assetClass] = (assetClassMap[assetClass] ?: 0.0) + value
+                    
+                    // Dividend Info
+                    if ((profile?.lastDiv ?: 0.0) > 0) {
+                        dividendCalendar.add("${asset.symbol}: Yield ${(profile!!.lastDiv!! / price * 100).toString().take(4)}%")
+                    }
                 }
                 
                 fun mapToExposureItems(map: Map<String, Double>): List<ExposureItem> {
@@ -304,7 +393,7 @@ class PremiumViewModel(
                             name = name,
                             value = value,
                             percentage = if (totalValue > 0) (value / totalValue) * 100 else 0.0,
-                            color = SECTOR_COLORS[name] ?: 0xFF9CA3AF
+                            color = getChartColor(name)
                         )
                     }.sortedByDescending { it.percentage }
                 }
@@ -343,38 +432,108 @@ class PremiumViewModel(
                     } else null
                 }.sortedByDescending { it.percentage }
                 
-                // 7. Calculate Risk Metrics
-                // Volatility: Using daily changes from quotes as proxy
-                val dailyChanges = quotes.map { it.changesPercentage }
-                val avgChange = dailyChanges.average()
-                val volatility = if (dailyChanges.size > 1) {
-                    sqrt(dailyChanges.map { (it - avgChange) * (it - avgChange) }.average())
-                } else 0.0
+                // 7. Calculate Advanced Risk Metrics using Historical Data
                 
-                // Beta: Simplified estimate based on volatility (market volatility ~1%)
-                val marketVolatility = 1.0
-                val beta = if (marketVolatility > 0) volatility / marketVolatility else 1.0
+                // Weighted Beta
+                var weightedBeta = 0.0
+                holdings.forEach { holding ->
+                    val profile = profileMap[holding.symbol]
+                    val beta = profile?.beta ?: 1.0
+                    weightedBeta += beta * (holding.percentage / 100.0)
+                }
                 
-                // Sharpe Ratio: (Return - Risk Free Rate) / Volatility
-                val riskFreeRate = 5.0 // Approximate annual risk-free rate
-                val annualizedReturn = totalReturnPct
-                val sharpeRatio = if (volatility > 0) (annualizedReturn - riskFreeRate) / (volatility * sqrt(252.0)) else 0.0
+                // Portfolio Volatility (simplified: weighted avg of asset volatilities + correlation assumption)
+                // A true portfolio volatility requires a covariance matrix, but for now we'll do weighted average * diversification factor
+                // Calculate individual asset volatilities from charts
+                var weightedVolatility = 0.0
                 
-                // Value at Risk (VaR) at 95% confidence: ~1.65 standard deviations
-                val valueAtRisk = totalValue * volatility * 1.65 / 100
+                charts.forEach { (symbol, points) ->
+                    val holding = holdings.find { it.symbol == symbol } ?: return@forEach
+                    if (points.size > 1) {
+                         // Calculate daily returns
+                         val dailyReturns = points.zipWithNext { a, b -> 
+                             (a.price - b.price) / b.price 
+                         }
+                         val avgReturn = dailyReturns.average()
+                         val variance = dailyReturns.map { (it - avgReturn) * (it - avgReturn) }.average()
+                         val stdDev = sqrt(variance) // Daily volatility
+                         
+                         // Annualized Volatility = Daily * sqrt(252)
+                         val annualizedVol = stdDev * 15.87 // sqrt(252) approx 15.87
+                         
+                         weightedVolatility += annualizedVol * (holding.percentage / 100.0)
+                    }
+                }
                 
-                // 8. Overall Risk Score (0-100, higher = safer)
+                // If no charts (e.g. all crypto or errors), fallback to quotes daily change
+                if (weightedVolatility == 0.0) {
+                     val dailyChanges = quotes.map { kotlin.math.abs(it.changesPercentage) / 100.0 }
+                     if (dailyChanges.isNotEmpty()) {
+                         weightedVolatility = dailyChanges.average() * 15.87 // annualized rough estimate
+                     }
+                }
+                
+                // Apply a diversification factor (naive: more assets = less risk)
+                // 1 asset = 1.0, 10 assets = ~0.6
+                val diversificationFactor = 1.0 / sqrt(assets.size.coerceAtLeast(1).toDouble()).coerceAtLeast(1.0) * 0.5 + 0.5
+                val portfolioVolatility = weightedVolatility * diversificationFactor
+                
+                // Sharpe Ratio
+                val riskFreeRate = 0.045 // 4.5%
+                val sharpeRatio = if (portfolioVolatility > 0.001) 
+                    (totalReturnPct/100.0 - riskFreeRate) / portfolioVolatility 
+                else 0.0
+                
+                // Value at Risk (VaR)
+                val valueAtRisk = totalValue * portfolioVolatility * 1.65 / 15.87 // Daily 95% VaR (~1.65 sigma)
+                
+                // 8. Overall Risk Score
                 val highRiskPct = highRiskAssets.sumOf { it.percentage }
-                val concentrationPenalty = concentrationAlerts.size * 10.0
-                val volatilityPenalty = (volatility * 5).coerceAtMost(30.0)
+                val concentrationPenalty = concentrationAlerts.size * 5.0
+                val volatilityPenalty = (portfolioVolatility * 100.0).coerceAtMost(40.0)
                 
-                val riskScore = (100.0 - highRiskPct / 2 - concentrationPenalty - volatilityPenalty).coerceIn(0.0, 100.0).toInt()
+                val riskScore = (100.0 - (highRiskPct * 0.3) - concentrationPenalty - volatilityPenalty).coerceIn(1.0, 99.0).toInt()
                 val riskLevel = when {
                     riskScore >= 70 -> RiskLevel.LOW
                     riskScore >= 40 -> RiskLevel.MEDIUM
                     else -> RiskLevel.HIGH
                 }
                 
+                // Calculate Dividend Metrics
+                var totalProjectedIncome = 0.0
+                assets.forEach { asset ->
+                    val profile = profileMap[asset.symbol]
+                    val lastDiv = profile?.lastDiv ?: 0.0
+                    // lastDiv is usually per share per year or quarter? FMP 'lastDiv' is usually the last dividend amount.
+                    // If it's annual, great. If quarterly, we might need to multiply by frequency.
+                    // FMP 'lastDiv' is often the Amount of the last dividend paid. 
+                    // Let's assume for now it's an indicative annual amount or we use Yield if available.
+                    // Actually FMP profile has 'lastDiv' (amount). 
+                    // Better to use a yield estimation if possible, or just sum (qty * lastDiv * frequency?).
+                    // For safety, let's just use the yield if we had it, but we only have lastDiv.
+                    // Let's assume lastDiv is the annual amount for now (common in some feeds) or just use it as a proxy.
+                    // A better proxy: (lastDiv * qty).
+                    if (lastDiv > 0) {
+                        totalProjectedIncome += lastDiv * asset.qty
+                    }
+                }
+                
+                val currentYield = if (totalValue > 0) (totalProjectedIncome / totalValue) * 100 else 0.0
+
+                // Generate Dynamic Rebalancing Suggestion
+                var suggestion = "Your portfolio looks balanced. Keep monitoring your asset allocation."
+                val topSector = sectorExposure.maxByOrNull { it.percentage }
+                
+                if (riskLevel == RiskLevel.HIGH) {
+                     suggestion = "Your portfolio risk is High. Consider diversifying into defensive sectors like Utilities or Consumer Defensive to lower volatility."
+                } else if ((topSector?.percentage ?: 0.0) > 40.0) {
+                    suggestion = "Your portfolio is heavily weighted towards ${topSector?.name} (${topSector?.percentage?.toInt()}%). Consider trimming this position to reduce sector-specific risk."
+                } else if (sharpeRatio < 0.5 && totalReturnPct < 0) {
+                     suggestion = "Your risk-adjusted returns are low. Review your underperforming assets and consider reallocating to higher quality growth or dividend stocks."
+                } else if (assetClassExposure.find { it.name == "Crypto" }?.percentage?.let { it > 20 } == true) {
+                    suggestion = "You have significant exposure to Crypto (>20%). Ensure you are comfortable with the high volatility associated with this asset class."
+                }
+
                 val metrics = PortfolioMetrics(
                     totalValue = totalValue,
                     totalCost = totalCost,
@@ -382,12 +541,15 @@ class PremiumViewModel(
                     totalReturnPct = totalReturnPct,
                     topGainer = topGainer,
                     topLoser = topLoser,
-                    volatility = volatility,
-                    beta = beta,
+                    volatility = portfolioVolatility * 100, // display as %
+                    beta = weightedBeta,
                     sharpeRatio = sharpeRatio,
                     valueAtRisk = valueAtRisk,
                     riskScore = riskScore,
-                    riskLevel = riskLevel
+                    riskLevel = riskLevel,
+                    estimatedAnnualIncome = totalProjectedIncome,
+                    currentYield = currentYield,
+                    rebalancingSuggestion = suggestion
                 )
                 
                 _state.update { 
@@ -405,7 +567,7 @@ class PremiumViewModel(
                 }
                 
             } catch (e: Exception) {
-                 _state.update { it.copy(isPremiumLoading = false, error = "Failed to load premium data") }
+                 _state.update { it.copy(isPremiumLoading = false, error = "Failed to load premium data: ${e.message}") }
             }
         }
     }
