@@ -41,9 +41,6 @@ import com.example.visualmoney.onboarding.OnboardingViewModel
 import com.example.visualmoney.portfolioOverview.PortfolioOverviewScreen
 import com.example.visualmoney.premium.PremiumFeaturesScreen
 import com.example.visualmoney.premium.PremiumViewModel
-import com.example.visualmoney.data.local.PortfolioAsset
-import com.example.visualmoney.AssetCategory
-import kotlinx.coroutines.flow.first
 import org.koin.compose.viewmodel.koinViewModel
 
 @Composable
@@ -67,19 +64,6 @@ fun VisualKapitalApp(navController: NavHostController = rememberNavController())
             Routes.HOME
         } else {
             Routes.ONBOARDING
-        }
-        
-        // Seed mock data if empty
-        val assets = database.portfolioAssetDao().observeAllAssets().first()
-        if (assets.isEmpty()) {
-            val mockAssets = listOf(
-                PortfolioAsset(symbol = "AAPL", name = "Apple Inc.", purchasePrice = 150.0, currentPrice = 175.0, qty = 10, type = AssetCategory.STOCKS, exchangeName = "NASDAQ"),
-                PortfolioAsset(symbol = "TSLA", name = "Tesla, Inc.", purchasePrice = 200.0, currentPrice = 180.0, qty = 5, type = AssetCategory.STOCKS, exchangeName = "NASDAQ"),
-                PortfolioAsset(symbol = "BTC", name = "Bitcoin", purchasePrice = 60000.0, currentPrice = 65000.0, qty = 1, type = AssetCategory.CRYPTO, exchangeName = "Crypto"),
-                PortfolioAsset(symbol = "NVDA", name = "NVIDIA Corp", purchasePrice = 400.0, currentPrice = 900.0, qty = 2, type = AssetCategory.STOCKS, exchangeName = "NASDAQ"),
-                PortfolioAsset(symbol = "GC=F", name = "Gold", purchasePrice = 2000.0, currentPrice = 2300.0, qty = 1, type = AssetCategory.COMMODITIES, exchangeName = "COMEX")
-            )
-            mockAssets.forEach { database.portfolioAssetDao().upsert(it) }
         }
     }
     

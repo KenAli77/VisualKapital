@@ -16,6 +16,9 @@ data class AssetDetailState(
     val chart1M: List<ChartPoint> = emptyList(),
     val chart3M: List<ChartPoint> = emptyList(),
     val chart1Y: List<ChartPoint> = emptyList(),
+    val news: List<com.example.visualmoney.domain.model.StockNews> = emptyList(),
+    val isNewsLoading: Boolean = false,
+    val isPremium: Boolean = false
 )
 val AssetDetailState.roiText:String get() {
     val roi = (quote?.price ?: 0.0) / (asset?.purchasePrice ?: 1.0) - 1

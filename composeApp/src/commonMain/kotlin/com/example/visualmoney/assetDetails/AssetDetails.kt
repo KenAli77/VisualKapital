@@ -93,6 +93,10 @@ import visualmoney.composeapp.generated.resources.plus
 import visualmoney.composeapp.generated.resources.trash
 import kotlin.math.max
 import kotlin.time.Clock
+import androidx.compose.ui.draw.blur
+import androidx.compose.material.icons.rounded.Lock
+import androidx.compose.material3.CircularProgressIndicator
+import com.example.visualmoney.domain.model.StockNews
 
 private val theme @Composable get() = LocalAppTheme.current
 
@@ -268,6 +272,17 @@ fun AssetDetailsScreen(
                                         onOpenWebsite = onOpenWebsite
                                     )
                                 } ?: EmptyStateCard(title = "No information available")
+                            }
+                            
+                            AssetDetailTabs.News -> {
+                                if (state.isPremium) {
+                                    NewsTabContent(
+                                        news = state.news,
+                                        isLoading = state.isNewsLoading
+                                    )
+                                } else {
+                                    PremiumLockedContent()
+                                }
                             }
                         }
                     }
@@ -847,5 +862,139 @@ fun AssetLogoContainer(
             fontWeight = FontWeight.Medium,
 
             )
+    }
+}
+
+// ---------- News Tab ----------
+@Composable
+private fun NewsTabContent(
+    news: List<StockNews>,
+    isLoading: Boolean
+) {
+    if (isLoading) {
+        Box(
+            modifier = Modifier.fillMaxWidth().height(200.dp),
+            contentAlignment = Alignment.Center
+        ) {
+            CircularProgressIndicator(color = theme.colors.primary.c50)
+        }
+        return
+    }
+    
+    if (news.isEmpty()) {
+        EmptyStateCard(title = "No news available for this asset")
+        return
+    }
+    
+    Column(
+        modifier = Modifier.padding(vertical = theme.dimension.mediumSpacing),
+        verticalArrangement = Arrangement.spacedBy(theme.dimension.mediumSpacing)
+    ) {
+        news.forEach { newsItem ->
+            NewsCard(newsItem)
+        }
+    }
+}
+
+@Composable
+private fun NewsCard(news: StockNews) {
+    CardContainer(
+        modifier = Modifier.fillMaxWidth(),
+        containerColor = theme.colors.surface
+    ) {
+        Row(
+            modifier = Modifier.padding(theme.dimension.mediumSpacing),
+            horizontalArrangement = Arrangement.spacedBy(theme.dimension.mediumSpacing),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            // News Image
+            AsyncImage(
+                model = news.image,
+                contentDescription = null,
+                modifier = Modifier
+                    .size(60.dp)
+                    .clip(RoundedCornerShape(8.dp)),
+                contentScale = ContentScale.Crop
+            )
+            
+            Column(
+                modifier = Modifier.weight(1f),
+                verticalArrangement = Arrangement.spacedBy(theme.dimension.closeSpacing)
+            ) {
+                Text(
+                    text = news.title,
+                    style = theme.typography.bodyMediumStrong,
+                    color = theme.colors.onSurface,
+                    maxLines = 2,
+                    overflow = TextOverflow.Ellipsis
+                )
+                Text(
+                    text = "${news.site} • ${news.publishedDate.take(10)}",
+                    style = theme.typography.bodySmall,
+                    color = theme.colors.greyScale.c50
+                )
+            }
+        }
+    }
+}
+
+// ---------- Premium Locked Content ----------
+@Composable
+private fun PremiumLockedContent() {
+    Box(
+        modifier = Modifier
+            .fillMaxWidth()
+            .height(250.dp),
+        contentAlignment = Alignment.Center
+    ) {
+        // Blurred background placeholder
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .blur(10.dp)
+                .padding(theme.dimension.mediumSpacing),
+            verticalArrangement = Arrangement.spacedBy(theme.dimension.mediumSpacing)
+        ) {
+            repeat(3) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(70.dp)
+                        .clip(RoundedCornerShape(theme.dimension.defaultRadius))
+                        .background(theme.colors.surface)
+                )
+            }
+        }
+        
+        // Lock overlay
+        Column(
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.spacedBy(theme.dimension.mediumSpacing)
+        ) {
+            Box(
+                modifier = Modifier
+                    .size(56.dp)
+                    .clip(RoundedCornerShape(12.dp))
+                    .background(theme.colors.greyScale.c80),
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(
+                    Icons.Rounded.Lock,
+                    contentDescription = "Locked",
+                    modifier = Modifier.size(28.dp),
+                    tint = theme.colors.onSurface
+                )
+            }
+            Text(
+                "Premium Feature",
+                style = theme.typography.bodyMediumStrong,
+                color = theme.colors.onSurface
+            )
+            Text(
+                "Unlock premium to see news for this asset",
+                style = theme.typography.bodySmall,
+                color = theme.colors.greyScale.c50
+            )
+        }
     }
 }

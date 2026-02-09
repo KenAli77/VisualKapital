@@ -97,7 +97,7 @@ enum class HomeTab(val label: String) {
     H24("24h"),
 }
 enum class AssetDetailTabs(val label: String) {
-    About("About"), Stats("Key stats"),
+    About("About"), Stats("Key stats"), News("News")
 }
 
 enum class BottomNavItem {

@@ -7,9 +7,13 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.visualmoney.LoadingManager
 import com.example.visualmoney.data.repository.FinancialRepository
+import com.revenuecat.purchases.kmp.Purchases
 import kotlinx.coroutines.launch
 
-class AssetDetailsViewModel(private val repository: FinancialRepository) : ViewModel() {
+class AssetDetailsViewModel(
+    private val repository: FinancialRepository,
+    private val purchases: Purchases
+) : ViewModel() {
 
     var state by mutableStateOf(AssetDetailState())
         private set
@@ -19,9 +23,24 @@ class AssetDetailsViewModel(private val repository: FinancialRepository) : ViewM
         LoadingManager.stopLoading()
         super.onCleared()
     }
+    
+    private fun checkPremiumStatus() {
+        purchases.getCustomerInfo(
+            onSuccess = { customerInfo ->
+                val isPremium = customerInfo.entitlements.active.isNotEmpty()
+                state = state.copy(isPremium = isPremium)
+            },
+            onError = { _ -> }
+        )
+    }
+    
     fun loadSymbolData(symbol: String) {
         viewModelScope.launch {
             LoadingManager.startLoading()
+            
+            // Check premium status
+            checkPremiumStatus()
+            
             viewModelScope.launch {
                 repository.getPortfolioAsset(symbol).collect {
                     state = state.copy(
@@ -51,6 +70,15 @@ class AssetDetailsViewModel(private val repository: FinancialRepository) : ViewM
                 ChartRange.ONE_YEAR.apiPeriod.start,
                 ChartRange.ONE_YEAR.apiPeriod.end
             )
+            
+            // Load news for this asset
+            state = state.copy(isNewsLoading = true)
+            val news = try {
+                repository.getStockNews(listOf(symbol))
+            } catch (e: Exception) {
+                emptyList()
+            }
+            
             state = state.copy(
                 profile = profile,
                 quote = quote,
@@ -59,6 +87,8 @@ class AssetDetailsViewModel(private val repository: FinancialRepository) : ViewM
                 chart1Y = chart1Y,
                 chart1M = chart1M,
                 chart3M = chart3M,
+                news = news,
+                isNewsLoading = false
             )
             LoadingManager.stopLoading()
         }

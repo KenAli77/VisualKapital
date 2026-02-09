@@ -86,13 +86,14 @@ class HomeViewModel(
 
                     try {
                         // 1) Fetch quotes for quote-tracked assets (in parallel)
-                        val quoteMap=
-                            assets
+                        // 1) Fetch quotes for quote-tracked assets (in parallel)
+                        val quoteTrackedSymbols = assets
                                 .filter { it.isQuoteTracked }
                                 .map { it.symbol }
-                                .distinct().associateWith {
-                                    symbol -> repository.getQuote(symbol)
-                                }
+                                .distinct()
+                        
+                        val quotes = repository.getQuotes(quoteTrackedSymbols)
+                        val quoteMap = quotes.associateBy { it.symbol }
 
 
                         // 2) Build UI rows + portfolio metrics
