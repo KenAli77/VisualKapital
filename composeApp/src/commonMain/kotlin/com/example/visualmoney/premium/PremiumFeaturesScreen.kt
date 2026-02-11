@@ -44,6 +44,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.visualmoney.DarkBackgroundGradient
 import com.example.visualmoney.LocalAppTheme
+import com.example.visualmoney.core.TopNavigationBar
 import com.revenuecat.purchases.kmp.Purchases
 import com.example.visualmoney.home.CardContainer
 
@@ -58,7 +59,7 @@ fun PremiumFeaturesScreen(
 ) {
     val theme = LocalAppTheme.current
     val state by viewModel.state.collectAsState()
-    
+
     // Handle purchase success
     LaunchedEffect(state.purchaseSuccess) {
         if (state.purchaseSuccess) {
@@ -70,7 +71,6 @@ fun PremiumFeaturesScreen(
     Box(
         modifier = modifier
             .fillMaxSize()
-            .background(DarkBackgroundGradient)
     ) {
         if (state.isPremium) {
             PremiumDashboardScreen(
@@ -98,73 +98,57 @@ fun Paywall(
     onNavigateBack: () -> Unit
 ) {
     val theme = LocalAppTheme.current
-    
+
     Column(
         modifier = Modifier
             .fillMaxSize()
             .verticalScroll(rememberScrollState())
-            .padding(theme.dimension.pagePadding)
+            .padding(theme.dimension.pagePadding),
+        verticalArrangement = Arrangement.spacedBy(theme.dimension.veryLargeSpacing)
     ) {
         // Header with back button
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            IconButton(onClick = onNavigateBack) {
-                Icon(
-                    imageVector = Icons.AutoMirrored.Rounded.ArrowBack,
-                    contentDescription = "Back",
-                    tint = theme.colors.onSurface
-                )
-            }
-        }
-
-        Spacer(modifier = Modifier.height(theme.dimension.mediumSpacing))
-
-        // Title
-        Text(
-            text = "Unlock Premium Features",
-            style = theme.typography.titleMedium,
-            color = theme.colors.onSurface,
-            textAlign = TextAlign.Start
+        TopNavigationBar(
+            title = "Premium",
+            subtitle = "Gain insights and tools to maximize your investment potential.",
+            onBack = onNavigateBack
         )
-
-        Spacer(modifier = Modifier.height(theme.dimension.mediumSpacing))
-
-        Text(
-            text = "Get advanced insights and tools to maximize your investment potential",
-            style = theme.typography.bodyLarge,
-            color = theme.colors.greyScale.c50,
-            textAlign = TextAlign.Start
+        FeatureHighlight(
+            Icons.Rounded.Analytics,
+            "Portfolio Analysis",
+            "Deep dive into your performance"
         )
-
-        Spacer(modifier = Modifier.height(theme.dimension.veryLargeSpacing))
-
-        // Feature Highlights
-        FeatureHighlight(Icons.Rounded.Analytics, "Portfolio Analysis", "Deep dive into your performance")
-        Spacer(modifier = Modifier.height(theme.dimension.mediumSpacing))
-        FeatureHighlight(Icons.Rounded.Language, "Risk & Geographic Exposure", "Understand your risk distribution")
-        Spacer(modifier = Modifier.height(theme.dimension.mediumSpacing))
-        FeatureHighlight(Icons.Rounded.Newspaper, "News on Your Assets", "Real-time updates for your holdings")
+        FeatureHighlight(
+            Icons.Rounded.Language,
+            "Risk & Geographic Exposure",
+            "Understand your risk distribution"
+        )
+        FeatureHighlight(
+            Icons.Rounded.Newspaper,
+            "News on Your Assets",
+            "Real-time updates for your holdings"
+        )
 
         Spacer(modifier = Modifier.height(theme.dimension.veryLargeSpacing * 2))
 
         // Subscription Packages
         if (state.isLoading) {
-             Box(modifier = Modifier.fillMaxWidth().height(200.dp), contentAlignment = Alignment.Center) {
-                 CircularProgressIndicator(color = theme.colors.primary.c50)
-             }
+            Box(
+                modifier = Modifier.fillMaxWidth().height(200.dp),
+                contentAlignment = Alignment.Center
+            ) {
+                CircularProgressIndicator(color = theme.colors.primary.c50)
+            }
         } else {
-             state.packages.forEach { packageInfo ->
-                 SubscriptionCard(
-                     packageInfo = packageInfo,
-                     onClick = { viewModel.triggerPurchase(packageInfo) },
-                     isEnabled = !state.isLoading
-                 )
-                 Spacer(modifier = Modifier.height(theme.dimension.mediumSpacing))
-             }
+            state.packages.forEach { packageInfo ->
+                SubscriptionCard(
+                    packageInfo = packageInfo,
+                    onClick = { viewModel.triggerPurchase(packageInfo) },
+                    isEnabled = !state.isLoading
+                )
+                Spacer(modifier = Modifier.height(theme.dimension.mediumSpacing))
+            }
         }
-        
+
         // Error Message
         state.error?.let { error ->
             Spacer(modifier = Modifier.height(theme.dimension.mediumSpacing))
@@ -176,14 +160,14 @@ fun Paywall(
                 modifier = Modifier.fillMaxWidth()
             )
         }
-        
+
         Spacer(modifier = Modifier.height(theme.dimension.veryLargeSpacing))
         Text(
-             text = "Restore Purchases",
-             style = theme.typography.bodySmall,
-             color = theme.colors.greyScale.c50,
-             textAlign = TextAlign.Center,
-             modifier = Modifier.fillMaxWidth().clickable { viewModel.restorePurchases() }
+            text = "Restore Purchases",
+            style = theme.typography.bodySmall,
+            color = theme.colors.greyScale.c50,
+            textAlign = TextAlign.Center,
+            modifier = Modifier.fillMaxWidth().clickable { viewModel.restorePurchases() }
         )
     }
 }
@@ -191,12 +175,25 @@ fun Paywall(
 @Composable
 fun FeatureHighlight(icon: ImageVector, title: String, subtitle: String) {
     val theme = LocalAppTheme.current
-    Row(verticalAlignment = Alignment.CenterVertically) {
-        Icon(icon, contentDescription = null, tint = theme.colors.primary.c50, modifier = Modifier.size(24.dp))
-        Spacer(modifier = Modifier.size(theme.dimension.mediumSpacing))
+    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(theme.dimension.mediumSpacing)) {
+        Icon(
+            icon,
+            contentDescription = null,
+            tint = theme.colors.primary.c50,
+            modifier = Modifier.size(theme.dimension.largeIconSize)
+        )
         Column {
-            Text(text = title, style = theme.typography.bodyMedium, color = theme.colors.onSurface, fontWeight = FontWeight.Bold)
-            Text(text = subtitle, style = theme.typography.bodySmall, color = theme.colors.greyScale.c50)
+            Text(
+                text = title,
+                style = theme.typography.titleSmall,
+                color = theme.colors.onSurface,
+                fontWeight = FontWeight.Bold
+            )
+            Text(
+                text = subtitle,
+                style = theme.typography.bodyMedium,
+                color = theme.colors.greyScale.c50
+            )
         }
     }
 }
@@ -208,9 +205,9 @@ fun SubscriptionCard(
     isEnabled: Boolean
 ) {
     val theme = LocalAppTheme.current
-    
+
     val isBestValue = packageInfo.type == PackageType.LIFETIME // Just an example logic
-    
+
     CardContainer(
         modifier = Modifier.fillMaxWidth().clickable(enabled = isEnabled, onClick = onClick),
         containerColor = theme.colors.surface, // Made uniform color
@@ -230,7 +227,7 @@ fun SubscriptionCard(
                     Spacer(modifier = Modifier.height(4.dp))
                 }
                 Text(
-                    text = when(packageInfo.type) {
+                    text = when (packageInfo.type) {
                         PackageType.MONTHLY -> "Monthly"
                         PackageType.ANNUAL -> "Yearly"
                         PackageType.LIFETIME -> "Lifetime"
@@ -245,7 +242,7 @@ fun SubscriptionCard(
                     color = theme.colors.greyScale.c50
                 )
             }
-            
+
             Column(horizontalAlignment = Alignment.End) {
                 Text(
                     text = packageInfo.priceString,
@@ -253,7 +250,7 @@ fun SubscriptionCard(
                     color = theme.colors.onSurface
                 )
                 Text(
-                    text = when(packageInfo.type) {
+                    text = when (packageInfo.type) {
                         PackageType.MONTHLY -> "/mo"
                         PackageType.ANNUAL -> "/yr"
                         else -> ""

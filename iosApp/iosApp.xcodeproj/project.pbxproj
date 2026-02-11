@@ -6,13 +6,7 @@
 	objectVersion = 77;
 	objects = {
 
-/* Begin PBXBuildFile section */
-		4F38BC3C3007EA91C9D2D22A /* Pods_iosApp.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = CD356E74DF75AEC1E0D7B80A /* Pods_iosApp.framework */; };
-/* End PBXBuildFile section */
-
 /* Begin PBXFileReference section */
-		41509888E48C75FBF035070B /* Pods-iosApp.debug.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-iosApp.debug.xcconfig"; path = "Target Support Files/Pods-iosApp/Pods-iosApp.debug.xcconfig"; sourceTree = "<group>"; };
-		8EEDD2558F865C852E3BD962 /* Pods-iosApp.release.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-iosApp.release.xcconfig"; path = "Target Support Files/Pods-iosApp/Pods-iosApp.release.xcconfig"; sourceTree = "<group>"; };
 		AF28331B0EBA6B3BE61DCD9A /* VisualMoney.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = VisualMoney.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		CD356E74DF75AEC1E0D7B80A /* Pods_iosApp.framework */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; includeInIndex = 0; path = Pods_iosApp.framework; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
@@ -38,8 +32,6 @@
 		};
 		C6C63625E155AB352EFA071A /* Configuration */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
-			exceptions = (
-			);
 			path = Configuration;
 			sourceTree = "<group>";
 		};
@@ -50,7 +42,6 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				4F38BC3C3007EA91C9D2D22A /* Pods_iosApp.framework in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -71,19 +62,8 @@
 				C6C63625E155AB352EFA071A /* Configuration */,
 				8CA725C764B6B79D53B59CDA /* iosApp */,
 				941B3DC386142E945704ACB7 /* Products */,
-				3934876DA425AA6EFF7370DD /* Pods */,
 				110C90C5CF6B5F0F0C05F9DF /* Frameworks */,
 			);
-			sourceTree = "<group>";
-		};
-		3934876DA425AA6EFF7370DD /* Pods */ = {
-			isa = PBXGroup;
-			children = (
-				41509888E48C75FBF035070B /* Pods-iosApp.debug.xcconfig */,
-				8EEDD2558F865C852E3BD962 /* Pods-iosApp.release.xcconfig */,
-			);
-			name = Pods;
-			path = Pods;
 			sourceTree = "<group>";
 		};
 		941B3DC386142E945704ACB7 /* Products */ = {
@@ -101,13 +81,10 @@
 			isa = PBXNativeTarget;
 			buildConfigurationList = 735337D8A8AF30E350CC3BC6 /* Build configuration list for PBXNativeTarget "iosApp" */;
 			buildPhases = (
-				CB1DB588D134A24C043F0211 /* [CP] Check Pods Manifest.lock */,
 				5B92714E3DD0D390ACCFF2DF /* Compile Kotlin Framework */,
 				D992123F83F32EEB3140A455 /* Sources */,
 				3D4057694CF88980E86381D7 /* Frameworks */,
 				E2AAAC8C6A1C74FB51E7FBC3 /* Resources */,
-				8B647E113055BCD058A2D034 /* [CP] Embed Pods Frameworks */,
-				D8BD680CC37F44FB4C1B732C /* [CP] Copy Pods Resources */,
 			);
 			buildRules = (
 			);
@@ -184,62 +161,6 @@
 			runOnlyForDeploymentPostprocessing = 0;
 			shellPath = /bin/sh;
 			shellScript = "if [ \"YES\" = \"$OVERRIDE_KOTLIN_BUILD_IDE_SUPPORTED\" ]; then\n  echo \"Skipping Gradle build task invocation due to OVERRIDE_KOTLIN_BUILD_IDE_SUPPORTED environment variable set to \\\"YES\\\"\"\n  exit 0\nfi\ncd \"$SRCROOT/..\"\n./gradlew :composeApp:embedAndSignAppleFrameworkForXcode\n";
-		};
-		8B647E113055BCD058A2D034 /* [CP] Embed Pods Frameworks */ = {
-			isa = PBXShellScriptBuildPhase;
-			buildActionMask = 2147483647;
-			files = (
-			);
-			inputFileListPaths = (
-				"${PODS_ROOT}/Target Support Files/Pods-iosApp/Pods-iosApp-frameworks-${CONFIGURATION}-input-files.xcfilelist",
-			);
-			name = "[CP] Embed Pods Frameworks";
-			outputFileListPaths = (
-				"${PODS_ROOT}/Target Support Files/Pods-iosApp/Pods-iosApp-frameworks-${CONFIGURATION}-output-files.xcfilelist",
-			);
-			runOnlyForDeploymentPostprocessing = 0;
-			shellPath = /bin/sh;
-			shellScript = "\"${PODS_ROOT}/Target Support Files/Pods-iosApp/Pods-iosApp-frameworks.sh\"\n";
-			showEnvVarsInLog = 0;
-		};
-		CB1DB588D134A24C043F0211 /* [CP] Check Pods Manifest.lock */ = {
-			isa = PBXShellScriptBuildPhase;
-			buildActionMask = 2147483647;
-			files = (
-			);
-			inputFileListPaths = (
-			);
-			inputPaths = (
-				"${PODS_PODFILE_DIR_PATH}/Podfile.lock",
-				"${PODS_ROOT}/Manifest.lock",
-			);
-			name = "[CP] Check Pods Manifest.lock";
-			outputFileListPaths = (
-			);
-			outputPaths = (
-				"$(DERIVED_FILE_DIR)/Pods-iosApp-checkManifestLockResult.txt",
-			);
-			runOnlyForDeploymentPostprocessing = 0;
-			shellPath = /bin/sh;
-			shellScript = "diff \"${PODS_PODFILE_DIR_PATH}/Podfile.lock\" \"${PODS_ROOT}/Manifest.lock\" > /dev/null\nif [ $? != 0 ] ; then\n    # print error to STDERR\n    echo \"error: The sandbox is not in sync with the Podfile.lock. Run 'pod install' or update your CocoaPods installation.\" >&2\n    exit 1\nfi\n# This output is used by Xcode 'outputs' to avoid re-running this script phase.\necho \"SUCCESS\" > \"${SCRIPT_OUTPUT_FILE_0}\"\n";
-			showEnvVarsInLog = 0;
-		};
-		D8BD680CC37F44FB4C1B732C /* [CP] Copy Pods Resources */ = {
-			isa = PBXShellScriptBuildPhase;
-			buildActionMask = 2147483647;
-			files = (
-			);
-			inputFileListPaths = (
-				"${PODS_ROOT}/Target Support Files/Pods-iosApp/Pods-iosApp-resources-${CONFIGURATION}-input-files.xcfilelist",
-			);
-			name = "[CP] Copy Pods Resources";
-			outputFileListPaths = (
-				"${PODS_ROOT}/Target Support Files/Pods-iosApp/Pods-iosApp-resources-${CONFIGURATION}-output-files.xcfilelist",
-			);
-			runOnlyForDeploymentPostprocessing = 0;
-			shellPath = /bin/sh;
-			shellScript = "\"${PODS_ROOT}/Target Support Files/Pods-iosApp/Pods-iosApp-resources.sh\"\n";
-			showEnvVarsInLog = 0;
 		};
 /* End PBXShellScriptBuildPhase section */
 
@@ -379,7 +300,6 @@
 		};
 		B8B4276CB5BC1CB53645F67A /* Debug */ = {
 			isa = XCBuildConfiguration;
-			baseConfigurationReference = 41509888E48C75FBF035070B /* Pods-iosApp.debug.xcconfig */;
 			buildSettings = {
 				ARCHS = arm64;
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
@@ -409,7 +329,6 @@
 		};
 		EDB69121178238328A87B539 /* Release */ = {
 			isa = XCBuildConfiguration;
-			baseConfigurationReference = 8EEDD2558F865C852E3BD962 /* Pods-iosApp.release.xcconfig */;
 			buildSettings = {
 				ARCHS = arm64;
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;

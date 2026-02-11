@@ -39,9 +39,12 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.example.visualmoney.DarkBackgroundGradient
 import com.example.visualmoney.LocalAppTheme
+import com.example.visualmoney.core.InputTextField
+import com.example.visualmoney.core.LargeButton
 import com.example.visualmoney.home.CardContainer
 import com.example.visualmoney.home.borderGradient
 import com.example.visualmoney.home.borderStroke
+import com.example.visualmoney.home.theme
 import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalFoundationApi::class)
@@ -51,7 +54,6 @@ fun OnboardingScreen(
     onComplete: () -> Unit,
     modifier: Modifier = Modifier
 ) {
-    val theme = LocalAppTheme.current
     val state by viewModel.state.collectAsState()
     val pagerState = rememberPagerState(pageCount = { 4 })
     val scope = rememberCoroutineScope()
@@ -59,7 +61,6 @@ fun OnboardingScreen(
     Box(
         modifier = modifier
             .fillMaxSize()
-            .background(DarkBackgroundGradient)
     ) {
         Column(
             modifier = Modifier
@@ -79,7 +80,7 @@ fun OnboardingScreen(
                     Box(
                         modifier = Modifier
                             .padding(horizontal = theme.dimension.closeSpacing)
-                            .size(if (isSelected) 10.dp else 8.dp)
+                            .size(if (isSelected) 8.dp else 6.dp)
                             .clip(CircleShape)
                             .background(
                                 if (isSelected) theme.colors.primary.c50
@@ -92,23 +93,27 @@ fun OnboardingScreen(
             // Pager Content
             HorizontalPager(
                 state = pagerState,
-                modifier = Modifier.weight(1f)
+                modifier = Modifier.weight(1f),
+
             ) { page ->
                 when (page) {
                     0 -> WelcomePage(
                         userName = state.userName,
                         onUserNameChange = viewModel::updateUserName
                     )
+
                     1 -> FeaturePage(
                         icon = Icons.Rounded.Wallet,
                         title = "Track Your Portfolio",
                         description = "Monitor all your investments in one place. Stocks, crypto, real estate, and more."
                     )
+
                     2 -> FeaturePage(
                         icon = Icons.Rounded.CalendarMonth,
                         title = "Smart Reminders",
                         description = "Never miss important dates. Set reminders for dividends, earnings, and investment goals."
                     )
+
                     3 -> FeaturePage(
                         icon = Icons.Rounded.ShowChart,
                         title = "Real-time Market Data",
@@ -122,7 +127,8 @@ fun OnboardingScreen(
                 modifier = Modifier.fillMaxWidth(),
                 verticalArrangement = Arrangement.spacedBy(theme.dimension.mediumSpacing)
             ) {
-                Button(
+                LargeButton(
+                    text = if (pagerState.currentPage == 3) "Get Started" else "Next",
                     onClick = {
                         if (pagerState.currentPage < 3) {
                             scope.launch {
@@ -132,45 +138,25 @@ fun OnboardingScreen(
                             viewModel.completeOnboarding(onComplete)
                         }
                     },
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(56.dp),
-                    shape = RoundedCornerShape(theme.dimension.defaultRadius),
-                    colors = ButtonDefaults.buttonColors(
-                        containerColor = theme.colors.primary.c50,
-                        contentColor = theme.colors.surface
-                    ),
                     enabled = if (pagerState.currentPage == 0) state.userName.isNotBlank() else true
-                ) {
-                    Text(
-                        text = if (pagerState.currentPage == 3) "Get Started" else "Next",
-                        style = theme.typography.bodyLargeStrong
-                    )
-                }
+                )
 
                 if (pagerState.currentPage > 0) {
-                    Button(
+                    LargeButton(
                         onClick = {
                             scope.launch {
                                 pagerState.animateScrollToPage(pagerState.currentPage - 1)
                             }
                         },
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .height(56.dp),
+                        text = "Back",
                         shape = RoundedCornerShape(theme.dimension.defaultRadius),
-                        colors = ButtonDefaults.buttonColors(
-                            containerColor = theme.colors.surface,
-                            contentColor = theme.colors.onSurface
-                        )
-                    ) {
-                        Text(
-                            text = "Back",
-                            style = theme.typography.bodyLargeStrong
-                        )
-                    }
+                        backgroundColor = theme.colors.surface,
+                        contentColor = theme.colors.onSurface
+
+                    )
                 }
             }
+            Spacer(modifier = Modifier.height(theme.dimension.bottomBarHeight))
         }
     }
 }
@@ -181,74 +167,33 @@ fun WelcomePage(
     onUserNameChange: (String) -> Unit,
     modifier: Modifier = Modifier
 ) {
-    val theme = LocalAppTheme.current
-
     Column(
         modifier = modifier
-            .fillMaxSize()
-            .padding(vertical = theme.dimension.veryLargeSpacing * 2),
+            .fillMaxSize(),
         horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.Center
+        verticalArrangement = Arrangement.SpaceAround
     ) {
-        Text(
-            text = "Welcome to",
-            style = theme.typography.titleMedium,
-            color = theme.colors.greyScale.c50,
-            textAlign = TextAlign.Center
-        )
-        
-        Spacer(modifier = Modifier.height(theme.dimension.mediumSpacing))
-        
-        Text(
-            text = "VisualMoney",
-            style = theme.typography.titleLarge,
-            color = theme.colors.onSurface,
-            textAlign = TextAlign.Center
-        )
-
-        Spacer(modifier = Modifier.height(theme.dimension.veryLargeSpacing * 3))
-
-        Text(
-            text = "What should we call you?",
-            style = theme.typography.bodyLargeMedium,
-            color = theme.colors.onSurface,
-            textAlign = TextAlign.Center
-        )
-
-        Spacer(modifier = Modifier.height(theme.dimension.veryLargeSpacing))
-
-        // Name Input Field
-        CardContainer(
-            modifier = Modifier.fillMaxWidth(),
-            containerColor = theme.colors.surface
+        Column(
+            verticalArrangement = Arrangement.spacedBy(theme.dimension.veryLargeSpacing),
+            horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            BasicTextField(
+            Text(
+                text = "Hey there!",
+                style = theme.typography.titleLarge,
+                color = theme.colors.onSurface,
+                textAlign = TextAlign.Center
+            )
+            Spacer(modifier = modifier.height(theme.dimension.veryLargeSpacing))
+            Text(
+                text = "What should we call you?",
+                style = theme.typography.bodyLargeMedium,
+                color = theme.colors.onSurface,
+                textAlign = TextAlign.Center
+            )
+            InputTextField(
                 value = userName,
                 onValueChange = onUserNameChange,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(theme.dimension.largeSpacing),
-                textStyle = theme.typography.bodyLarge.copy(
-                    color = theme.colors.onSurface,
-                    textAlign = TextAlign.Center
-                ),
-                cursorBrush = SolidColor(theme.colors.primary.c50),
-                decorationBox = { innerTextField ->
-                    Box(
-                        modifier = Modifier.fillMaxWidth(),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        if (userName.isEmpty()) {
-                            Text(
-                                text = "Enter your name",
-                                style = theme.typography.bodyLarge,
-                                color = theme.colors.greyScale.c60,
-                                textAlign = TextAlign.Center
-                            )
-                        }
-                        innerTextField()
-                    }
-                }
+                modifier = Modifier.fillMaxWidth(),
             )
         }
     }

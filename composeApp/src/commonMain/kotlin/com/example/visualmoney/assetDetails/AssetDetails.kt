@@ -2,7 +2,6 @@ package com.example.visualmoney.assetDetails
 
 
 import androidx.compose.animation.animateColorAsState
-import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -24,11 +23,10 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.KeyboardArrowDown
+import androidx.compose.material.icons.rounded.Lock
 import androidx.compose.material.icons.rounded.WorkspacePremium
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
-import androidx.compose.material3.SecondaryScrollableTabRow
 import androidx.compose.material3.SecondaryTabRow
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Tab
@@ -41,11 +39,11 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.blur
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.PathEffect
 import androidx.compose.ui.graphics.StrokeCap
@@ -57,7 +55,6 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import coil3.compose.AsyncImage
-import com.example.visualmoney.AssetCategory
 import com.example.visualmoney.DefaultAppColors
 import com.example.visualmoney.LocalAppTheme
 import com.example.visualmoney.calendar.EmptyStateCard
@@ -71,7 +68,7 @@ import com.example.visualmoney.data.local.logoUrl
 import com.example.visualmoney.domain.model.AssetProfile
 import com.example.visualmoney.domain.model.AssetQuote
 import com.example.visualmoney.domain.model.ChartPoint
-import com.example.visualmoney.domain.model.logoUrl
+import com.example.visualmoney.domain.model.StockNews
 import com.example.visualmoney.greyTextColor
 import com.example.visualmoney.home.AssetDetailTabs
 import com.example.visualmoney.home.CardContainer
@@ -80,8 +77,6 @@ import com.example.visualmoney.home.borderGradient
 import com.example.visualmoney.home.borderStroke
 import com.example.visualmoney.home.format
 import com.example.visualmoney.home.theme
-import com.example.visualmoney.newAsset.event.AssetInputEvent
-import com.example.visualmoney.shimmer
 import kotlinx.datetime.DatePeriod
 import kotlinx.datetime.TimeZone
 import kotlinx.datetime.minus
@@ -93,10 +88,6 @@ import visualmoney.composeapp.generated.resources.plus
 import visualmoney.composeapp.generated.resources.trash
 import kotlin.math.max
 import kotlin.time.Clock
-import androidx.compose.ui.draw.blur
-import androidx.compose.material.icons.rounded.Lock
-import androidx.compose.material3.CircularProgressIndicator
-import com.example.visualmoney.domain.model.StockNews
 
 private val theme @Composable get() = LocalAppTheme.current
 

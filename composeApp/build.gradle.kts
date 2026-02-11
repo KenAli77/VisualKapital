@@ -12,7 +12,6 @@ plugins {
     alias(libs.plugins.buildkonfig)
     alias(libs.plugins.ksp)
     alias(libs.plugins.androidx.room)
-    alias(libs.plugins.kotlinCocoapods)
 }
 
 
@@ -40,28 +39,6 @@ kotlin {
 //            enabled = false
 //        }
 //    }
-
-    cocoapods {
-        summary = "VisualMoney shared module"
-        homepage ="Link to shared module homepage"
-        ios.deploymentTarget = "16.0"
-        version = "1.0"
-        podfile = project.file("../iosApp/Podfile")
-
-
-        framework{
-            baseName = "ComposeApp"
-            isStatic = true
-        }
-
-        pod("RevenueCat"){
-            extraOpts += listOf("-compiler-option", "-fmodules") //Extra opts is important
-        }
-        pod("RevenueCatUI"){
-            extraOpts += listOf("-compiler-option", "-fmodules") //Extra opts is important
-        }
-
-    }
 
 
     sourceSets {

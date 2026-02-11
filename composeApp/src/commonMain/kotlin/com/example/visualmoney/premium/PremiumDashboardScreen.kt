@@ -57,6 +57,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil3.compose.AsyncImage
 import com.example.visualmoney.LocalAppTheme
+import com.example.visualmoney.core.TopNavigationBar
 import com.example.visualmoney.home.CardContainer
 import com.example.visualmoney.util.formatDecimal
 
@@ -73,29 +74,8 @@ fun PremiumDashboardScreen(
         modifier = Modifier.fillMaxSize()
     ) {
         // Header
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = theme.dimension.pagePadding, vertical = theme.dimension.mediumSpacing),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            IconButton(onClick = onNavigateBack) {
-                Icon(
-                    imageVector = Icons.AutoMirrored.Rounded.ArrowBack,
-                    contentDescription = "Back",
-                    tint = theme.colors.onSurface
-                )
-            }
-            Spacer(modifier = Modifier.weight(1f))
-            Text(
-                text = "Portfolio Analysis",
-                style = theme.typography.titleMedium,
-                color = theme.colors.onSurface
-            )
-            Spacer(modifier = Modifier.weight(1f))
-            Spacer(modifier = Modifier.size(48.dp))
-        }
-        
+        TopNavigationBar(title = "Portfolio Analysis", onBack = onNavigateBack )
+
         if (state.isPremiumLoading) {
             Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                 CircularProgressIndicator(color = theme.colors.primary.c50)

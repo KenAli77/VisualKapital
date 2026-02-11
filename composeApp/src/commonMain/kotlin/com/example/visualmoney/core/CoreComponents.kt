@@ -125,14 +125,12 @@ fun TopNavigationBar(
             )
             Column(verticalArrangement = Arrangement.spacedBy(theme.dimension.closeSpacing)) {
                 Text(
-                    textAlign = TextAlign.Center,
                     text = title,
                     style = theme.typography.titleSmall,
                     color = theme.colors.onSurface
                 )
                 if (subtitle.isNotBlank()) {
                     Text(
-                        textAlign = TextAlign.Center,
                         text = subtitle,
                         style = theme.typography.bodyMedium,
                         color = theme.colors.greyTextColor

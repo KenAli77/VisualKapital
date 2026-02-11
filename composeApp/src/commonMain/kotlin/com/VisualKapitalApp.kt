@@ -86,6 +86,7 @@ fun VisualKapitalApp(navController: NavHostController = rememberNavController())
                 composable(route = Routes.ONBOARDING) {
                     val onboardingViewModel = koinViewModel<OnboardingViewModel>()
                     OnboardingScreen(
+                        modifier = Modifier.padding(top = paddingValues.calculateTopPadding()),
                         viewModel = onboardingViewModel,
                         onComplete = {
                             // Reload user name after onboarding
@@ -173,6 +174,7 @@ fun VisualKapitalApp(navController: NavHostController = rememberNavController())
                     val premiumViewModel = koinViewModel<PremiumViewModel>()
                     val purchases = com.revenuecat.purchases.kmp.Purchases.sharedInstance
                     PremiumFeaturesScreen(
+                        modifier = Modifier.padding(top = paddingValues.calculateTopPadding()),
                         viewModel = premiumViewModel,
                         purchases = purchases,
                         onNavigateBack = { navController.popBackStack() },
