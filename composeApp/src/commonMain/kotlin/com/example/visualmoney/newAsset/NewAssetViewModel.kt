@@ -25,9 +25,19 @@ import kotlinx.coroutines.flow.debounce
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.launch
+import com.example.visualmoney.data.repository.InvestmentReminderRepository
+import com.example.visualmoney.data.local.InvestmentReminderEntity
+import kotlinx.datetime.LocalDate
+import com.example.visualmoney.calendar.now
+import kotlin.uuid.ExperimentalUuidApi
+import kotlin.uuid.Uuid
+
 
 // TODO: Add validation and errors
-class NewAssetViewModel(private val repo: FinancialRepository) : ViewModel() {
+class NewAssetViewModel(
+    private val repo: FinancialRepository,
+    private val remindersRepo: InvestmentReminderRepository
+    ) : ViewModel() {
     var listedAssetInputStateState by mutableStateOf(AssetInputState())
         private set
     var isLoading by mutableStateOf(false)
@@ -72,6 +82,7 @@ class NewAssetViewModel(private val repo: FinancialRepository) : ViewModel() {
 
     }
 
+    @OptIn(ExperimentalUuidApi::class)
     fun onListedAssetInputEvent(event: AssetInputEvent) {
         when (event) {
             is AssetInputEvent.NameChanged -> {
@@ -180,6 +191,37 @@ class NewAssetViewModel(private val repo: FinancialRepository) : ViewModel() {
                 viewModelScope.launch {
                     asset?.let {
                         repo.addAssetToPortfolio(it)
+                        
+                        // Fetch and schedule dividends
+                        try {
+                            if (it.type == AssetCategory.STOCKS) {
+                                val dividends = repo.getDividends(it.symbol)
+                                val today = LocalDate.now()
+                                
+                                dividends.filter { dividend ->
+                                    try {
+                                        val exDate = LocalDate.parse(dividend.date)
+                                        exDate >= today
+                                    } catch (e: Exception) {
+                                        false
+                                    }
+                                }.forEach { dividend ->
+                                    val exDate = LocalDate.parse(dividend.date)
+                                    val reminder = InvestmentReminderEntity(
+                                        id = Uuid.random().toString(),
+                                        symbol = it.symbol,
+                                        description = "Dividend: ${it.symbol}",
+                                        note = "Amount: ${dividend.dividend}\nPayment Date: ${dividend.paymentDate}",
+                                        dueDate = exDate,
+                                        isDone = false
+                                    )
+                                    remindersRepo.upsert(reminder)
+                                }
+                            }
+                        } catch (e: Exception) {
+                            println("Error scheduling dividends: ${e.message}")
+                        }
+
                         listedAssetInputStateState = AssetInputState()
                         LoadingManager.stopLoading()
                         SnackbarManager.showMessage(

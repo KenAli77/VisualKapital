@@ -161,13 +161,22 @@ fun VisualKapitalApp(navController: NavHostController = rememberNavController())
                             viewModel.loadSymbolData(symbol)
                         }
                     }
+                    val uriHandler = androidx.compose.ui.platform.LocalUriHandler.current
                     AssetDetailsScreen(
                         modifier = Modifier.padding(top = paddingValues.calculateTopPadding()),
                         viewModel = viewModel,
                         onBack = {
                             navController.popBackStack()
                             symbol = ""
-                        })
+                        },
+                        onOpenWebsite = { url ->
+                            try {
+                                uriHandler.openUri(url)
+                            } catch (e: Exception) {
+                                e.printStackTrace()
+                            }
+                        }
+                    )
                 }
                 
                 composable(route = Routes.PREMIUM_FEATURES) {

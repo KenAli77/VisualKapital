@@ -9,9 +9,13 @@ import com.example.visualmoney.data.repository.FinancialRepository
 import kotlinx.coroutines.awaitAll
 import com.example.visualmoney.assetDetails.ChartRange
 import com.example.visualmoney.assetDetails.apiPeriod
+import com.example.visualmoney.domain.model.Dividend
+import com.example.visualmoney.domain.model.SplitEvent
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.async
 import kotlinx.coroutines.flow.first
+import kotlinx.datetime.LocalDate
+import com.example.visualmoney.calendar.now
 
 
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -95,9 +99,10 @@ data class AssetHolding(
     val name: String,
     val logoUrl: String?,
     val quantity: Double,
+    val currentPrice: Double,
     val currentValue: Double,
     val percentage: Double,
-    val dailyChange: Double,
+    val dailyChange: Double,    
     val dailyChangePct: Double
 )
 
@@ -122,6 +127,11 @@ data class PremiumState(
     val sectorExposure: List<ExposureItem> = emptyList(),
     val countryExposure: List<ExposureItem> = emptyList(),
     val assetClassExposure: List<ExposureItem> = emptyList(),
+    
+    // Dividend Data
+    val dividends: Map<String, List<Dividend>> = emptyMap(),
+    val splits: Map<String, List<SplitEvent>> = emptyMap(),
+    val dividendCalendar: List<String> = emptyList(),
     
     // Holdings
     val holdings: List<AssetHolding> = emptyList(),
@@ -245,329 +255,421 @@ class PremiumViewModel(
         )
     }
     
+    private var premiumJob: kotlinx.coroutines.Job? = null
+
     fun loadPremiumFeatures() {
-        if (_state.value.isPremiumLoading) return
-        _state.update { it.copy(isPremiumLoading = true) }
-        viewModelScope.launch {
-            try {
-                // 1. Get Portfolio Assets
-                val assets = repository.getPortfolioAssets().first()
-                if (assets.isEmpty()) {
-                    _state.update { it.copy(isPremiumLoading = false) }
-                    return@launch
-                }
-                
-                val symbols = assets.map { it.symbol }
-                
-                // 2. Fetch Profiles & Quotes & News & Charts (in parallel)
-                val profilesHelper = async { repository.getProfiles(symbols) }
-                val quotesHelper = async { repository.getQuotes(symbols) }
-                val newsHelper = async { repository.getStockNews(symbols) }
-                
-                // Fetch 3 months of history for each asset for volatility calculation
-                val chartHelpers = symbols.map { symbol ->
-                    async { 
-                        symbol to repository.getChart(
-                            symbol,
-                            ChartRange.THREE_MONTHS.apiPeriod.start,
-                            ChartRange.THREE_MONTHS.apiPeriod.end
-                        )
-                    }
-                }
-                
-                val profiles = profilesHelper.await()
-                println("DEBUG: Fetching premium data for symbols: $symbols")
-                println("DEBUG: Fetched ${profiles.size} profiles: ${profiles.map { it.symbol }}")
-                
-                val quotes = quotesHelper.await()
-                val news = newsHelper.await()
-                val charts = chartHelpers.awaitAll().toMap()
-                
-                val quoteMap = quotes.associateBy { it.symbol }
-                val profileMap = profiles.associateBy { it.symbol }
-                
-                // 3. Calculate Portfolio Value & Holdings
-                var totalValue = 0.0
-                var totalCost = 0.0
-                val holdingsList = mutableListOf<AssetHolding>()
-                
-                assets.forEach { asset ->
-                    val quote = quoteMap[asset.symbol]
-                    val profile = profileMap[asset.symbol]
-                    val price = quote?.price ?: asset.purchasePrice
-                    val value = asset.qty * price
-                    val cost = asset.qty * asset.purchasePrice
+        premiumJob?.cancel()
+        premiumJob = viewModelScope.launch {
+            repository.getPortfolioAssets().collect { assets ->
+                 if (assets.isEmpty()) {
+                     _state.update { it.copy(isPremiumLoading = false) }
+                     return@collect
+                 }
+                 
+                 _state.update { it.copy(isPremiumLoading = true) }
+                 
+                 try {
+                    val symbols = assets.map { it.symbol }
                     
-                    totalValue += value
-                    totalCost += cost
+                    // 2. Fetch Profiles & Quotes & News & Charts & Events (in parallel)
+                    val profilesHelper = async { repository.getProfiles(symbols) }
+                    val quotesHelper = async { repository.getQuotes(symbols) }
+                    val newsHelper = async { repository.getStockNews(symbols) }
                     
-                    holdingsList.add(
-                        AssetHolding(
-                            symbol = asset.symbol,
-                            name = asset.name,
-                            logoUrl = profile?.image,
-                            quantity = asset.qty.toDouble(),
-                            currentValue = value,
-                            percentage = 0.0, // Will update after total is known
-                            dailyChange = quote?.change ?: 0.0,
-                            dailyChangePct = quote?.changesPercentage ?: 0.0
-                        )
-                    )
-                }
-                
-                // Update holdings with percentages
-                val holdings = holdingsList.map { 
-                    it.copy(percentage = if (totalValue > 0) (it.currentValue / totalValue) * 100 else 0.0) 
-                }.sortedByDescending { it.currentValue }
-                
-                val totalReturn = totalValue - totalCost
-                val totalReturnPct = if (totalCost > 0) (totalReturn / totalCost) * 100 else 0.0
-                
-                val sortedByGain = quotes.sortedByDescending { it.changesPercentage }
-                val topGainer = sortedByGain.firstOrNull()
-                val topLoser = sortedByGain.lastOrNull()
-                
-                // 4. Calculate Exposure
-                val sectorMap = mutableMapOf<String, Double>()
-                val countryMap = mutableMapOf<String, Double>()
-                val assetClassMap = mutableMapOf<String, Double>()
-                
-                val dividendCalendar = mutableListOf<String>() // Simple string list for now, can be improved
-                
-                assets.forEach { asset ->
-                    val price = quoteMap[asset.symbol]?.price ?: asset.purchasePrice
-                    val value = asset.qty * price
-                    val profile = profileMap[asset.symbol]
-                    
-                    var sector = profile?.sector
-                    var country = profile?.country
-                    
-                    // Fallback logic for Commodities and Crypto if profile is missing or incomplete
-                    if (sector.isNullOrBlank() || sector == "Unknown") {
-                        when {
-                            asset.symbol.contains("BTC") || asset.symbol.contains("ETH") || asset.symbol.contains("-USD") -> {
-                                sector = "Cryptocurrency"
-                                country = "Global"
-                            }
-                            asset.symbol.equals("GC=F", ignoreCase = true) || asset.symbol.contains("Gold", ignoreCase = true) || asset.name.contains("Gold", ignoreCase = true) -> {
-                                sector = "Precious Metals"
-                                country = "Global"
-                            }
-                            asset.symbol.equals("SI=F", ignoreCase = true) || asset.name.contains("Silver", ignoreCase = true) -> {
-                                sector = "Precious Metals"
-                                country = "Global"
-                            }
-                            asset.symbol.equals("CL=F", ignoreCase = true) || asset.name.contains("Crude Oil", ignoreCase = true) -> {
-                                sector = "Energy"
-                                country = "Global"
-                            }
-                            else -> {
-                                sector = "Unknown"
-                                country = "Unknown"
-                            }
+                    // Fetch 3 months of history for each asset for volatility calculation
+                    val chartHelpers = symbols.map { symbol ->
+                        async { 
+                            symbol to repository.getChart(
+                                symbol,
+                                ChartRange.THREE_MONTHS.apiPeriod.start,
+                                ChartRange.THREE_MONTHS.apiPeriod.end
+                            )
                         }
                     }
-
-                    val assetClass = when {
-                        asset.name.contains("ETF", ignoreCase = true) || profile?.isEtf == true -> "ETF"
-                        sector == "Cryptocurrency" || profile?.exchange == "CRYPTO" -> "Crypto"
-                        sector == "Precious Metals" || sector == "Energy" || sector == "Agricultural" -> "Commodities"
-                        else -> "Stocks"
-                    }
-
                     
-                    sectorMap[sector] = (sectorMap[sector] ?: 0.0) + value
-                    if (country?.isNotBlank() == true)
-                    countryMap[country] = (countryMap[country] ?: 0.0) + value
-                    assetClassMap[assetClass] = (assetClassMap[assetClass] ?: 0.0) + value
+                    // Parallelize Dividend & Split fetching for ALL assets
+                    val dividendHelpers = symbols.map { symbol ->
+                        async { symbol to repository.getDividends(symbol) }
+                    }
+                    val splitHelpers = symbols.map { symbol ->
+                        async { symbol to repository.getSplits(symbol) }
+                    }
                     
-                    // Dividend Info
-                    if ((profile?.lastDiv ?: 0.0) > 0) {
-                        dividendCalendar.add("${asset.symbol}: Yield ${(profile!!.lastDiv!! / price * 100).toString().take(4)}%")
-                    }
-                }
-                
-                fun mapToExposureItems(map: Map<String, Double>): List<ExposureItem> {
-                    return map.entries.map { (name, value) ->
-                        ExposureItem(
-                            name = name,
-                            value = value,
-                            percentage = if (totalValue > 0) (value / totalValue) * 100 else 0.0,
-                            color = getChartColor(name)
+                    val profiles = profilesHelper.await()
+                    val quotes = quotesHelper.await()
+                    val news = newsHelper.await()
+                    val charts = chartHelpers.awaitAll().toMap()
+                    val allDividends = dividendHelpers.awaitAll().toMap()
+                    val allSplits = splitHelpers.awaitAll().toMap()
+                    
+                    val quoteMap = quotes.associateBy { it.symbol }
+                    val profileMap = profiles.associateBy { it.symbol }
+                    
+                    // 3. Calculate Portfolio Value & Holdings
+                    var totalValue = 0.0
+                    var totalCost = 0.0
+                    val holdingsList = mutableListOf<AssetHolding>()
+                    val dividendCalendar = mutableListOf<String>()
+                    
+                    var totalProjectedIncome = 0.0
+
+                    assets.forEach { asset ->
+                        val quote = quoteMap[asset.symbol]
+                        val profile = profileMap[asset.symbol]
+                        val price = quote?.price ?: asset.purchasePrice
+                        val value = asset.qty * price
+                        val cost = asset.qty * asset.purchasePrice
+                        
+                        val assetDividends = allDividends[asset.symbol] ?: emptyList()
+                        
+                        if (assetDividends.isNotEmpty()) {
+                            // Add to calendar (first 3 upcoming/recent)
+                            assetDividends.take(3).forEach { div ->
+                                if (div.paymentDate.isNotBlank()) {
+                                    dividendCalendar.add("Payment: ${div.paymentDate} - ${asset.symbol} ($${div.dividend})")
+                                }
+                            }
+                            
+                            // Calculate Annual Income: Sum dividends from the last 12 months
+                            val now = LocalDate.now()
+                            val oneYearAgo = LocalDate(now.year - 1, now.month, now.dayOfMonth)
+                            
+                            val lastYearDividends = assetDividends.filter { div ->
+                                try {
+                                    val divDate = LocalDate.parse(div.date)
+                                    divDate >= oneYearAgo
+                                } catch (e: Exception) {
+                                    false
+                                }
+                            }
+                            
+                            val annualDivPerShare = if (lastYearDividends.isNotEmpty()) {
+                                lastYearDividends.sumOf { it.dividend }
+                            } else {
+                                // Fallback: If no dividends in last year but lastDiv exists, assume quarterly
+                                (profile?.lastDiv ?: 0.0) * 4.0
+                            }
+                            
+                            if (annualDivPerShare > 0) {
+                                totalProjectedIncome += annualDivPerShare * asset.qty
+                            }
+                        } else {
+                            // Fallback if historical dividends failed but profile has lastDiv
+                            val lastDiv = profile?.lastDiv ?: 0.0
+                            if (lastDiv > 0) {
+                                totalProjectedIncome += (lastDiv * 4.0) * asset.qty // Assume annual estimate
+                            }
+                        }
+
+                        totalValue += value
+                        totalCost += cost
+                        
+                        holdingsList.add(
+                            AssetHolding(
+                                symbol = asset.symbol,
+                                name = asset.name,
+                                logoUrl = profile?.image,
+                                quantity = asset.qty.toDouble(),
+                                currentPrice = price,
+                                currentValue = value,
+                                percentage = 0.0, // Will update after total is known
+                                dailyChange = quote?.change ?: 0.0,
+                                dailyChangePct = quote?.changesPercentage ?: 0.0
+                            )
                         )
-                    }.sortedByDescending { it.percentage }
-                }
-                
-                val sectorExposure = mapToExposureItems(sectorMap)
-                val countryExposure = mapToExposureItems(countryMap)
-                val assetClassExposure = mapToExposureItems(assetClassMap)
-                
-                // 5. Concentration Alerts (positions > 10%)
-                val concentrationAlerts = holdings
-                    .filter { it.percentage > 10.0 }
-                    .map { 
-                        ConcentrationAlert(
-                            symbol = it.symbol,
-                            name = it.name,
-                            logoUrl = it.logoUrl,
-                            percentage = it.percentage
-                        )
                     }
-                
-                // 6. High Risk Assets (based on sector)
-                val highRiskSectors = setOf("Technology", "Cryptocurrency", "Consumer Cyclical", "Financial Services")
-                val highRiskAssets = assets.mapNotNull { asset ->
-                    val profile = profileMap[asset.symbol]
-                    val sector = profile?.sector ?: "Unknown"
-                    if (sector in highRiskSectors) {
+                    
+                    // Sort calendar by date
+                    dividendCalendar.sortDescending()
+
+                    // Update holdings with percentages
+                    val holdings = holdingsList.map { 
+                        it.copy(percentage = if (totalValue > 0) (it.currentValue / totalValue) * 100 else 0.0) 
+                    }.sortedByDescending { it.currentValue }
+                    
+                    val totalReturn = totalValue - totalCost
+                    val totalReturnPct = if (totalCost > 0) (totalReturn / totalCost) * 100 else 0.0
+                    
+                    val sortedByGain = quotes.sortedByDescending { it.changesPercentage }
+                    val topGainer = sortedByGain.firstOrNull()
+                    val topLoser = sortedByGain.lastOrNull()
+                    
+                    // 4. Calculate Exposure
+                    val sectorMap = mutableMapOf<String, Double>()
+                    val countryMap = mutableMapOf<String, Double>()
+                    val assetClassMap = mutableMapOf<String, Double>()
+                    
+                    assets.forEach { asset ->
                         val price = quoteMap[asset.symbol]?.price ?: asset.purchasePrice
                         val value = asset.qty * price
-                        HighRiskAsset(
-                            symbol = asset.symbol,
-                            name = asset.name,
-                            logoUrl = profile?.image,
-                            percentage = if (totalValue > 0) (value / totalValue) * 100 else 0.0,
-                            sector = sector
-                        )
-                    } else null
-                }.sortedByDescending { it.percentage }
-                
-                // 7. Calculate Advanced Risk Metrics using Historical Data
-                
-                // Weighted Beta
-                var weightedBeta = 0.0
-                holdings.forEach { holding ->
-                    val profile = profileMap[holding.symbol]
-                    val beta = profile?.beta ?: 1.0
-                    weightedBeta += beta * (holding.percentage / 100.0)
-                }
-                
-                // Portfolio Volatility (simplified: weighted avg of asset volatilities + correlation assumption)
-                // A true portfolio volatility requires a covariance matrix, but for now we'll do weighted average * diversification factor
-                // Calculate individual asset volatilities from charts
-                var weightedVolatility = 0.0
-                
-                charts.forEach { (symbol, points) ->
-                    val holding = holdings.find { it.symbol == symbol } ?: return@forEach
-                    if (points.size > 1) {
-                         // Calculate daily returns
-                         val dailyReturns = points.zipWithNext { a, b -> 
-                             (a.price - b.price) / b.price 
+                        val profile = profileMap[asset.symbol]
+                        
+                        var sector = profile?.sector
+                        var country = profile?.country
+                        
+                        // Fallback logic for Commodities, Crypto, and ETFs if profile is missing or incomplete
+                        if (sector.isNullOrBlank() || sector.contains("Unknown")) {
+                            when {
+                                // Crypto
+                                profile?.exchange == "CRYPTO" || 
+                                asset.symbol.contains("-USD") || 
+                                asset.symbol.contains("BTC") || 
+                                asset.symbol.contains("ETH") -> {
+                                    sector = "Cryptocurrency"
+                                    country = if (country.isNullOrBlank()) "Global" else country
+                                }
+                                
+                                // ETFs
+                                profile?.isEtf == true || 
+                                asset.name.contains("ETF", ignoreCase = true) -> {
+                                    sector = "Exchange Traded Fund"
+                                    country = if (country.isNullOrBlank()) "Global" else country
+                                }
+                                
+                                // Indices
+                                asset.symbol.startsWith("^") -> {
+                                    sector = "Index"
+                                    country = if (country.isNullOrBlank()) "Global" else country
+                                }
+                                
+                                // Forex
+                                asset.symbol.contains("=X") -> {
+                                    sector = "Currency"
+                                    country = "Global"
+                                }
+                                
+                                // Commodities
+                                asset.symbol.equals("GC=F", ignoreCase = true) || 
+                                asset.symbol.contains("Gold", ignoreCase = true) || 
+                                asset.name.contains("Gold", ignoreCase = true) ||
+                                asset.symbol.equals("SI=F", ignoreCase = true) || 
+                                asset.name.contains("Silver", ignoreCase = true) ||
+                                asset.symbol.equals("PL=F", ignoreCase = true) || // Platinum
+                                asset.symbol.equals("PA=F", ignoreCase = true) // Palladium
+                                -> {
+                                    sector = "Precious Metals"
+                                    country = "Global"
+                                }
+                                
+                                asset.symbol.equals("CL=F", ignoreCase = true) || 
+                                asset.name.contains("Crude Oil", ignoreCase = true) ||
+                                asset.symbol.equals("NG=F", ignoreCase = true) || // Natural Gas
+                                asset.name.contains("Natural Gas", ignoreCase = true) ||
+                                asset.symbol.equals("BZ=F", ignoreCase = true) // Brent Crude
+                                -> {
+                                    sector = "Energy"
+                                    country = "Global"
+                                }
+                                
+                                 asset.symbol.equals("HG=F", ignoreCase = true) || // Copper
+                                 asset.name.contains("Copper", ignoreCase = true)
+                                -> {
+                                    sector = "Basic Materials"
+                                    country = "Global"
+                                }
+                                
+                                asset.symbol.equals("ZC=F", ignoreCase = true) || // Corn
+                                asset.symbol.equals("ZW=F", ignoreCase = true) || // Wheat
+                                asset.symbol.equals("ZS=F", ignoreCase = true)    // Soybeans
+                                -> {
+                                    sector = "Agricultural"
+                                    country = "Global"
+                                }
+
+                                else -> {
+                                    sector = "Unknown"
+                                    country = if (country.isNullOrBlank()) "Unknown" else country
+                                }
+                            }
+                        } else {
+                            // Ensure country is not null even if sector is known
+                             if (country.isNullOrBlank()) {
+                                 country = "Unknown"
+                             }
+                        }
+
+                        val assetClass = when {
+                            asset.name.contains("ETF", ignoreCase = true) || profile?.isEtf == true -> "ETF"
+                            sector == "Cryptocurrency" || profile?.exchange == "CRYPTO" -> "Crypto"
+                            sector == "Precious Metals" || sector == "Energy" || sector == "Agricultural" -> "Commodities"
+                            else -> "Stocks"
+                        }
+
+                        
+                        sectorMap[sector] = (sectorMap[sector] ?: 0.0) + value
+                        if (country?.isNotBlank() == true)
+                        countryMap[country] = (countryMap[country] ?: 0.0) + value
+                        assetClassMap[assetClass] = (assetClassMap[assetClass] ?: 0.0) + value
+                        
+                    }
+                    
+                    fun mapToExposureItems(map: Map<String, Double>): List<ExposureItem> {
+                        return map.entries.map { (name, value) ->
+                            ExposureItem(
+                                name = name,
+                                value = value,
+                                percentage = if (totalValue > 0) (value / totalValue) * 100 else 0.0,
+                                color = getChartColor(name)
+                            )
+                        }.sortedByDescending { it.percentage }
+                    }
+                    
+                    val sectorExposure = mapToExposureItems(sectorMap)
+                    val countryExposure = mapToExposureItems(countryMap)
+                    val assetClassExposure = mapToExposureItems(assetClassMap)
+                    
+                    // 5. Concentration Alerts (positions > 10%)
+                    val concentrationAlerts = holdings
+                        .filter { it.percentage > 10.0 }
+                        .map { 
+                            ConcentrationAlert(
+                                symbol = it.symbol,
+                                name = it.name,
+                                logoUrl = it.logoUrl,
+                                percentage = it.percentage
+                            )
+                        }
+                    
+                    // 6. High Risk Assets (based on sector)
+                    val highRiskSectors = setOf("Technology", "Cryptocurrency", "Consumer Cyclical", "Financial Services")
+                    val highRiskAssets = assets.mapNotNull { asset ->
+                        val profile = profileMap[asset.symbol]
+                        val sector = profile?.sector ?: "Unknown"
+                        if (sector in highRiskSectors) {
+                            val price = quoteMap[asset.symbol]?.price ?: asset.purchasePrice
+                            val value = asset.qty * price
+                            HighRiskAsset(
+                                symbol = asset.symbol,
+                                name = asset.name,
+                                logoUrl = profile?.image,
+                                percentage = if (totalValue > 0) (value / totalValue) * 100 else 0.0,
+                                sector = sector
+                            )
+                        } else null
+                    }.sortedByDescending { it.percentage }
+                    
+                    // 7. Calculate Advanced Risk Metrics using Historical Data
+                    
+                    // Weighted Beta
+                    var weightedBeta = 0.0
+                    holdings.forEach { holding ->
+                        val profile = profileMap[holding.symbol]
+                        val beta = profile?.beta ?: 1.0
+                        weightedBeta += beta * (holding.percentage / 100.0)
+                    }
+                    
+                    // Portfolio Volatility (simplified: weighted avg of asset volatilities + correlation assumption)
+                    // A true portfolio volatility requires a covariance matrix, but for now we'll do weighted average * diversification factor
+                    // Calculate individual asset volatilities from charts
+                    var weightedVolatility = 0.0
+                    
+                    charts.forEach { (symbol, points) ->
+                        val holding = holdings.find { it.symbol == symbol } ?: return@forEach
+                        if (points.size > 1) {
+                             // Calculate daily returns
+                             val dailyReturns = points.zipWithNext { a, b -> 
+                                 (a.price - b.price) / b.price 
+                             }
+                             val avgReturn = dailyReturns.average()
+                             val variance = dailyReturns.map { (it - avgReturn) * (it - avgReturn) }.average()
+                             val stdDev = sqrt(variance) // Daily volatility
+                             
+                             // Annualized Volatility = Daily * sqrt(252)
+                             val annualizedVol = stdDev * 15.87 // sqrt(252) approx 15.87
+                             
+                             weightedVolatility += annualizedVol * (holding.percentage / 100.0)
+                        }
+                    }
+                    
+                    // If no charts (e.g. all crypto or errors), fallback to quotes daily change
+                    if (weightedVolatility == 0.0) {
+                         val dailyChanges = quotes.map { kotlin.math.abs(it.changesPercentage) / 100.0 }
+                         if (dailyChanges.isNotEmpty()) {
+                             weightedVolatility = dailyChanges.average() * 15.87 // annualized rough estimate
                          }
-                         val avgReturn = dailyReturns.average()
-                         val variance = dailyReturns.map { (it - avgReturn) * (it - avgReturn) }.average()
-                         val stdDev = sqrt(variance) // Daily volatility
-                         
-                         // Annualized Volatility = Daily * sqrt(252)
-                         val annualizedVol = stdDev * 15.87 // sqrt(252) approx 15.87
-                         
-                         weightedVolatility += annualizedVol * (holding.percentage / 100.0)
                     }
-                }
-                
-                // If no charts (e.g. all crypto or errors), fallback to quotes daily change
-                if (weightedVolatility == 0.0) {
-                     val dailyChanges = quotes.map { kotlin.math.abs(it.changesPercentage) / 100.0 }
-                     if (dailyChanges.isNotEmpty()) {
-                         weightedVolatility = dailyChanges.average() * 15.87 // annualized rough estimate
-                     }
-                }
-                
-                // Apply a diversification factor (naive: more assets = less risk)
-                // 1 asset = 1.0, 10 assets = ~0.6
-                val diversificationFactor = 1.0 / sqrt(assets.size.coerceAtLeast(1).toDouble()).coerceAtLeast(1.0) * 0.5 + 0.5
-                val portfolioVolatility = weightedVolatility * diversificationFactor
-                
-                // Sharpe Ratio
-                val riskFreeRate = 0.045 // 4.5%
-                val sharpeRatio = if (portfolioVolatility > 0.001) 
-                    (totalReturnPct/100.0 - riskFreeRate) / portfolioVolatility 
-                else 0.0
-                
-                // Value at Risk (VaR)
-                val valueAtRisk = totalValue * portfolioVolatility * 1.65 / 15.87 // Daily 95% VaR (~1.65 sigma)
-                
-                // 8. Overall Risk Score
-                val highRiskPct = highRiskAssets.sumOf { it.percentage }
-                val concentrationPenalty = concentrationAlerts.size * 5.0
-                val volatilityPenalty = (portfolioVolatility * 100.0).coerceAtMost(40.0)
-                
-                val riskScore = (100.0 - (highRiskPct * 0.3) - concentrationPenalty - volatilityPenalty).coerceIn(1.0, 99.0).toInt()
-                val riskLevel = when {
-                    riskScore >= 70 -> RiskLevel.LOW
-                    riskScore >= 40 -> RiskLevel.MEDIUM
-                    else -> RiskLevel.HIGH
-                }
-                
-                // Calculate Dividend Metrics
-                var totalProjectedIncome = 0.0
-                assets.forEach { asset ->
-                    val profile = profileMap[asset.symbol]
-                    val lastDiv = profile?.lastDiv ?: 0.0
-                    // lastDiv is usually per share per year or quarter? FMP 'lastDiv' is usually the last dividend amount.
-                    // If it's annual, great. If quarterly, we might need to multiply by frequency.
-                    // FMP 'lastDiv' is often the Amount of the last dividend paid. 
-                    // Let's assume for now it's an indicative annual amount or we use Yield if available.
-                    // Actually FMP profile has 'lastDiv' (amount). 
-                    // Better to use a yield estimation if possible, or just sum (qty * lastDiv * frequency?).
-                    // For safety, let's just use the yield if we had it, but we only have lastDiv.
-                    // Let's assume lastDiv is the annual amount for now (common in some feeds) or just use it as a proxy.
-                    // A better proxy: (lastDiv * qty).
-                    if (lastDiv > 0) {
-                        totalProjectedIncome += lastDiv * asset.qty
+                    
+                    // Apply a diversification factor (naive: more assets = less risk)
+                    // 1 asset = 1.0, 10 assets = ~0.6
+                    val diversificationFactor = 1.0 / sqrt(assets.size.coerceAtLeast(1).toDouble()).coerceAtLeast(1.0) * 0.5 + 0.5
+                    val portfolioVolatility = weightedVolatility * diversificationFactor
+                    
+                    // Sharpe Ratio
+                    val riskFreeRate = 0.045 // 4.5%
+                    val sharpeRatio = if (portfolioVolatility > 0.001) 
+                        (totalReturnPct/100.0 - riskFreeRate) / portfolioVolatility 
+                    else 0.0
+                    
+                    // Value at Risk (VaR)
+                    val valueAtRisk = totalValue * portfolioVolatility * 1.65 / 15.87 // Daily 95% VaR (~1.65 sigma)
+                    
+                    // 8. Overall Risk Score
+                    val highRiskPct = highRiskAssets.sumOf { it.percentage }
+                    val concentrationPenalty = concentrationAlerts.size * 5.0
+                    val volatilityPenalty = (portfolioVolatility * 100.0).coerceAtMost(40.0)
+                    
+                    val riskScore = (100.0 - (highRiskPct * 0.3) - concentrationPenalty - volatilityPenalty).coerceIn(1.0, 99.0).toInt()
+                    val riskLevel = when {
+                        riskScore >= 70 -> RiskLevel.LOW
+                        riskScore >= 40 -> RiskLevel.MEDIUM
+                        else -> RiskLevel.HIGH
                     }
-                }
-                
-                val currentYield = if (totalValue > 0) (totalProjectedIncome / totalValue) * 100 else 0.0
+                    
+                    // Already calculated totalProjectedIncome in the loop above
+                    val currentYield = if (totalValue > 0) (totalProjectedIncome / totalValue) * 100 else 0.0
 
-                // Generate Dynamic Rebalancing Suggestion
-                var suggestion = "Your portfolio looks balanced. Keep monitoring your asset allocation."
-                val topSector = sectorExposure.maxByOrNull { it.percentage }
-                
-                if (riskLevel == RiskLevel.HIGH) {
-                     suggestion = "Your portfolio risk is High. Consider diversifying into defensive sectors like Utilities or Consumer Defensive to lower volatility."
-                } else if ((topSector?.percentage ?: 0.0) > 40.0) {
-                    suggestion = "Your portfolio is heavily weighted towards ${topSector?.name} (${topSector?.percentage?.toInt()}%). Consider trimming this position to reduce sector-specific risk."
-                } else if (sharpeRatio < 0.5 && totalReturnPct < 0) {
-                     suggestion = "Your risk-adjusted returns are low. Review your underperforming assets and consider reallocating to higher quality growth or dividend stocks."
-                } else if (assetClassExposure.find { it.name == "Crypto" }?.percentage?.let { it > 20 } == true) {
-                    suggestion = "You have significant exposure to Crypto (>20%). Ensure you are comfortable with the high volatility associated with this asset class."
-                }
+                    // Generate Dynamic Rebalancing Suggestion
+                    var suggestion = "Your portfolio looks balanced. Keep monitoring your asset allocation."
+                    val topSector = sectorExposure.maxByOrNull { it.percentage }
+                    
+                    if (riskLevel == RiskLevel.HIGH) {
+                         suggestion = "Your portfolio risk is High. Consider diversifying into defensive sectors like Utilities or Consumer Defensive to lower volatility."
+                    } else if ((topSector?.percentage ?: 0.0) > 40.0) {
+                        suggestion = "Your portfolio is heavily weighted towards ${topSector?.name} (${topSector?.percentage?.toInt()}%). Consider trimming this position to reduce sector-specific risk."
+                    } else if (sharpeRatio < 0.5 && totalReturnPct < 0) {
+                         suggestion = "Your risk-adjusted returns are low. Review your underperforming assets and consider reallocating to higher quality growth or dividend stocks."
+                    } else if (assetClassExposure.find { it.name == "Crypto" }?.percentage?.let { it > 20 } == true) {
+                        suggestion = "You have significant exposure to Crypto (>20%). Ensure you are comfortable with the high volatility associated with this asset class."
+                    }
 
-                val metrics = PortfolioMetrics(
-                    totalValue = totalValue,
-                    totalCost = totalCost,
-                    totalReturn = totalReturn,
-                    totalReturnPct = totalReturnPct,
-                    topGainer = topGainer,
-                    topLoser = topLoser,
-                    volatility = portfolioVolatility * 100, // display as %
-                    beta = weightedBeta,
-                    sharpeRatio = sharpeRatio,
-                    valueAtRisk = valueAtRisk,
-                    riskScore = riskScore,
-                    riskLevel = riskLevel,
-                    estimatedAnnualIncome = totalProjectedIncome,
-                    currentYield = currentYield,
-                    rebalancingSuggestion = suggestion
-                )
-                
-                _state.update { 
-                    it.copy(
-                        isPremiumLoading = false,
-                        metrics = metrics,
-                        sectorExposure = sectorExposure,
-                        countryExposure = countryExposure,
-                        assetClassExposure = assetClassExposure,
-                        holdings = holdings,
-                        concentrationAlerts = concentrationAlerts,
-                        highRiskAssets = highRiskAssets,
-                        news = news
+                    val metrics = PortfolioMetrics(
+                        totalValue = totalValue,
+                        totalCost = totalCost,
+                        totalReturn = totalReturn,
+                        totalReturnPct = totalReturnPct,
+                        topGainer = topGainer,
+                        topLoser = topLoser,
+                        volatility = portfolioVolatility * 100, // display as %
+                        beta = weightedBeta,
+                        sharpeRatio = sharpeRatio,
+                        valueAtRisk = valueAtRisk,
+                        riskScore = riskScore,
+                        riskLevel = riskLevel,
+                        estimatedAnnualIncome = totalProjectedIncome,
+                        currentYield = currentYield,
+                        rebalancingSuggestion = suggestion
                     )
+                    
+                    _state.update { 
+                        it.copy(
+                            isPremiumLoading = false,
+                            metrics = metrics,
+                            sectorExposure = sectorExposure,
+                            countryExposure = countryExposure,
+                            assetClassExposure = assetClassExposure,
+                            holdings = holdings,
+                            concentrationAlerts = concentrationAlerts,
+                            highRiskAssets = highRiskAssets,
+                            news = news,
+                            dividends = allDividends,
+                            splits = allSplits,
+                            dividendCalendar = dividendCalendar
+                        )
+                    }
+                    
+                } catch (e: Exception) {
+                     _state.update { it.copy(isPremiumLoading = false, error = "Failed to load premium data: ${e.message}") }
                 }
-                
-            } catch (e: Exception) {
-                 _state.update { it.copy(isPremiumLoading = false, error = "Failed to load premium data: ${e.message}") }
             }
         }
     }

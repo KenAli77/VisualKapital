@@ -10,6 +10,9 @@ import com.example.visualmoney.data.repository.FinancialRepository
 import com.revenuecat.purchases.kmp.Purchases
 import kotlinx.coroutines.launch
 
+import kotlin.coroutines.resume
+import kotlin.coroutines.suspendCoroutine
+
 class AssetDetailsViewModel(
     private val repository: FinancialRepository,
     private val purchases: Purchases
@@ -24,13 +27,14 @@ class AssetDetailsViewModel(
         super.onCleared()
     }
     
-    private fun checkPremiumStatus() {
+    private suspend fun getIsPremium(): Boolean = suspendCoroutine { continuation ->
         purchases.getCustomerInfo(
             onSuccess = { customerInfo ->
-                val isPremium = customerInfo.entitlements.active.isNotEmpty()
-                state = state.copy(isPremium = isPremium)
+                continuation.resume(customerInfo.entitlements.active.isNotEmpty())
             },
-            onError = { _ -> }
+            onError = { _ ->
+                continuation.resume(false)
+            }
         )
     }
     
@@ -39,7 +43,8 @@ class AssetDetailsViewModel(
             LoadingManager.startLoading()
             
             // Check premium status
-            checkPremiumStatus()
+            val isPremium = getIsPremium()
+            state = state.copy(isPremium = isPremium)
             
             viewModelScope.launch {
                 repository.getPortfolioAsset(symbol).collect {
@@ -72,10 +77,18 @@ class AssetDetailsViewModel(
             )
             
             // Load news for this asset
-            state = state.copy(isNewsLoading = true)
-            val news = try {
-                repository.getStockNews(listOf(symbol))
-            } catch (e: Exception) {
+            val news = if (isPremium) {
+                state = state.copy(isNewsLoading = true)
+                try {
+                    if (profile.exchange == "CRYPTO") {
+                        repository.getCryptoNews(listOf(symbol))
+                    } else {
+                        repository.getStockNews(listOf(symbol))
+                    }
+                } catch (e: Exception) {
+                    emptyList()
+                }
+            } else {
                 emptyList()
             }
             

@@ -152,3 +152,35 @@ data class StockNews(
     val text: String,
     val url: String
 )
+
+@Serializable
+data class Dividend(
+    val symbol: String = "",
+    val date: String = "",
+    val label: String = "",
+    val adjDividend: Double = 0.0,
+    val dividend: Double = 0.0,
+    val recordDate: String = "",
+    val paymentDate: String = "",
+    val declarationDate: String = ""
+)
+
+@Serializable
+data class DividendResponse(
+    val symbol: String = "",
+    val historical: List<Dividend> = emptyList()
+)
+
+@Serializable
+data class SplitEvent(
+    val symbol: String = "",
+    val date: String = "",
+    val numerator: Double = 0.0,
+    val denominator: Double = 0.0
+)
+
+@Serializable
+data class SplitResponse(
+    val symbol: String = "",
+    val historical: List<SplitEvent> = emptyList()
+)

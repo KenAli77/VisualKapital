@@ -5,6 +5,7 @@ import androidx.compose.animation.animateColorAsState
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -269,7 +270,8 @@ fun AssetDetailsScreen(
                                 if (state.isPremium) {
                                     NewsTabContent(
                                         news = state.news,
-                                        isLoading = state.isNewsLoading
+                                        isLoading = state.isNewsLoading,
+                                        onNewsClick = onOpenWebsite
                                     )
                                 } else {
                                     PremiumLockedContent()
@@ -860,7 +862,8 @@ fun AssetLogoContainer(
 @Composable
 private fun NewsTabContent(
     news: List<StockNews>,
-    isLoading: Boolean
+    isLoading: Boolean,
+    onNewsClick: (String) -> Unit
 ) {
     if (isLoading) {
         Box(
@@ -882,15 +885,15 @@ private fun NewsTabContent(
         verticalArrangement = Arrangement.spacedBy(theme.dimension.mediumSpacing)
     ) {
         news.forEach { newsItem ->
-            NewsCard(newsItem)
+            NewsCard(newsItem, onClick = { onNewsClick(newsItem.url) })
         }
     }
 }
 
 @Composable
-private fun NewsCard(news: StockNews) {
+private fun NewsCard(news: StockNews, onClick: () -> Unit) {
     CardContainer(
-        modifier = Modifier.fillMaxWidth(),
+        modifier = Modifier.fillMaxWidth().clickable { onClick() },
         containerColor = theme.colors.surface
     ) {
         Row(

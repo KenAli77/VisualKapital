@@ -13,6 +13,8 @@ import com.example.visualmoney.data.remote.FmpDataSource
 import com.example.visualmoney.domain.model.AssetProfile
 import com.example.visualmoney.domain.model.AssetQuote
 import com.example.visualmoney.domain.model.ChartPoint
+import com.example.visualmoney.domain.model.Dividend
+import com.example.visualmoney.domain.model.SplitEvent
 import com.example.visualmoney.domain.model.StockNews
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.firstOrNull
@@ -37,7 +39,10 @@ interface FinancialRepository {
     suspend fun getPortfolioAssets(): Flow<List<PortfolioAsset>>
     suspend fun getPortfolioAsset(symbol:String): Flow<PortfolioAsset?>
     suspend fun getStockNews(symbols: List<String>): List<StockNews>
+    suspend fun getCryptoNews(symbols: List<String>): List<StockNews>
     suspend fun getProfiles(symbols: List<String>): List<AssetProfile>
+    suspend fun getDividends(symbol: String): List<Dividend>
+    suspend fun getSplits(symbol: String): List<SplitEvent>
 }
 
 class FinancialRepositoryImpl(
@@ -60,6 +65,10 @@ class FinancialRepositoryImpl(
 
     override suspend fun getStockNews(symbols: List<String>): List<StockNews> {
         return remoteSource.getStockNews(symbols)
+    }
+
+    override suspend fun getCryptoNews(symbols: List<String>): List<StockNews> {
+        return remoteSource.getCryptoNews(symbols)
     }
 
     override suspend fun getProfiles(symbols: List<String>): List<AssetProfile> {
@@ -203,6 +212,14 @@ class FinancialRepositoryImpl(
         }
 
         cachedQuoteDao.upsertAll(entities)
+    }
+
+    override suspend fun getDividends(symbol: String): List<Dividend> {
+        return remoteSource.getDividends(symbol)
+    }
+
+    override suspend fun getSplits(symbol: String): List<SplitEvent> {
+        return remoteSource.getSplits(symbol)
     }
 }
 

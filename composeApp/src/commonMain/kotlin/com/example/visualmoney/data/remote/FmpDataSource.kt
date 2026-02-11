@@ -7,6 +7,10 @@ import com.example.visualmoney.domain.model.AssetProfile
 import com.example.visualmoney.domain.model.AssetQuote
 import com.example.visualmoney.domain.model.ChartPoint
 import com.example.visualmoney.domain.model.ChartPointDTO
+import com.example.visualmoney.domain.model.Dividend
+import com.example.visualmoney.domain.model.DividendResponse
+import com.example.visualmoney.domain.model.SplitEvent
+import com.example.visualmoney.domain.model.SplitResponse
 import com.example.visualmoney.domain.model.StockNews
 import com.example.visualmoney.domain.model.toChartPoint
 import io.ktor.client.HttpClient
@@ -15,6 +19,7 @@ import io.ktor.client.request.get
 import io.ktor.client.request.parameter
 import io.ktor.client.statement.HttpResponse
 import io.ktor.client.statement.bodyAsText
+import kotlinx.coroutines.*
 import kotlinx.serialization.json.Json
 
 class FmpDataSource(private val client: HttpClient) {
@@ -159,8 +164,8 @@ class FmpDataSource(private val client: HttpClient) {
         return try {
             if (symbols.isEmpty()) return emptyList()
             val symbolsParam = symbols.joinToString(",")
-            client.get("$baseUrl/stable/stock_news") {
-                parameter("tickers", symbolsParam)
+            client.get("$baseUrl/stable/news/stock") {
+                parameter("symbols", symbolsParam)
                 parameter("limit", limit)
                 parameter("apikey", apiKey)
             }.body()
@@ -170,17 +175,93 @@ class FmpDataSource(private val client: HttpClient) {
         }
     }
 
-    suspend fun getProfiles(symbols: List<String>): List<AssetProfile> {
+    suspend fun getCryptoNews(symbols: List<String>, limit: Int = 20): List<StockNews> {
         return try {
             if (symbols.isEmpty()) return emptyList()
             val symbolsParam = symbols.joinToString(",")
-            client.get("$baseUrl/stable/profile") {
-                parameter("symbol", symbolsParam)
+            client.get("$baseUrl/stable/news/crypto") {
+                parameter("symbols", symbolsParam)
+                parameter("limit", limit)
                 parameter("apikey", apiKey)
             }.body()
         } catch (e: Exception) {
-            println("Error getting profiles: $e")
+            println("Error getting crypto news: $e")
             emptyList()
+        }
+    }
+
+    suspend fun getProfiles(symbols: List<String>): List<AssetProfile> = coroutineScope {
+        try {
+            if (symbols.isEmpty()) return@coroutineScope emptyList()
+            
+            // Try bulk fetching via path-based URL first (Standard FMP way: /profile/AAPL,MSFT)
+            val symbolsParam = symbols.joinToString(",")
+            val bulkResult: List<AssetProfile> = try {
+                client.get("$baseUrl/stable/profile/$symbolsParam") {
+                    parameter("apikey", apiKey)
+                }.body()
+            } catch (e: Exception) {
+                // If path-based fails, try query-param based (Matches getQuotes)
+                try {
+                    client.get("$baseUrl/stable/profile?symbol=$symbolsParam") {
+                        parameter("apikey", apiKey)
+                    }.body()
+                } catch (e2: Exception) {
+                    emptyList()
+                }
+            }
+            
+            if (bulkResult.isNotEmpty()) return@coroutineScope bulkResult
+            
+            // Fallback: Individual fetches in parallel if bulk fails
+            symbols.map { symbol ->
+                async { getProfile(symbol) }
+            }.awaitAll().filter { it.symbol.isNotEmpty() }
+
+        } catch (e: Exception) {
+            println("Error in getProfiles: $e")
+            emptyList()
+        }
+    }
+
+    suspend fun getDividends(symbol: String): List<Dividend> {
+        return try {
+            val response: DividendResponse = client.get("$baseUrl/stable/historical-price-full/stock_dividend/$symbol") {
+                parameter("apikey", apiKey)
+            }.body()
+            response.historical
+        } catch (e: Exception) {
+            println("Error getting dividends for $symbol: $e")
+            // Try fallback to query-based simple endpoint if path-based fails
+            try {
+                val fallback: List<Dividend> = client.get("$baseUrl/stable/dividends") {
+                    parameter("symbol", symbol)
+                    parameter("apikey", apiKey)
+                }.body()
+                fallback
+            } catch (e2: Exception) {
+                emptyList()
+            }
+        }
+    }
+
+    suspend fun getSplits(symbol: String): List<SplitEvent> {
+        return try {
+            val response: SplitResponse = client.get("$baseUrl/stable/historical-price-full/stock_split/$symbol") {
+                parameter("apikey", apiKey)
+            }.body()
+            response.historical
+        } catch (e: Exception) {
+            println("Error getting splits for $symbol: $e")
+             try {
+                val fallback: List<SplitEvent> = client.get("$baseUrl/stable/splits") {
+                    parameter("symbol", symbol)
+                    parameter("apikey", apiKey)
+                }.body()
+                fallback
+            } catch (e2: Exception) {
+                emptyList()
+            }
         }
     }
 }
