@@ -1,4 +1,6 @@
 import java.util.Properties
+import com.codingfeline.buildkonfig.compiler.FieldSpec.Type.STRING
+import com.codingfeline.buildkonfig.compiler.FieldSpec.Type.BOOLEAN
 import org.jetbrains.compose.desktop.application.dsl.TargetFormat
 import org.jetbrains.kotlin.gradle.dsl.JvmTarget
 import org.jetbrains.kotlin.gradle.plugin.mpp.KotlinNativeTarget
@@ -14,7 +16,14 @@ plugins {
     alias(libs.plugins.androidx.room)
 }
 
+// Read from local.properties
+val localProperties = Properties()
+val localPropertiesFile = rootProject.file("local.properties")
+if (localPropertiesFile.exists()) {
+    localPropertiesFile.inputStream().use { localProperties.load(it) }
+}
 
+fun getSecret(key: String): String = localProperties.getProperty(key) ?: ""
 
 kotlin {
     androidTarget {
@@ -87,26 +96,45 @@ kotlin {
 }
 
 android {
-    namespace = "com.example.visualmoney"
+    namespace = "com.visualmoney.app"
     compileSdk = libs.versions.android.compileSdk.get().toInt()
 
     defaultConfig {
-        applicationId = "com.example.visualmoney"
+        applicationId = "com.visualmoney.app"
         minSdk = libs.versions.android.minSdk.get().toInt()
         targetSdk = libs.versions.android.targetSdk.get().toInt()
         versionCode = 1
         versionName = "1.0"
     }
+
+    signingConfigs {
+        create("release") {
+            val path = getSecret("KEYSTORE_PATH")
+            storeFile = file(path)
+            storePassword = getSecret("KEYSTORE_PASSWORD")
+            keyAlias = getSecret("KEY_ALIAS")
+            keyPassword = getSecret("KEYSTORE_PASSWORD")
+        }
+    }
+
     packaging {
         resources {
             excludes += "/META-INF/{AL2.0,LGPL2.1}"
         }
     }
+
     buildTypes {
-        getByName("release") {
-            isMinifyEnabled = false
+        release {
+            isMinifyEnabled = true
+            isShrinkResources = true
+            proguardFiles(
+                getDefaultProguardFile("proguard-android-optimize.txt"),
+                "proguard-rules.pro"
+            )
+            signingConfig = signingConfigs.getByName("release")
         }
     }
+
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_11
         targetCompatibility = JavaVersion.VERSION_11
@@ -122,25 +150,27 @@ dependencies {
 }
 
 buildkonfig {
-    packageName = "com.example.visualmoney"
-
-    // Read from local.properties
-    val localProperties = Properties()
-    val localPropertiesFile = rootProject.file("local.properties")
-    if (localPropertiesFile.exists()) {
-        localPropertiesFile.inputStream().use { localProperties.load(it) }
-    }
+    packageName = "com.visualmoney.app"
 
     defaultConfigs {
-        val fmpKey = localProperties.getProperty("FMP_API_KEY") ?: "invalid"
-        val logoKey = localProperties.getProperty("LOGO_DEV_KEY") ?: "invalid"
-        val rcAndroidKey = localProperties.getProperty("RC_API_KEY_ANDROID") ?: "invalid"
-        val rcIosKey = localProperties.getProperty("RC_API_KEY_IOS") ?: "invalid"
+        val fmpKey = getSecret("FMP_API_KEY").ifEmpty { "invalid" }
+        val logoKey = getSecret("LOGO_DEV_KEY").ifEmpty { "invalid" }
+        val rcIosKey = getSecret("RC_API_KEY_IOS").ifEmpty { "invalid" }
+        val rcAndroidKey = getSecret("RC_API_KEY_ANDROID").ifEmpty { "invalid" }
 
-        buildConfigField(com.codingfeline.buildkonfig.compiler.FieldSpec.Type.STRING, "FMP_API_KEY", fmpKey)
-        buildConfigField(com.codingfeline.buildkonfig.compiler.FieldSpec.Type.STRING, "LOGO_DEV_KEY", logoKey)
-        buildConfigField(com.codingfeline.buildkonfig.compiler.FieldSpec.Type.STRING, "RC_API_KEY_ANDROID", rcAndroidKey)
-        buildConfigField(com.codingfeline.buildkonfig.compiler.FieldSpec.Type.STRING, "RC_API_KEY_IOS", rcIosKey)
+        buildConfigField(BOOLEAN, "DEBUG", "false")
+        buildConfigField(STRING, "RC_API_KEY_ANDROID", rcAndroidKey)
+        buildConfigField(STRING, "FMP_API_KEY", fmpKey)
+        buildConfigField(STRING, "LOGO_DEV_KEY", logoKey)
+        buildConfigField(STRING, "RC_API_KEY_IOS", rcIosKey)
+    }
+    
+    targetConfigs {
+        create("androidDebug") {
+            val rcAndroidKey = getSecret("RC_API_KEY_TEST_ANDROID").ifEmpty { getSecret("RC_API_KEY_ANDROID") }.ifEmpty { "invalid" }
+            buildConfigField(STRING, "RC_API_KEY_ANDROID", rcAndroidKey)
+            buildConfigField(BOOLEAN, "DEBUG", "true")
+        }
     }
 }
 

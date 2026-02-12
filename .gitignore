@@ -23,3 +23,5 @@ iosApp/Pods/
 
 # Node
 node_modules/
+/my-keys.jks
+/visual-kapital-9dc4387fef21.json
