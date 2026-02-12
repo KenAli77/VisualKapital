@@ -14,6 +14,14 @@ captures
 !*.xcodeproj/project.pbxproj
 !*.xcodeproj/xcshareddata/
 !*.xcodeproj/project.xcworkspace/
-!*.xcworkspace/contents.xcworkspacedata
 **/xcshareddata/WorkspaceSettings.xcsettings
+
+# CocoaPods
+iosApp/Pods/
+*.xcworkspace/
+!*.xcworkspace/contents.xcworkspacedata
+
+# Node
 node_modules/
+/my-keys.jks
+/visual-kapital-9dc4387fef21.json
