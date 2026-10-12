@@ -8,6 +8,7 @@
 
 /* Begin PBXFileReference section */
 		AF28331B0EBA6B3BE61DCD9A /* VisualMoney.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = VisualMoney.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		CD356E74DF75AEC1E0D7B80A /* Pods_iosApp.framework */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; includeInIndex = 0; path = Pods_iosApp.framework; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
@@ -47,12 +48,21 @@
 /* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
+		110C90C5CF6B5F0F0C05F9DF /* Frameworks */ = {
+			isa = PBXGroup;
+			children = (
+				CD356E74DF75AEC1E0D7B80A /* Pods_iosApp.framework */,
+			);
+			name = Frameworks;
+			sourceTree = "<group>";
+		};
 		122CDD4C04FE040561250DCF = {
 			isa = PBXGroup;
 			children = (
 				C6C63625E155AB352EFA071A /* Configuration */,
 				8CA725C764B6B79D53B59CDA /* iosApp */,
 				941B3DC386142E945704ACB7 /* Products */,
+				110C90C5CF6B5F0F0C05F9DF /* Frameworks */,
 			);
 			sourceTree = "<group>";
 		};
@@ -84,8 +94,6 @@
 				8CA725C764B6B79D53B59CDA /* iosApp */,
 			);
 			name = iosApp;
-			packageProductDependencies = (
-			);
 			productName = iosApp;
 			productReference = AF28331B0EBA6B3BE61DCD9A /* VisualMoney.app */;
 			productType = "com.apple.product-type.application";
